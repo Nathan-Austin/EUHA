@@ -48,15 +48,21 @@ export default function Home() {
             <div className="flex flex-wrap gap-4 pt-2">
               <Link
                 href="/login"
-                className="rounded-full bg-gradient-to-r from-[#ff4d00] to-[#f1b12e] px-6 py-3 text-sm font-semibold uppercase tracking-wide text-black transition hover:from-[#ff7033] hover:to-[#ffd060]"
+                className="rounded-full bg-gradient-to-r from-[#ff4d00] to-[#f1b12e] px-6 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-black transition hover:from-[#ff7033] hover:to-[#ffd060]"
               >
                 Judge Login
               </Link>
               <Link
-                href="/dashboard"
-                className="rounded-full border border-white/20 px-6 py-3 text-sm font-semibold uppercase tracking-wide text-white transition hover:border-white hover:bg-white/10"
+                href="/apply/judge"
+                className="rounded-full border border-white/20 px-6 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-white transition hover:border-white hover:bg-white/10"
               >
-                Admin Dashboard
+                Apply to Judge
+              </Link>
+              <Link
+                href="/apply/supplier"
+                className="rounded-full border border-white/20 px-6 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-white transition hover:border-white hover:bg-white/10"
+              >
+                Enter a Sauce
               </Link>
             </div>
           </div>
@@ -75,6 +81,12 @@ export default function Home() {
             <p className="text-xs text-white/60">
               Registered judges receive tasting kits and digital scorecards via this portal.
             </p>
+            <Link
+              href="/dashboard"
+              className="text-xs font-semibold uppercase tracking-[0.25em] text-amber-200/80 transition hover:text-amber-200"
+            >
+              Admin Access
+            </Link>
           </div>
         </header>
 
@@ -114,7 +126,7 @@ export default function Home() {
                 New suppliers and aspiring judges can register interest with the Heat Awards team. We prioritise diversity across regions, heat levels, and flavour philosophies to reflect the breadth of Europe&apos;s heat culture.
               </p>
             </div>
-            <div className="flex gap-3">
+            <div className="flex flex-col gap-3 sm:flex-row">
               <Link
                 href="https://heatawards.eu"
                 target="_blank"
@@ -124,10 +136,16 @@ export default function Home() {
                 Explore Heat Awards
               </Link>
               <Link
-                href="/login"
+                href="/apply/judge"
                 className="rounded-full bg-gradient-to-r from-[#ff4d00] to-[#f1b12e] px-5 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-black transition hover:from-[#ff7033] hover:to-[#ffd060]"
               >
-                Request Access
+                Apply to Judge
+              </Link>
+              <Link
+                href="/apply/supplier"
+                className="rounded-full border border-white/20 px-5 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-white transition hover:border-white hover:bg-white/10"
+              >
+                Submit a Sauce
               </Link>
             </div>
           </div>
