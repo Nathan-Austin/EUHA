@@ -12,7 +12,7 @@ export default function ScanPage() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
 
-  const handleScan = (result: ScanResult | null | undefined, error: Error | undefined) => {
+  const handleScan = (result: ScanResult | null | undefined, error: any) => {
     if (!!result) {
       const sauceId = result?.getText();
       if (sauceId) {
