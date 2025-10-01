@@ -4,13 +4,35 @@ import { ChangeEvent, FormEvent, useMemo, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
-const categories = [
-  "Classic / Heritage",
-  "Fruit-Forward",
-  "Smoky",
-  "Fermented",
-  "Experimental",
-  "No-Heat (EU Retail)",
+const categoryGroups = [
+  {
+    label: "Chili Sauce Categories",
+    options: [
+      "Mild Chili Sauce",
+      "Medium Chili Sauce",
+      "Hot Chili Sauce",
+      "Extra Hot Chili Sauce",
+    ],
+  },
+  {
+    label: "Specialty Categories",
+    options: [
+      "Extract Based Chili Sauce",
+      "BBQ Chili Sauce",
+      "Chili Ketchup",
+      "Chili Jam",
+      "Chili Honey",
+      "Maple Syrup Chili Sauce",
+      "Garlic Chili Sauce",
+      "Chili Pickle",
+      "Chili Chutney",
+      "Chili Oil",
+      "Freestyle",
+      "Sweet/Sour Chili Sauce",
+      "Salt & Condiments",
+      "Chili Paste",
+    ],
+  },
 ];
 
 const discountBands = [
@@ -510,10 +532,14 @@ export default function SupplierApplyPage() {
                         <option value="" disabled>
                           Select a category
                         </option>
-                        {categories.map((category) => (
-                          <option key={category} value={category} className="bg-[#08040e] text-white">
-                            {category}
-                          </option>
+                        {categoryGroups.map((group) => (
+                          <optgroup key={group.label} label={group.label}>
+                            {group.options.map((category) => (
+                              <option key={category} value={category}>
+                                {category}
+                              </option>
+                            ))}
+                          </optgroup>
                         ))}
                       </select>
                     </label>
@@ -541,14 +567,17 @@ export default function SupplierApplyPage() {
                     />
                   </label>
                   <label className="mt-4 flex flex-col gap-2">
-                    <span className="text-xs uppercase tracking-[0.2em] text-white/60">Upload Bottle Image (WebP will be generated)</span>
+                    <span className="text-xs uppercase tracking-[0.2em] text-white/60">Upload Bottle Image</span>
                     <input
                       type="file"
                       accept="image/*"
                       onChange={handleImageChange(index)}
                       disabled={isComplete}
-                      className="text-sm text-white/80"
+                      className="block w-full cursor-pointer rounded-xl border border-dashed border-white/30 bg-black/30 px-4 py-3 text-sm text-white/80 transition hover:border-white/60 file:mr-4 file:rounded-full file:border-0 file:bg-white/10 file:px-4 file:py-2 file:text-xs file:font-semibold file:uppercase file:tracking-[0.25em] file:text-white/90 hover:file:bg-white/20"
                     />
+                    <span className="text-xs text-white/50">
+                      We optimise images to WebP (max {MAX_IMAGE_DIMENSION}px). Clear, front-on bottle photos work best.
+                    </span>
                     {sauce.previewUrl && (
                       <img
                         src={sauce.previewUrl}
