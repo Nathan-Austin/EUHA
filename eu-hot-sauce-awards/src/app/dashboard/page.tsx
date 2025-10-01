@@ -11,19 +11,17 @@ export default async function DashboardPage() {
   const cookieStore = cookies()
   const supabase = createClient(cookieStore)
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const { data: { user } } = await supabase.auth.getUser()
 
-  if (!user) {
+  if (!user || !user.email) {
     redirect('/login')
   }
 
   // Fetch judge details
   const { data: judge, error } = await supabase
     .from('judges')
-    .select('type, stripe_payment_status')
-    .eq('id', user.id)
+    .select('id, type, stripe_payment_status')
+    .eq('email', user.email)
     .single()
 
   if (error || !judge) {
@@ -55,7 +53,7 @@ export default async function DashboardPage() {
           <div className="space-y-4">
             <h2 className="text-xl font-semibold">Payment Required</h2>
             <p>To participate as a community judge, you must first pay the €15 entry fee.</p>
-            <StripeCheckoutButton judgeId={user.id} email={user.email!} />
+            <StripeCheckoutButton judgeId={judge.id} email={user.email!} />
           </div>
         )
       default:

@@ -13,7 +13,7 @@
     "next": "^14.2.33",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-qr-reader": "^3.0.0-beta-1"
+    "@yudiel/react-qr-scanner": "^1.2.7"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

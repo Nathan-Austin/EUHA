@@ -12,13 +12,13 @@ export async function updateSauceStatus(sauceId: string, newStatus: SauceStatus)
 
   // Check if the user is an admin before proceeding
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
+  if (!user?.email) {
     return { error: 'You must be logged in to perform this action.' };
   }
   const { data: judge, error: judgeError } = await supabase
     .from('judges')
     .select('type')
-    .eq('id', user.id)
+    .eq('email', user.email)
     .single();
 
   if (judgeError || judge?.type !== 'admin') {
@@ -52,13 +52,13 @@ export async function assignSaucesToBox(formData: FormData) {
 
   // Admin check
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
+  if (!user?.email) {
     return { error: 'You must be logged in.' };
   }
   const { data: judge, error: judgeError } = await supabase
     .from('judges')
     .select('type')
-    .eq('id', user.id)
+    .eq('email', user.email)
     .single();
 
   if (judgeError || judge?.type !== 'admin') {
@@ -110,15 +110,25 @@ export async function submitAllScores(scoresJSON: string) {
   const supabase = createClient(cookieStore)
 
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
+  if (!user?.email) {
     return { error: 'You must be logged in to submit scores.' };
+  }
+
+  const { data: judge, error: judgeError } = await supabase
+    .from('judges')
+    .select('id')
+    .eq('email', user.email)
+    .single();
+
+  if (judgeError || !judge) {
+    return { error: 'Unable to identify your judge profile. Please contact support.' };
   }
 
   const scoresToInsert = storedScores.flatMap(sauceScore => {
     const { sauceId, scores, comment } = sauceScore;
     return Object.entries(scores).map(([categoryId, score]) => ({
       sauce_id: sauceId,
-      judge_id: user.id,
+      judge_id: judge.id,
       category_id: categoryId,
       score: score,
       comments: comment,
@@ -160,8 +170,8 @@ export async function exportResults() {
 
   // Admin check
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: 'You must be logged in.' };
-  const { data: adminCheck, error: adminError } = await supabase.from('judges').select('type').eq('id', user.id).single();
+  if (!user?.email) return { error: 'You must be logged in.' };
+  const { data: adminCheck, error: adminError } = await supabase.from('judges').select('type').eq('email', user.email).single();
   if (adminError || adminCheck?.type !== 'admin') return { error: 'You are not authorized.' };
 
   // 1. Fetch all scores with judge and category info
@@ -178,26 +188,54 @@ export async function exportResults() {
   if (scoresError) return { error: `Error fetching scores: ${scoresError.message}` };
   if (!scoresData || scoresData.length === 0) return { error: 'No scores to export.' };
 
+  type JudgeType = 'pro' | 'community' | 'supplier';
+  type JudgeRecord = { type: JudgeType | 'admin' | null };
+  type SupplierRecord = { brand_name: string | null };
+  type SauceRecord = { name: string | null; suppliers: SupplierRecord | SupplierRecord[] | null };
+
+  const normalise = <T>(value: T | T[] | null | undefined): T | null => {
+    if (Array.isArray(value)) {
+      return value[0] ?? null;
+    }
+    return value ?? null;
+  };
+
   // 2. Process data
-  const JUDGE_WEIGHTS = { pro: 0.8, community: 1.5, supplier: 0.8 };
-  const sauceAggregates = new Map();
+  const JUDGE_WEIGHTS: Record<JudgeType, number> = { pro: 0.8, community: 1.5, supplier: 0.8 };
+  const sauceAggregates = new Map<string, {
+    name: string;
+    brand: string;
+    scoresByJudgeType: Record<JudgeType, number[]>;
+  }>();
 
-  // First pass: group all scores by sauce
-  scoresData.forEach(item => {
-    if (!item.sauces || !item.judges || !item.judging_categories) return;
-    const { sauce_id, sauces, judges, score } = item;
+  scoresData.forEach((item) => {
+    const sauceRecord = normalise<SauceRecord>(item.sauces as SauceRecord | SauceRecord[] | null);
+    const judgeRecord = normalise<JudgeRecord>(item.judges as JudgeRecord | JudgeRecord[] | null);
 
-    if (!sauceAggregates.has(sauce_id)) {
-      sauceAggregates.set(sauce_id, {
-        name: sauces[0].name,
-        brand: sauces[0].suppliers[0].brand_name,
-        scoresByJudgeType: { pro: [], community: [], supplier: [] }
+    if (!sauceRecord || !judgeRecord) {
+      return;
+    }
+
+    const judgeType = judgeRecord.type as JudgeType;
+    if (!judgeType || !(judgeType in JUDGE_WEIGHTS)) {
+      return;
+    }
+
+    const supplierRecord = normalise<SupplierRecord>(sauceRecord.suppliers);
+    const sauceName = sauceRecord.name ?? 'Unknown Sauce';
+    const brandName = supplierRecord?.brand_name ?? 'Unknown Brand';
+    const scoreValue = typeof item.score === 'number' ? item.score : null;
+
+    if (!sauceAggregates.has(item.sauce_id)) {
+      sauceAggregates.set(item.sauce_id, {
+        name: sauceName,
+        brand: brandName,
+        scoresByJudgeType: { pro: [], community: [], supplier: [] },
       });
     }
-    const sauce = sauceAggregates.get(sauce_id);
-    const judgeData = judges[0];
-    if (judgeData && sauce.scoresByJudgeType[judgeData.type]) {
-      sauce.scoresByJudgeType[judgeData.type].push(score);
+
+    if (scoreValue !== null) {
+      sauceAggregates.get(item.sauce_id)!.scoresByJudgeType[judgeType].push(scoreValue);
     }
   });
 

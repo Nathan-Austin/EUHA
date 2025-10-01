@@ -1,43 +1,54 @@
 'use client';
 
-import { QrReader } from 'react-qr-reader';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
+import dynamic from 'next/dynamic';
 
-interface ScanResult {
-  getText(): string;
-}
+const QrScanner = dynamic(
+  () => import('@yudiel/react-qr-scanner').then(mod => mod.QrScanner),
+  { ssr: false }
+);
 
 export default function ScanPage() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
-  const handleScan = (result: ScanResult | null | undefined, error: any) => {
-    if (!!result) {
-      const sauceId = result?.getText();
-      if (sauceId) {
-        // Basic validation for UUID format
-        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-        if (uuidRegex.test(sauceId)) {
-          router.push(`/judge/score/${sauceId}`);
-        } else {
-          setError('Invalid QR code. Please scan an official sauce QR code.');
-        }
+  const handleDecode = useCallback(
+    (value: string | null) => {
+      if (!value || isProcessing) {
+        return;
       }
-    }
 
-    if (!!error) {
-      // console.info(error);
-      // We can add more specific error handling here if needed
+      setIsProcessing(true);
+      setError(null);
+
+      const trimmedValue = value.trim();
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+      if (uuidRegex.test(trimmedValue)) {
+        router.push(`/judge/score/${trimmedValue}`);
+      } else {
+        setError('Invalid QR code. Please scan an official sauce QR code.');
+        setIsProcessing(false);
+      }
+    },
+    [isProcessing, router]
+  );
+
+  const handleError = useCallback((scanError: unknown) => {
+    if (scanError instanceof Error && scanError.name !== 'NotFoundException') {
+      setError(scanError.message);
     }
-  };
+  }, []);
 
   return (
     <div className="container mx-auto p-4 text-center">
       <h1 className="text-2xl font-bold mb-4">Scan Sauce QR Code</h1>
       <div className="max-w-md mx-auto bg-gray-200 rounded-lg overflow-hidden shadow-lg">
-        <QrReader
-          onResult={handleScan}
+        <QrScanner
+          onDecode={handleDecode}
+          onError={handleError}
           constraints={{ facingMode: 'environment' }}
           containerStyle={{ width: '100%' }}
         />
