@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useTransition } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { assignSaucesToBox } from './actions';
+import { assignSaucesToBox } from '@/app/actions';
 
 interface Sauce {
   id: string;
@@ -54,7 +54,7 @@ export default function AssignSauceToBox() {
       <form onSubmit={handleSubmit} className="p-4 border rounded-md bg-gray-50 space-y-4">
         <div>
           <label htmlFor="sauceIds" className="block text-sm font-medium text-gray-700">
-            Select Sauces (must have 'Arrived' status)
+            Select Sauces (must have &apos;Arrived&apos; status)
           </label>
           <select
             id="sauceIds"

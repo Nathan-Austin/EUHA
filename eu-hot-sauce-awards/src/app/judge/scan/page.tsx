@@ -4,11 +4,15 @@ import { QrReader } from 'react-qr-reader';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
+interface ScanResult {
+  getText(): string;
+}
+
 export default function ScanPage() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
 
-  const handleScan = (result: any, error: any) => {
+  const handleScan = (result: ScanResult | null | undefined, error: Error | undefined) => {
     if (!!result) {
       const sauceId = result?.getText();
       if (sauceId) {

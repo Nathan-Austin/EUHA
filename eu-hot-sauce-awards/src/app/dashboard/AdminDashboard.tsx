@@ -46,7 +46,7 @@ export default async function AdminDashboard() {
             <tbody>
               {sauces.map((sauce) => (
                 <tr key={sauce.id} className="border-t">
-                  <td className="px-4 py-2">{sauce.suppliers?.brand_name || 'N/A'}</td>
+                  <td className="px-4 py-2">{sauce.suppliers?.[0]?.brand_name || 'N/A'}</td>
                   <td className="px-4 py-2">{sauce.name}</td>
                   <td className="px-4 py-2">{sauce.category}</td>
                   <td className="px-4 py-2">

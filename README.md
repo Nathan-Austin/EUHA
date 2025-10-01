@@ -1,183 +1,74 @@
-# Supabase CLI
+# EU Hot Sauce Awards - Platform
 
-[![Coverage Status](https://coveralls.io/repos/github/supabase/cli/badge.svg?branch=main)](https://coveralls.io/github/supabase/cli?branch=main) [![Bitbucket Pipelines](https://img.shields.io/bitbucket/pipelines/supabase-cli/setup-cli/master?style=flat-square&label=Bitbucket%20Canary)](https://bitbucket.org/supabase-cli/setup-cli/pipelines) [![Gitlab Pipeline Status](https://img.shields.io/gitlab/pipeline-status/sweatybridge%2Fsetup-cli?label=Gitlab%20Canary)
-](https://gitlab.com/sweatybridge/setup-cli/-/pipelines)
+This repository contains the frontend application and backend infrastructure for the EU Hot Sauce Awards judging platform.
 
-[Supabase](https://supabase.io) is an open source Firebase alternative. We're building the features of Firebase using enterprise-grade open source tools.
+---
 
-This repository contains all the functionality for Supabase CLI.
+## Application Flow
 
-- [x] Running Supabase locally
-- [x] Managing database migrations
-- [x] Creating and deploying Supabase Functions
-- [x] Generating types directly from your database schema
-- [x] Making authenticated HTTP requests to [Management API](https://supabase.com/docs/reference/api/introduction)
+This document outlines the end-to-end user and data flow for the awards platform, from initial registration on WordPress to final results export.
 
-## Getting started
+### Part 1: Supplier & Judge Onboarding (via WordPress)
 
-### Install the CLI
+This phase covers how sauce suppliers and judges are registered in the system.
 
-Available via [NPM](https://www.npmjs.com) as dev dependency. To install:
+*   **Step 1: Registration on WordPress**
+    *   A new supplier or judge signs up and pays through a form on an external WordPress website.
 
-```bash
-npm i supabase --save-dev
-```
+*   **Step 2: WordPress Webhook Trigger**
+    *   Upon successful submission, WordPress sends a webhook containing the registration data (brand name, contact info, sauce details for suppliers; name and type for judges).
 
-To install the beta release channel:
+*   **Step 3: Supabase Edge Function Intake**
+    *   The webhook is received by a dedicated Supabase Edge Function:
+        *   `supplier-intake`: For new sauce/supplier registrations.
+        *   `judge-intake`: For new judge registrations.
 
-```bash
-npm i supabase@beta --save-dev
-```
+*   **Step 4: Database Population**
+    *   The Edge Function processes the data and creates new entries in the Supabase database, specifically in the `suppliers`, `sauces`, and `judges` tables. This officially brings the user into the awards platform ecosystem.
 
-When installing with yarn 4, you need to disable experimental fetch with the following nodejs config.
+### Part 2: Application Login & Payment
 
-```
-NODE_OPTIONS=--no-experimental-fetch yarn add supabase
-```
+This phase covers how registered users access the platform.
 
-> **Note**
-For Bun versions below v1.0.17, you must add `supabase` as a [trusted dependency](https://bun.sh/guides/install/trusted) before running `bun add -D supabase`.
+*   **Step 1: Login**
+    *   A registered user navigates to the Next.js application and logs in using Supabase Authentication, presumably with the same email used on WordPress.
 
-<details>
-  <summary><b>macOS</b></summary>
+*   **Step 2: Role-Based Dashboard**
+    *   The application checks the user's role (`admin`, `pro`, `community`) from the `judges` table.
+    *   It then dynamically renders the correct dashboard for the user.
 
-  Available via [Homebrew](https://brew.sh). To install:
+*   **Step 3: Community Judge Payment (Conditional)**
+    *   If the user is a `community` judge and has not yet paid, they are shown a payment prompt.
+    *   They complete the payment using a Stripe Checkout session managed by the `stripe-checkout` Edge Function.
+    *   A `stripe-webhook` function listens for the successful payment event from Stripe and updates the judge's `stripe_payment_status` in the database, granting them access to the judging features.
 
-  ```sh
-  brew install supabase/tap/supabase
-  ```
+### Part 3: The Judging Process
 
-  To install the beta release channel:
-  
-  ```sh
-  brew install supabase/tap/supabase-beta
-  brew link --overwrite supabase-beta
-  ```
-  
-  To upgrade:
+This phase details how judges score sauces.
 
-  ```sh
-  brew upgrade supabase
-  ```
-</details>
+*   **Step 1: Scan QR Code**
+    *   A judge navigates to the "Scan" page from their dashboard and uses their device's camera to scan a QR code on a sauce bottle.
 
-<details>
-  <summary><b>Windows</b></summary>
+*   **Step 2: Score Sauce**
+    *   The QR code redirects them to the unique scoring page for that specific sauce.
+    *   The judge enters scores and comments for various categories. As they do, the data is automatically saved to their browser's local storage to prevent data loss.
 
-  Available via [Scoop](https://scoop.sh). To install:
+*   **Step 3: Review Pending Scores**
+    *   After scoring, the judge can see a list of all their "Pending" scores on their dashboard. They can go back and edit these scores if needed.
 
-  ```powershell
-  scoop bucket add supabase https://github.com/supabase/scoop-bucket.git
-  scoop install supabase
-  ```
+*   **Step 4: Final Submission**
+    *   Once they are satisfied with all their scores, the judge clicks "Submit All Final Scores".
+    *   This triggers a server action (`submitAllScores`) that takes all the data from local storage and saves it permanently to the `judging_scores` table in the database.
 
-  To upgrade:
+### Part 4: Admin & Logistics
 
-  ```powershell
-  scoop update supabase
-  ```
-</details>
+This phase covers the administrative backend functionality.
 
-<details>
-  <summary><b>Linux</b></summary>
+*   **Step 1: Sauce Status Management**
+    *   An admin can view a list of all registered sauces and update their physical status (e.g., from `registered` to `arrived`).
 
-  Available via [Homebrew](https://brew.sh) and Linux packages.
+*   **Step 2: Box Assignment**
+    *   Once sauces have arrived, the admin uses the "Box Management" interface to digitally group sauces into judging boxes.
 
-  #### via Homebrew
-
-  To install:
-
-  ```sh
-  brew install supabase/tap/supabase
-  ```
-
-  To upgrade:
-
-  ```sh
-  brew upgrade supabase
-  ```
-
-  #### via Linux packages
-
-  Linux packages are provided in [Releases](https://github.com/supabase/cli/releases). To install, download the `.apk`/`.deb`/`.rpm`/`.pkg.tar.zst` file depending on your package manager and run the respective commands.
-
-  ```sh
-  sudo apk add --allow-untrusted <...>.apk
-  ```
-
-  ```sh
-  sudo dpkg -i <...>.deb
-  ```
-
-  ```sh
-  sudo rpm -i <...>.rpm
-  ```
-
-  ```sh
-  sudo pacman -U <...>.pkg.tar.zst
-  ```
-</details>
-
-<details>
-  <summary><b>Other Platforms</b></summary>
-
-  You can also install the CLI via [go modules](https://go.dev/ref/mod#go-install) without the help of package managers.
-
-  ```sh
-  go install github.com/supabase/cli@latest
-  ```
-
-  Add a symlink to the binary in `$PATH` for easier access:
-
-  ```sh
-  ln -s "$(go env GOPATH)/bin/cli" /usr/bin/supabase
-  ```
-
-  This works on other non-standard Linux distros.
-</details>
-
-<details>
-  <summary><b>Community Maintained Packages</b></summary>
-
-  Available via [pkgx](https://pkgx.sh/). Package script [here](https://github.com/pkgxdev/pantry/blob/main/projects/supabase.com/cli/package.yml).
-  To install in your working directory:
-
-  ```bash
-  pkgx install supabase
-  ```
-
-  Available via [Nixpkgs](https://nixos.org/). Package script [here](https://github.com/NixOS/nixpkgs/blob/master/pkgs/development/tools/supabase-cli/default.nix).
-</details>
-
-### Run the CLI
-
-```bash
-supabase bootstrap
-```
-
-Or using npx:
-
-```bash
-npx supabase bootstrap
-```
-
-The bootstrap command will guide you through the process of setting up a Supabase project using one of the [starter](https://github.com/supabase-community/supabase-samples/blob/main/samples.json) templates.
-
-## Docs
-
-Command & config reference can be found [here](https://supabase.com/docs/reference/cli/about).
-
-## Breaking changes
-
-We follow semantic versioning for changes that directly impact CLI commands, flags, and configurations.
-
-However, due to dependencies on other service images, we cannot guarantee that schema migrations, seed.sql, and generated types will always work for the same CLI major version. If you need such guarantees, we encourage you to pin a specific version of CLI in package.json.
-
-## Developing
-
-To run from source:
-
-```sh
-# Go >= 1.22
-go run . help
-```
+*   **Step 3: Export Results**
+    *   At any point, the admin can export a complete CSV file of all judging scores, which includes weighted calculations based on judge type (`pro`, `community`).

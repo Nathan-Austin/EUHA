@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { updateSauceStatus } from './actions'
+import { updateSauceStatus } from '@/app/actions'
 
 type SauceStatus = 'registered' | 'arrived' | 'boxed' | 'judged';
 

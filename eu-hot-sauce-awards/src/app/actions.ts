@@ -144,6 +144,16 @@ export async function submitAllScores(scoresJSON: string) {
   return { success: true };
 }
 
+interface ResultRow {
+  Brand: string;
+  Sauce: string;
+  'Avg Pro Score': string | number;
+  'Avg Community Score': string | number;
+  'Avg Supplier Score': string | number;
+  'Final Weighted Score': string | number;
+  [key: string]: string | number;
+}
+
 export async function exportResults() {
   const cookieStore = cookies();
   const supabase = createClient(cookieStore);
@@ -179,14 +189,15 @@ export async function exportResults() {
 
     if (!sauceAggregates.has(sauce_id)) {
       sauceAggregates.set(sauce_id, {
-        name: sauces.name,
-        brand: sauces.suppliers.brand_name,
+        name: sauces[0].name,
+        brand: sauces[0].suppliers[0].brand_name,
         scoresByJudgeType: { pro: [], community: [], supplier: [] }
       });
     }
     const sauce = sauceAggregates.get(sauce_id);
-    if (sauce.scoresByJudgeType[judges.type]) {
-      sauce.scoresByJudgeType[judges.type].push(score);
+    const judgeData = judges[0];
+    if (judgeData && sauce.scoresByJudgeType[judgeData.type]) {
+      sauce.scoresByJudgeType[judgeData.type].push(score);
     }
   });
 
@@ -194,7 +205,7 @@ export async function exportResults() {
   const finalResults = [];
 
   for (const [sauceId, sauceData] of sauceAggregates.entries()) {
-    const row: any = {
+    const row: ResultRow = {
       Brand: sauceData.brand,
       Sauce: sauceData.name,
       'Avg Pro Score': 'N/A',
@@ -206,10 +217,10 @@ export async function exportResults() {
     let finalWeightedSum = 0;
     let finalWeightDivisor = 0;
 
-    for (const type of ['pro', 'community', 'supplier']) {
+    for (const type of ['pro', 'community', 'supplier'] as const) {
         const scores = sauceData.scoresByJudgeType[type];
         if (scores.length > 0) {
-            const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+            const avg = scores.reduce((a: number, b: number) => a + b, 0) / scores.length;
             row[`Avg ${type.charAt(0).toUpperCase() + type.slice(1)} Score`] = avg.toFixed(2);
             
             finalWeightedSum += avg * scores.length * JUDGE_WEIGHTS[type];
@@ -222,7 +233,7 @@ export async function exportResults() {
   }
 
   // 4. Sort and convert to CSV
-  finalResults.sort((a, b) => b['Final Weighted Score'] - a['Final Weighted Score']);
+  finalResults.sort((a, b) => Number(b['Final Weighted Score']) - Number(a['Final Weighted Score']));
 
   const headers = ['Brand', 'Sauce', 'Final Weighted Score', 'Avg Pro Score', 'Avg Community Score', 'Avg Supplier Score'];
   const csvRows = [headers.join(',')];

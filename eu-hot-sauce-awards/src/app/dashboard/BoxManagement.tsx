@@ -23,8 +23,8 @@ export default async function BoxManagement() {
     if (!acc[box_label]) {
       acc[box_label] = [];
     }
-    if (sauces) {
-      acc[box_label].push(sauces.name);
+    if (sauces && sauces[0]) {
+      acc[box_label].push(sauces[0].name);
     }
     return acc;
   }, {} as Record<string, string[]>);

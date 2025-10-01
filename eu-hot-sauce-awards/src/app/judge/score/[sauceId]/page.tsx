@@ -32,7 +32,7 @@ export default async function ScorePage({ params }: ScorePageProps) {
       <div className="max-w-3xl mx-auto">
         <div className="bg-white p-8 rounded-lg shadow-md">
           <h1 className="text-3xl font-bold">{sauce.name}</h1>
-          <p className="text-lg text-gray-700 mt-1">{sauce.suppliers?.brand_name}</p>
+          <p className="text-lg text-gray-600">by {sauce.suppliers[0]?.brand_name}</p>
           <div className="mt-4 pt-4 border-t">
             <h2 className="text-2xl font-semibold mb-4">Submit Your Scores</h2>
             <ScoringForm

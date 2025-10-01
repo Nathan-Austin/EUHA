@@ -27,7 +27,7 @@ export function useScoreStorage(sauceId: string, sauceName: string) {
     }
   }, [sauceId]);
 
-  const updateStorage = useCallback((key: 'scores' | 'comment', value: any) => {
+  const updateStorage = useCallback((key: 'scores' | 'comment', value: Record<string, number> | string) => {
     const allScores = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{') as ScoreStorage;
     
     const currentData = allScores[sauceId] || {

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react';
-import { exportResults } from './actions';
+import { exportResults } from '@/app/actions';
 
 export default function ExportResultsButton() {
   const [isPending, startTransition] = useTransition();
