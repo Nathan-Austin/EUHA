@@ -54,6 +54,13 @@ Run these commands in your terminal. These secrets are stored securely on Supaba
     supabase secrets set STRIPE_WEBHOOK_SIGNING_SECRET="your-webhook-signing-secret"
     ```
 
+5.  **Supplier checkout redirect URLs**: The multi-entry supplier flow uses dedicated success and cancel URLs so Stripe can return producers to the correct confirmation screens. Configure both on Supabase (for the edge function) and Vercel (for client-side builds):
+    ```bash
+    supabase secrets set SUPPLIER_PAYMENT_SUCCESS_URL="https://your-subdomain.heatawards.eu/payment-success"
+    supabase secrets set SUPPLIER_PAYMENT_CANCEL_URL="https://your-subdomain.heatawards.eu/payment-cancelled"
+    ```
+    Mirror these variables in Vercel so the frontend knows where to navigate once payment completes. If you move the confirmation pages later, update the values in both environments to keep Stripe sessions in sync.
+
 ## 3. Deploy Backend Functions
 
 Deploy all the edge functions to Supabase:

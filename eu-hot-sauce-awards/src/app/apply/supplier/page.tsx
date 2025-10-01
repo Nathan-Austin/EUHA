@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { ChangeEvent, FormEvent, useMemo, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
@@ -13,37 +13,177 @@ const categories = [
   "No-Heat (EU Retail)",
 ];
 
+const discountBands = [
+  { min: 1, max: 1, percent: 0 },
+  { min: 2, max: 2, percent: 3 },
+  { min: 3, max: 3, percent: 5 },
+  { min: 4, max: 4, percent: 7 },
+  { min: 5, max: 5, percent: 9 },
+  { min: 6, max: 6, percent: 12 },
+  { min: 7, max: 10, percent: 13 },
+  { min: 11, max: 20, percent: 14 },
+  { min: 21, max: 100, percent: 16 },
+];
+
+const ENTRY_PRICE_CENTS = 50_00;
+
+type SauceForm = {
+  id: string;
+  name: string;
+  category: string;
+  ingredients: string;
+  allergens: string;
+};
+
+const createEmptySauce = (): SauceForm => ({
+  id:
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random()}`,
+  name: "",
+  category: "",
+  ingredients: "",
+  allergens: "",
+});
+
+const formatCurrency = (cents: number) =>
+  new Intl.NumberFormat("en-IE", {
+    style: "currency",
+    currency: "EUR",
+    minimumFractionDigits: 2,
+  }).format(cents / 100);
+
+const resolveDiscountPercent = (entryCount: number) => {
+  const band = discountBands.find((tier) => entryCount >= tier.min && entryCount <= tier.max);
+  return band ? band.percent : discountBands[discountBands.length - 1].percent;
+};
+
+type PaymentQuote = {
+  id: string;
+  entry_count: number;
+  discount_percent: number;
+  subtotal_cents: number;
+  discount_cents: number;
+  amount_due_cents: number;
+};
+
+type SubmittedSauce = {
+  id: string;
+  name: string;
+};
+
 export default function SupplierApplyPage() {
   const supabase = createClient();
+
+  const [formValues, setFormValues] = useState({
+    brand: "",
+    contactName: "",
+    email: "",
+    address: "",
+  });
+
+  const [sauces, setSauces] = useState<SauceForm[]>([createEmptySauce()]);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isComplete, setIsComplete] = useState(false);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [paymentQuote, setPaymentQuote] = useState<PaymentQuote | null>(null);
+  const [submittedSauces, setSubmittedSauces] = useState<SubmittedSauce[]>([]);
+  const [supplierEmail, setSupplierEmail] = useState<string>("");
+
+  const entryCount = sauces.length;
+
+  const liveQuote = useMemo(() => {
+    const discountPercent = resolveDiscountPercent(entryCount);
+    const subtotalCents = entryCount * ENTRY_PRICE_CENTS;
+    const discountCents = Math.round(subtotalCents * (discountPercent / 100));
+    const totalCents = subtotalCents - discountCents;
+
+    return {
+      discountPercent,
+      subtotalCents,
+      discountCents,
+      totalCents,
+    };
+  }, [entryCount]);
+
+  const handleBrandFieldChange = (
+    field: keyof typeof formValues
+  ) => (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setFormValues((prev) => ({ ...prev, [field]: event.target.value }));
+  };
+
+  const handleSauceFieldChange = (
+    index: number,
+    field: keyof Omit<SauceForm, "id">
+  ) =>
+    (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+      const value = event.target.value;
+      setSauces((prev) =>
+        prev.map((sauce, sauceIndex) =>
+          sauceIndex === index ? { ...sauce, [field]: value } : sauce
+        )
+      );
+    };
+
+  const addSauce = () => {
+    setSauces((prev) => [...prev, createEmptySauce()]);
+  };
+
+  const removeSauce = (id: string) => {
+    setSauces((prev) => (prev.length === 1 ? prev : prev.filter((sauce) => sauce.id !== id)));
+  };
+
+  const resetForm = () => {
+    setFormValues({ brand: "", contactName: "", email: "", address: "" });
+    setSauces([createEmptySauce()]);
+    setIsSubmitting(false);
+    setIsComplete(false);
+    setCheckoutLoading(false);
+    setSuccessMessage(null);
+    setErrorMessage(null);
+    setPaymentQuote(null);
+    setSubmittedSauces([]);
+    setSupplierEmail("");
+  };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setIsSubmitting(true);
     setErrorMessage(null);
-    setSuccessMessage(null);
 
-    const formData = new FormData(event.currentTarget);
-
-    const payload = {
-      brand: String(formData.get("brand") || ""),
-      name: String(formData.get("sauceName") || ""),
-      ingredients: String(formData.get("ingredients") || ""),
-      allergens: String(formData.get("allergens") || "None"),
-      category: String(formData.get("category") || ""),
-      address: String(formData.get("address") || ""),
-      email: String(formData.get("email") || ""),
-    };
-
-    if (!payload.brand || !payload.name || !payload.category || !payload.email) {
+    if (!formValues.brand.trim() || !formValues.email.trim() || !formValues.address.trim()) {
       setIsSubmitting(false);
-      setErrorMessage("Please complete all required fields before submitting.");
+      setErrorMessage("Please complete the brand, email, and address fields.");
+      return;
+    }
+
+    const hasIncompleteSauce = sauces.some(
+      (sauce) => !sauce.name.trim() || !sauce.category || !sauce.ingredients.trim()
+    );
+
+    if (hasIncompleteSauce) {
+      setIsSubmitting(false);
+      setErrorMessage("Please complete all sauce details before submitting.");
       return;
     }
 
     try {
+      const payload = {
+        brand: formValues.brand.trim(),
+        contactName: formValues.contactName.trim() || undefined,
+        email: formValues.email.trim().toLowerCase(),
+        address: formValues.address.trim(),
+        sauces: sauces.map((sauce) => ({
+          name: sauce.name.trim(),
+          category: sauce.category,
+          ingredients: sauce.ingredients.trim(),
+          allergens: sauce.allergens.trim() || "None",
+        })),
+      };
+
       const { data, error } = await supabase.functions.invoke("supplier-intake", {
         body: payload,
       });
@@ -63,12 +203,15 @@ export default function SupplierApplyPage() {
         throw new Error(otpError.message);
       }
 
-      event.currentTarget.reset();
+      setPaymentQuote(data?.payment ?? null);
+      setSubmittedSauces(data?.sauces ?? []);
+      setSupplierEmail(payload.email);
       setSuccessMessage(
-        data?.sauce_id
-          ? `Thank you! Your sauce has been registered. Reference: ${data.sauce_id}. Check your inbox for a magic link to access logistics.`
-          : "Thank you! Your sauce has been registered. Check your inbox for a magic link to access logistics."
+        data?.payment
+          ? `Thank you! ${data.payment.entry_count} sauces have been registered. Review the payment summary below and complete payment to confirm your entries.`
+          : "Thank you! Your sauces have been registered."
       );
+      setIsComplete(true);
     } catch (submissionError) {
       if (submissionError instanceof Error) {
         setErrorMessage(submissionError.message);
@@ -80,6 +223,42 @@ export default function SupplierApplyPage() {
     }
   };
 
+  const handleCheckout = async () => {
+    if (!paymentQuote || !supplierEmail) return;
+
+    setCheckoutLoading(true);
+    setErrorMessage(null);
+
+    try {
+      const { data, error } = await supabase.functions.invoke("supplier-checkout", {
+        body: {
+          payment_id: paymentQuote.id,
+          email: supplierEmail,
+        },
+      });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      if (data?.alreadyPaid) {
+        setSuccessMessage("We have already received payment for this submission. Thank you!");
+      } else if (data?.url) {
+        window.location.href = data.url as string;
+      } else {
+        setErrorMessage("Unable to start the Stripe checkout session. Please contact support.");
+      }
+    } catch (checkoutError) {
+      if (checkoutError instanceof Error) {
+        setErrorMessage(checkoutError.message);
+      } else {
+        setErrorMessage("Unable to initialise payment. Please try again.");
+      }
+    } finally {
+      setCheckoutLoading(false);
+    }
+  };
+
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#08040e] text-white">
       <div
@@ -88,132 +267,315 @@ export default function SupplierApplyPage() {
       />
       <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/60 to-transparent" aria-hidden />
 
-      <div className="relative z-10 mx-auto flex max-w-3xl flex-col gap-10 px-6 pb-20 pt-24 sm:px-10 lg:px-12">
+      <div className="relative z-10 mx-auto flex max-w-4xl flex-col gap-10 px-6 pb-20 pt-24 sm:px-10 lg:px-12">
         <header className="space-y-4">
           <Link href="/apply" className="text-xs uppercase tracking-[0.3em] text-amber-200/70 transition hover:text-amber-200">
             ← Back to Applications
           </Link>
           <h1 className="text-4xl font-semibold leading-tight sm:text-5xl">Supplier Entry</h1>
           <p className="text-base text-white/75 sm:text-lg">
-            Submit your sauce to the EU Hot Sauce Awards 2026. Once accepted, you&apos;ll receive QR codes, packing guidance, and updates directly through this portal.
+            Enter multiple sauces in one submission. We apply tiered discounts automatically and email you a secure link to manage logistics inside the judging portal.
           </p>
         </header>
 
-        <form
-          onSubmit={handleSubmit}
-          className="space-y-6 rounded-3xl border border-white/15 bg-white/[0.07] p-8 backdrop-blur"
-        >
-          <div className="grid gap-6 sm:grid-cols-2">
+        <section className="space-y-6 rounded-3xl border border-white/15 bg-white/[0.07] p-8 backdrop-blur">
+          <form onSubmit={handleSubmit} className="space-y-8">
+            <div className="grid gap-6 sm:grid-cols-2">
+              <label className="flex flex-col gap-2">
+                <span className="text-xs uppercase tracking-[0.2em] text-white/60">Brand Name *</span>
+                <input
+                  value={formValues.brand}
+                  onChange={handleBrandFieldChange("brand")}
+                  required
+                  disabled={isComplete}
+                  className="rounded-xl border border-white/20 bg-black/30 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:border-amber-300 focus:outline-none disabled:opacity-60"
+                  placeholder="Heat Awards Co."
+                />
+              </label>
+              <label className="flex flex-col gap-2">
+                <span className="text-xs uppercase tracking-[0.2em] text-white/60">Contact Name</span>
+                <input
+                  value={formValues.contactName}
+                  onChange={handleBrandFieldChange("contactName")}
+                  disabled={isComplete}
+                  className="rounded-xl border border-white/20 bg-black/30 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:border-amber-300 focus:outline-none disabled:opacity-60"
+                  placeholder="Primary contact"
+                />
+              </label>
+              <label className="flex flex-col gap-2">
+                <span className="text-xs uppercase tracking-[0.2em] text-white/60">Contact Email *</span>
+                <input
+                  type="email"
+                  value={formValues.email}
+                  onChange={handleBrandFieldChange("email")}
+                  required
+                  disabled={isComplete}
+                  className="rounded-xl border border-white/20 bg-black/30 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:border-amber-300 focus:outline-none disabled:opacity-60"
+                  placeholder="team@brand.com"
+                />
+              </label>
+              <div className="rounded-2xl border border-white/10 bg-black/20 p-4 text-xs text-white/70">
+                <p className="font-semibold uppercase tracking-[0.25em] text-amber-200/80">Pricing Snapshot</p>
+                <ul className="mt-3 space-y-2 text-white/70">
+                  <li className="flex justify-between text-sm">
+                    <span>Entries</span>
+                    <span>{entryCount}</span>
+                  </li>
+                  <li className="flex justify-between text-sm">
+                    <span>Subtotal</span>
+                    <span>{formatCurrency(liveQuote.subtotalCents)}</span>
+                  </li>
+                  <li className="flex justify-between text-sm">
+                    <span>Discount</span>
+                    <span>{liveQuote.discountPercent}% ({formatCurrency(liveQuote.discountCents)})</span>
+                  </li>
+                  <li className="flex justify-between text-sm font-semibold text-amber-200">
+                    <span>Total Due</span>
+                    <span>{formatCurrency(liveQuote.totalCents)}</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+
             <label className="flex flex-col gap-2">
-              <span className="text-xs uppercase tracking-[0.2em] text-white/60">Brand Name *</span>
-              <input
-                name="brand"
-                required
-                className="rounded-xl border border-white/20 bg-black/30 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:border-amber-300 focus:outline-none"
-                placeholder="Heat Awards Co."
-              />
-            </label>
-            <label className="flex flex-col gap-2">
-              <span className="text-xs uppercase tracking-[0.2em] text-white/60">Contact Email *</span>
-              <input
-                name="email"
-                type="email"
-                required
-                className="rounded-xl border border-white/20 bg-black/30 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:border-amber-300 focus:outline-none"
-                placeholder="team@brand.com"
-              />
-            </label>
-          </div>
-
-          <label className="flex flex-col gap-2">
-            <span className="text-xs uppercase tracking-[0.2em] text-white/60">Sauce Name *</span>
-            <input
-              name="sauceName"
-              required
-              className="rounded-xl border border-white/20 bg-black/30 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:border-amber-300 focus:outline-none"
-              placeholder="Northern Ember"
-            />
-          </label>
-
-          <label className="flex flex-col gap-2">
-            <span className="text-xs uppercase tracking-[0.2em] text-white/60">Category *</span>
-            <select
-              name="category"
-              required
-              defaultValue=""
-              className="rounded-xl border border-white/20 bg-black/30 px-4 py-3 text-sm text-white focus:border-amber-300 focus:outline-none"
-            >
-              <option value="" disabled>
-                Select a category
-              </option>
-              {categories.map((category) => (
-                <option key={category} value={category} className="bg-[#08040e] text-white">
-                  {category}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <div className="grid gap-6 sm:grid-cols-2">
-            <label className="flex flex-col gap-2 sm:col-span-2">
-              <span className="text-xs uppercase tracking-[0.2em] text-white/60">Key Ingredients *</span>
+              <span className="text-xs uppercase tracking-[0.2em] text-white/60">Business Address *</span>
               <textarea
-                name="ingredients"
+                value={formValues.address}
+                onChange={handleBrandFieldChange("address")}
                 required
+                disabled={isComplete}
                 rows={3}
-                className="rounded-xl border border-white/20 bg-black/30 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:border-amber-300 focus:outline-none"
-                placeholder="Fresh chilies, smoked paprika, cider vinegar, sea salt"
+                className="rounded-xl border border-white/20 bg-black/30 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:border-amber-300 focus:outline-none disabled:opacity-60"
+                placeholder="123 Scoville Street, 1010 Budapest, Hungary"
               />
             </label>
-            <label className="flex flex-col gap-2 sm:col-span-2">
-              <span className="text-xs uppercase tracking-[0.2em] text-white/60">Allergens (if any)</span>
-              <input
-                name="allergens"
-                className="rounded-xl border border-white/20 bg-black/30 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:border-amber-300 focus:outline-none"
-                placeholder="Contains mustard seeds"
-              />
-            </label>
-          </div>
 
-          <label className="flex flex-col gap-2">
-            <span className="text-xs uppercase tracking-[0.2em] text-white/60">Business Address *</span>
-            <textarea
-              name="address"
-              required
-              rows={3}
-              className="rounded-xl border border-white/20 bg-black/30 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:border-amber-300 focus:outline-none"
-              placeholder="123 Scoville Street, 1010 Budapest, Hungary"
-            />
-          </label>
+            <div className="space-y-6">
+              {sauces.map((sauce, index) => (
+                <div key={sauce.id} className="rounded-2xl border border-white/15 bg-black/30 p-6">
+                  <div className="mb-4 flex items-center justify-between">
+                    <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-amber-200/80">
+                      Sauce {index + 1}
+                    </h2>
+                    {sauces.length > 1 && !isComplete && (
+                      <button
+                        type="button"
+                        onClick={() => removeSauce(sauce.id)}
+                        className="text-xs uppercase tracking-[0.25em] text-white/60 transition hover:text-red-300"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <label className="flex flex-col gap-2">
+                      <span className="text-xs uppercase tracking-[0.2em] text-white/60">Sauce Name *</span>
+                      <input
+                        value={sauce.name}
+                        onChange={handleSauceFieldChange(index, "name")}
+                        required
+                        disabled={isComplete}
+                        className="rounded-xl border border-white/20 bg-black/30 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:border-amber-300 focus:outline-none disabled:opacity-60"
+                        placeholder="Northern Ember"
+                      />
+                    </label>
+                    <label className="flex flex-col gap-2">
+                      <span className="text-xs uppercase tracking-[0.2em] text-white/60">Category *</span>
+                      <select
+                        value={sauce.category}
+                        onChange={handleSauceFieldChange(index, "category")}
+                        required
+                        disabled={isComplete}
+                        className="rounded-xl border border-white/20 bg-black/30 px-4 py-3 text-sm text-white focus:border-amber-300 focus:outline-none disabled:opacity-60"
+                      >
+                        <option value="" disabled>
+                          Select a category
+                        </option>
+                        {categories.map((category) => (
+                          <option key={category} value={category} className="bg-[#08040e] text-white">
+                            {category}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                  <label className="mt-4 flex flex-col gap-2">
+                    <span className="text-xs uppercase tracking-[0.2em] text-white/60">Key Ingredients *</span>
+                    <textarea
+                      value={sauce.ingredients}
+                      onChange={handleSauceFieldChange(index, "ingredients")}
+                      required
+                      disabled={isComplete}
+                      rows={3}
+                      className="rounded-xl border border-white/20 bg-black/30 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:border-amber-300 focus:outline-none disabled:opacity-60"
+                      placeholder="Fresh chilies, smoked paprika, cider vinegar, sea salt"
+                    />
+                  </label>
+                  <label className="mt-4 flex flex-col gap-2">
+                    <span className="text-xs uppercase tracking-[0.2em] text-white/60">Allergens (if any)</span>
+                    <input
+                      value={sauce.allergens}
+                      onChange={handleSauceFieldChange(index, "allergens")}
+                      disabled={isComplete}
+                      className="rounded-xl border border-white/20 bg-black/30 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:border-amber-300 focus:outline-none disabled:opacity-60"
+                      placeholder="Contains mustard seeds"
+                    />
+                  </label>
+                </div>
+              ))}
 
-          <div className="space-y-3 rounded-2xl border border-amber-200/20 bg-black/20 p-4 text-xs text-white/70">
-            <p>
-              By submitting this form you confirm that your sauce complies with EU food safety regulations and that you can ship samples to our judging hub in Dublin, Ireland.
-            </p>
-            <p>
-              We will send you a confirmation email with next steps and a secure login link. Check your spam folder if you don&apos;t hear from us within a few minutes.
-            </p>
-          </div>
+              {!isComplete && (
+                <button
+                  type="button"
+                  onClick={addSauce}
+                  className="flex w-full items-center justify-center gap-2 rounded-full border border-dashed border-white/30 px-6 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-white transition hover:border-white/50 hover:bg-white/10"
+                >
+                  + Add another sauce
+                </button>
+              )}
+            </div>
 
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full rounded-full bg-gradient-to-r from-[#ff4d00] to-[#f1b12e] px-6 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-black transition hover:from-[#ff7033] hover:to-[#ffd060] disabled:cursor-not-allowed disabled:opacity-70"
-          >
-            {isSubmitting ? "Submitting..." : "Submit Sauce Entry"}
-          </button>
+            <div className="space-y-3 rounded-2xl border border-amber-200/20 bg-black/20 p-4 text-xs text-white/70">
+              <p>
+                By submitting this form you confirm that each sauce complies with EU food safety regulations and that you can ship samples to our judging hub in Dublin, Ireland.
+              </p>
+              <p>
+                We will send a confirmation email with logistics and a magic link to the supplier dashboard. Please check your spam folder if you don&apos;t receive it within a few minutes.
+              </p>
+            </div>
 
-          {successMessage && (
-            <div className="rounded-2xl border border-emerald-300/40 bg-emerald-500/10 p-4 text-sm text-emerald-200">
-              {successMessage}
+            {!isComplete && (
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full rounded-full bg-gradient-to-r from-[#ff4d00] to-[#f1b12e] px-6 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-black transition hover:from-[#ff7033] hover:to-[#ffd060] disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                {isSubmitting ? "Submitting..." : `Submit ${entryCount} Sauce${entryCount > 1 ? "s" : ""}`}
+              </button>
+            )}
+
+            {successMessage && (
+              <div className="rounded-2xl border border-emerald-300/40 bg-emerald-500/10 p-4 text-sm text-emerald-200">
+                <p>{successMessage}</p>
+                {submittedSauces.length > 0 && (
+                  <ul className="mt-3 list-disc space-y-1 pl-5 text-emerald-100">
+                    {submittedSauces.map((sauce) => (
+                      <li key={sauce.id}>{sauce.name}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+            {errorMessage && (
+              <div className="rounded-2xl border border-red-300/40 bg-red-500/10 p-4 text-sm text-red-200">
+                {errorMessage}
+              </div>
+            )}
+          </form>
+
+          {paymentQuote && (
+            <div className="space-y-4 rounded-2xl border border-white/20 bg-black/30 p-6">
+              <h2 className="text-sm font-semibold uppercase tracking-[0.25em] text-amber-200/80">
+                Payment Summary
+              </h2>
+              <ul className="space-y-2 text-sm text-white/80">
+                <li className="flex justify-between">
+                  <span>Entries</span>
+                  <span>{paymentQuote.entry_count}</span>
+                </li>
+                <li className="flex justify-between">
+                  <span>Subtotal</span>
+                  <span>{formatCurrency(paymentQuote.subtotal_cents)}</span>
+                </li>
+                <li className="flex justify-between">
+                  <span>Discount</span>
+                  <span>{paymentQuote.discount_percent}% ({formatCurrency(paymentQuote.discount_cents)})</span>
+                </li>
+                <li className="flex justify-between text-base font-semibold text-amber-200">
+                  <span>Total due</span>
+                  <span>{formatCurrency(paymentQuote.amount_due_cents)}</span>
+                </li>
+              </ul>
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  onClick={handleCheckout}
+                  disabled={checkoutLoading}
+                  className="rounded-full bg-gradient-to-r from-[#ff4d00] to-[#f1b12e] px-6 py-3 text-xs font-semibold uppercase tracking-[0.25em] text-black transition hover:from-[#ff7033] hover:to-[#ffd060] disabled:cursor-not-allowed disabled:opacity-70"
+                >
+                  {checkoutLoading ? "Redirecting..." : "Proceed to Payment"}
+                </button>
+                <button
+                  type="button"
+                  onClick={resetForm}
+                  className="rounded-full border border-white/30 px-6 py-3 text-xs font-semibold uppercase tracking-[0.25em] text-white transition hover:border-white hover:bg-white/10"
+                >
+                  Start a New Submission
+                </button>
+              </div>
             </div>
           )}
-          {errorMessage && (
-            <div className="rounded-2xl border border-red-300/40 bg-red-500/10 p-4 text-sm text-red-200">
-              {errorMessage}
-            </div>
-          )}
-        </form>
+        </section>
+
+        <section className="space-y-4 rounded-3xl border border-white/15 bg-white/[0.05] p-8 backdrop-blur">
+          <h2 className="text-sm font-semibold uppercase tracking-[0.25em] text-amber-200/80">Discount Overview</h2>
+          <table className="w-full text-left text-sm text-white/70">
+            <thead className="text-xs uppercase tracking-[0.2em] text-white/50">
+              <tr>
+                <th className="pb-3">Entries</th>
+                <th className="pb-3">Range</th>
+                <th className="pb-3">Discount</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/10">
+              <tr>
+                <td className="py-3">1 × Product Entry</td>
+                <td>1</td>
+                <td>0%</td>
+              </tr>
+              <tr>
+                <td className="py-3">2 × Product Entry</td>
+                <td>2</td>
+                <td>3%</td>
+              </tr>
+              <tr>
+                <td className="py-3">3 × Product Entry</td>
+                <td>3</td>
+                <td>5%</td>
+              </tr>
+              <tr>
+                <td className="py-3">4 × Product Entry</td>
+                <td>4</td>
+                <td>7%</td>
+              </tr>
+              <tr>
+                <td className="py-3">5 × Product Entry</td>
+                <td>5</td>
+                <td>9%</td>
+              </tr>
+              <tr>
+                <td className="py-3">6 × Product Entry</td>
+                <td>6</td>
+                <td>12%</td>
+              </tr>
+              <tr>
+                <td className="py-3">7–10 × Product Entry</td>
+                <td>7 – 10</td>
+                <td>13%</td>
+              </tr>
+              <tr>
+                <td className="py-3">11–20 × Product Entry</td>
+                <td>11 – 20</td>
+                <td>14%</td>
+              </tr>
+              <tr>
+                <td className="py-3">21–100 × Product Entry</td>
+                <td>21 – 100</td>
+                <td>16%</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
       </div>
     </main>
   );

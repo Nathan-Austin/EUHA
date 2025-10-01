@@ -36,7 +36,11 @@ Deno.serve(async (req) => {
       mode: 'payment',
       success_url,
       cancel_url,
-      client_reference_id: judge_id, // Pass judge_id to webhook
+      client_reference_id: judge_id,
+      metadata: {
+        type: 'judge',
+        judge_id,
+      },
     });
 
     return new Response(JSON.stringify({ sessionId: session.id, url: session.url }), {

@@ -29,22 +29,43 @@ Deno.serve(async (req) => {
   try {
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object as Stripe.Checkout.Session;
-      const judgeId = session.client_reference_id;
+      const metadata = session.metadata ?? {};
 
-      if (!judgeId) {
-        throw new Error('Missing client_reference_id in checkout session');
-      }
+      if (metadata.type === 'judge') {
+        const judgeId = metadata.judge_id ?? session.client_reference_id;
 
-      const { error } = await supabaseAdmin
-        .from('judges')
-        .update({
-          stripe_payment_status: 'succeeded',
-          active: true,
-        })
-        .eq('id', judgeId);
+        if (!judgeId) {
+          throw new Error('Missing judge identifier in checkout session');
+        }
 
-      if (error) {
-        throw error;
+        const { error } = await supabaseAdmin
+          .from('judges')
+          .update({
+            stripe_payment_status: 'succeeded',
+            active: true,
+          })
+          .eq('id', judgeId);
+
+        if (error) {
+          throw error;
+        }
+      } else if (metadata.type === 'supplier') {
+        const paymentId = metadata.payment_id;
+
+        if (!paymentId) {
+          throw new Error('Missing supplier payment identifier in checkout session');
+        }
+
+        const { error } = await supabaseAdmin
+          .from('supplier_payments')
+          .update({
+            stripe_payment_status: 'succeeded',
+          })
+          .eq('id', paymentId);
+
+        if (error) {
+          throw error;
+        }
       }
     }
 
