@@ -61,6 +61,12 @@ Run these commands in your terminal. These secrets are stored securely on Supaba
     ```
     Mirror these variables in Vercel so the frontend knows where to navigate once payment completes. If you move the confirmation pages later, update the values in both environments to keep Stripe sessions in sync.
 
+6.  **Sauce media bucket**: Image uploads for each sauce land in Supabase Storage. Create a bucket (e.g. `sauce-media`) with authenticated read access and allow service-role writes, then expose the bucket name to both environments:
+    ```bash
+    supabase secrets set SAUCE_IMAGE_BUCKET="sauce-media"
+    ```
+    In Vercel, add `NEXT_PUBLIC_SAUCE_IMAGE_BUCKET=sauce-media` so the client uploader uses the same bucket. Update policies if you rename the bucket in future.
+
 ## 3. Deploy Backend Functions
 
 Deploy all the edge functions to Supabase:

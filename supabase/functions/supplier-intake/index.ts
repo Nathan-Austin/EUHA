@@ -7,6 +7,7 @@ interface SaucePayload {
   ingredients: string;
   allergens: string;
   category: string;
+  imagePath?: string;
 }
 
 interface SupplierIntakePayload {
@@ -18,6 +19,7 @@ interface SupplierIntakePayload {
 }
 
 const BASE_PRICE_CENTS = 50_00;
+const SAUCE_IMAGE_BUCKET = Deno.env.get('SAUCE_IMAGE_BUCKET') ?? 'sauce-media';
 
 const DISCOUNT_BANDS: { min: number; max: number; discount: number }[] = [
   { min: 1, max: 1, discount: 0 },
@@ -144,11 +146,48 @@ Deno.serve(async (req) => {
 
     if (saucePaymentLinkError) throw saucePaymentLinkError;
 
+    if (payload.sauces.length !== sauces.length) {
+      throw new Error('Mismatch between submitted sauces and stored records.');
+    }
+
+    const imageAssignments: Record<string, string> = {};
+
+    for (let index = 0; index < payload.sauces.length; index += 1) {
+      const pendingPath = payload.sauces[index]?.imagePath;
+      const sauceId = sauces[index]?.id;
+      if (!pendingPath || !sauceId) continue;
+
+      const targetPath = `suppliers/${supplier.id}/${sauceId}.webp`;
+      const moveResult = await supabaseAdmin.storage
+        .from(SAUCE_IMAGE_BUCKET)
+        .move(pendingPath, targetPath);
+
+      if (moveResult.error) {
+        throw moveResult.error;
+      }
+
+      const { error: updateError } = await supabaseAdmin
+        .from('sauces')
+        .update({ image_path: targetPath })
+        .eq('id', sauceId);
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      imageAssignments[sauceId] = targetPath;
+    }
+
+    const decoratedSauces = sauces.map((sauce) => ({
+      ...sauce,
+      image_path: imageAssignments[sauce.id] ?? null,
+    }));
+
 
     return new Response(JSON.stringify({
       success: true,
       supplier_id: supplier.id,
-      sauces,
+      sauces: decoratedSauces,
       payment,
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

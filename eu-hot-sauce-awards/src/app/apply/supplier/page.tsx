@@ -26,6 +26,9 @@ const discountBands = [
 ];
 
 const ENTRY_PRICE_CENTS = 50_00;
+const IMAGE_BUCKET = process.env.NEXT_PUBLIC_SAUCE_IMAGE_BUCKET ?? "sauce-media";
+const MAX_IMAGE_DIMENSION = 1600;
+const WEBP_QUALITY = 0.85;
 
 type SauceForm = {
   id: string;
@@ -33,17 +36,38 @@ type SauceForm = {
   category: string;
   ingredients: string;
   allergens: string;
+  imageFile: File | null;
+  previewUrl: string | null;
 };
 
+type SubmittedSauce = {
+  id: string;
+  name: string;
+  image_path?: string | null;
+};
+
+type PaymentQuote = {
+  id: string;
+  entry_count: number;
+  discount_percent: number;
+  subtotal_cents: number;
+  discount_cents: number;
+  amount_due_cents: number;
+};
+
+const generateId = () =>
+  typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+
 const createEmptySauce = (): SauceForm => ({
-  id:
-    typeof crypto !== "undefined" && "randomUUID" in crypto
-      ? crypto.randomUUID()
-      : `${Date.now()}-${Math.random()}`,
+  id: generateId(),
   name: "",
   category: "",
   ingredients: "",
   allergens: "",
+  imageFile: null,
+  previewUrl: null,
 });
 
 const formatCurrency = (cents: number) =>
@@ -58,19 +82,46 @@ const resolveDiscountPercent = (entryCount: number) => {
   return band ? band.percent : discountBands[discountBands.length - 1].percent;
 };
 
-type PaymentQuote = {
-  id: string;
-  entry_count: number;
-  discount_percent: number;
-  subtotal_cents: number;
-  discount_cents: number;
-  amount_due_cents: number;
-};
+async function fileToWebPBlob(file: File): Promise<Blob> {
+  const dataUrl = URL.createObjectURL(file);
+  try {
+    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error("Failed to load image"));
+      img.src = dataUrl;
+    });
 
-type SubmittedSauce = {
-  id: string;
-  name: string;
-};
+    const scale = Math.min(
+      1,
+      MAX_IMAGE_DIMENSION / Math.max(image.width, image.height)
+    );
+    const targetWidth = Math.round(image.width * scale);
+    const targetHeight = Math.round(image.height * scale);
+
+    const canvas = document.createElement("canvas");
+    canvas.width = targetWidth || image.width;
+    canvas.height = targetHeight || image.height;
+
+    const context = canvas.getContext("2d");
+    if (!context) {
+      throw new Error("Unable to process image");
+    }
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob((result) => resolve(result), "image/webp", WEBP_QUALITY)
+    );
+
+    if (!blob) {
+      throw new Error("Unable to convert image to WebP");
+    }
+
+    return blob;
+  } finally {
+    URL.revokeObjectURL(dataUrl);
+  }
+}
 
 export default function SupplierApplyPage() {
   const supabase = createClient();
@@ -81,7 +132,6 @@ export default function SupplierApplyPage() {
     email: "",
     address: "",
   });
-
   const [sauces, setSauces] = useState<SauceForm[]>([createEmptySauce()]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -117,7 +167,7 @@ export default function SupplierApplyPage() {
 
   const handleSauceFieldChange = (
     index: number,
-    field: keyof Omit<SauceForm, "id">
+    field: keyof Omit<SauceForm, "id" | "imageFile" | "previewUrl">
   ) =>
     (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
       const value = event.target.value;
@@ -128,15 +178,57 @@ export default function SupplierApplyPage() {
       );
     };
 
+  const handleImageChange = (index: number) => (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    setSauces((prev) =>
+      prev.map((sauce, sauceIndex) => {
+        if (sauceIndex !== index) return sauce;
+
+        if (sauce.previewUrl) {
+          URL.revokeObjectURL(sauce.previewUrl);
+        }
+
+        if (!file) {
+          return {
+            ...sauce,
+            imageFile: null,
+            previewUrl: null,
+          };
+        }
+
+        return {
+          ...sauce,
+          imageFile: file,
+          previewUrl: URL.createObjectURL(file),
+        };
+      })
+    );
+  };
+
   const addSauce = () => {
     setSauces((prev) => [...prev, createEmptySauce()]);
   };
 
   const removeSauce = (id: string) => {
-    setSauces((prev) => (prev.length === 1 ? prev : prev.filter((sauce) => sauce.id !== id)));
+    setSauces((prev) => {
+      if (prev.length === 1) {
+        return prev;
+      }
+      const sauceToRemove = prev.find((sauce) => sauce.id === id);
+      if (sauceToRemove?.previewUrl) {
+        URL.revokeObjectURL(sauceToRemove.previewUrl);
+      }
+      return prev.filter((sauce) => sauce.id !== id);
+    });
   };
 
   const resetForm = () => {
+    sauces.forEach((sauce) => {
+      if (sauce.previewUrl) {
+        URL.revokeObjectURL(sauce.previewUrl);
+      }
+    });
+
     setFormValues({ brand: "", contactName: "", email: "", address: "" });
     setSauces([createEmptySauce()]);
     setIsSubmitting(false);
@@ -171,17 +263,44 @@ export default function SupplierApplyPage() {
     }
 
     try {
+      const processedSauces = await Promise.all(
+        sauces.map(async (sauce) => {
+          let imagePath: string | undefined;
+
+          if (sauce.imageFile) {
+            const webpBlob = await fileToWebPBlob(sauce.imageFile);
+            const pendingPath = `pending/${generateId()}.webp`;
+            const { error: uploadError } = await supabase.storage
+              .from(IMAGE_BUCKET)
+              .upload(pendingPath, webpBlob, {
+                cacheControl: "3600",
+                contentType: "image/webp",
+                upsert: true,
+              });
+
+            if (uploadError) {
+              throw new Error(uploadError.message);
+            }
+
+            imagePath = pendingPath;
+          }
+
+          return {
+            name: sauce.name.trim(),
+            category: sauce.category,
+            ingredients: sauce.ingredients.trim(),
+            allergens: sauce.allergens.trim() || "None",
+            imagePath,
+          };
+        })
+      );
+
       const payload = {
         brand: formValues.brand.trim(),
         contactName: formValues.contactName.trim() || undefined,
         email: formValues.email.trim().toLowerCase(),
         address: formValues.address.trim(),
-        sauces: sauces.map((sauce) => ({
-          name: sauce.name.trim(),
-          category: sauce.category,
-          ingredients: sauce.ingredients.trim(),
-          allergens: sauce.allergens.trim() || "None",
-        })),
+        sauces: processedSauces,
       };
 
       const { data, error } = await supabase.functions.invoke("supplier-intake", {
@@ -421,6 +540,23 @@ export default function SupplierApplyPage() {
                       placeholder="Contains mustard seeds"
                     />
                   </label>
+                  <label className="mt-4 flex flex-col gap-2">
+                    <span className="text-xs uppercase tracking-[0.2em] text-white/60">Upload Bottle Image (WebP will be generated)</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageChange(index)}
+                      disabled={isComplete}
+                      className="text-sm text-white/80"
+                    />
+                    {sauce.previewUrl && (
+                      <img
+                        src={sauce.previewUrl}
+                        alt={`Preview of ${sauce.name || `sauce ${index + 1}`}`}
+                        className="mt-3 h-32 w-32 rounded-lg border border-white/20 object-cover"
+                      />
+                    )}
+                  </label>
                 </div>
               ))}
 
@@ -458,9 +594,14 @@ export default function SupplierApplyPage() {
               <div className="rounded-2xl border border-emerald-300/40 bg-emerald-500/10 p-4 text-sm text-emerald-200">
                 <p>{successMessage}</p>
                 {submittedSauces.length > 0 && (
-                  <ul className="mt-3 list-disc space-y-1 pl-5 text-emerald-100">
+                  <ul className="mt-3 space-y-1 text-emerald-100">
                     {submittedSauces.map((sauce) => (
-                      <li key={sauce.id}>{sauce.name}</li>
+                      <li key={sauce.id} className="flex items-center justify-between gap-4 rounded-lg border border-emerald-200/20 bg-emerald-400/10 px-3 py-2">
+                        <span>{sauce.name}</span>
+                        {sauce.image_path && (
+                          <span className="text-xs uppercase tracking-[0.2em] text-emerald-200">Image uploaded</span>
+                        )}
+                      </li>
                     ))}
                   </ul>
                 )}
