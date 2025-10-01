@@ -1,0 +1,22 @@
+# Dependencies
+/node_modules
+/eu-hot-sauce-awards/node_modules
+/eu-hot-sauce-awards/.next
+
+# Supabase - never commit the .supabase folder
+.supabase
+
+# Vercel
+.vercel
+
+# Environment variables
+.env
+.env.*
+*.env
+*.env.*
+!*.env.example
+
+# Local development
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
