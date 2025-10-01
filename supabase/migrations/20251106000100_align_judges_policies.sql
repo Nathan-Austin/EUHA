@@ -1,6 +1,3 @@
--- Ensure admin role exists in judge_type enum
-ALTER TYPE judge_type ADD VALUE IF NOT EXISTS 'admin';
-
 -- Refresh judges SELECT policy to work with email-based lookups
 DROP POLICY IF EXISTS "Judges can view their own data" ON judges;
 CREATE POLICY "Judges can view their own data"
