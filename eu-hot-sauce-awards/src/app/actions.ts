@@ -355,6 +355,15 @@ export interface StickerData {
   stickersNeeded: number;
 }
 
+export interface SaucePackingStatus {
+  sauceId: string;
+  sauceCode: string;
+  sauceName: string;
+  brandName: string;
+  status: string;
+  scanCount: number;
+}
+
 export async function generateStickerData() {
   const cookieStore = cookies();
   const supabase = createClient(cookieStore);
@@ -420,4 +429,189 @@ export async function generateStickerData() {
     boxesNeeded,
     stickersPerSauce,
   };
+}
+
+export async function getPackingStatus() {
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+
+  // Admin check
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user?.email) return { error: 'You must be logged in.' };
+
+  const { data: adminCheck, error: adminError } = await supabase
+    .from('judges')
+    .select('type')
+    .eq('email', user.email)
+    .single();
+
+  if (adminError || adminCheck?.type !== 'admin') {
+    return { error: 'You are not authorized.' };
+  }
+
+  // Fetch sauces with status 'arrived'
+  const { data: sauces, error: sauceError } = await supabase
+    .from('sauces')
+    .select(`
+      id,
+      sauce_code,
+      name,
+      status,
+      suppliers ( brand_name )
+    `)
+    .eq('status', 'arrived');
+
+  if (sauceError) {
+    return { error: `Failed to fetch sauces: ${sauceError.message}` };
+  }
+
+  if (!sauces || sauces.length === 0) {
+    return { sauces: [] };
+  }
+
+  // Fetch scan counts for each sauce
+  const sauceIds = sauces.map((s: any) => s.id);
+  const { data: scans, error: scanError } = await supabase
+    .from('bottle_scans')
+    .select('sauce_id')
+    .in('sauce_id', sauceIds);
+
+  if (scanError) {
+    return { error: `Failed to fetch scans: ${scanError.message}` };
+  }
+
+  // Count scans per sauce
+  const scanCounts = new Map<string, number>();
+  (scans || []).forEach((scan: any) => {
+    scanCounts.set(scan.sauce_id, (scanCounts.get(scan.sauce_id) || 0) + 1);
+  });
+
+  const packingStatus: SaucePackingStatus[] = sauces.map((sauce: any) => ({
+    sauceId: sauce.id,
+    sauceCode: sauce.sauce_code || 'N/A',
+    sauceName: sauce.name,
+    brandName: sauce.suppliers?.brand_name || 'Unknown',
+    status: sauce.status,
+    scanCount: scanCounts.get(sauce.id) || 0,
+  }));
+
+  return { sauces: packingStatus };
+}
+
+export async function recordBottleScan(sauceId: string) {
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+
+  // Admin check
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user?.email) return { error: 'You must be logged in.' };
+
+  const { data: adminCheck, error: adminError } = await supabase
+    .from('judges')
+    .select('type')
+    .eq('email', user.email)
+    .single();
+
+  if (adminError || adminCheck?.type !== 'admin') {
+    return { error: 'You are not authorized.' };
+  }
+
+  // Check sauce exists and is in 'arrived' status
+  const { data: sauce, error: sauceError } = await supabase
+    .from('sauces')
+    .select('id, status, sauce_code, name')
+    .eq('id', sauceId)
+    .single();
+
+  if (sauceError || !sauce) {
+    return { error: 'Sauce not found.' };
+  }
+
+  if (sauce.status !== 'arrived') {
+    return { error: `Sauce ${sauce.sauce_code} is not in "arrived" status. Current status: ${sauce.status}` };
+  }
+
+  // Record the scan
+  const { error: insertError } = await supabase
+    .from('bottle_scans')
+    .insert({
+      sauce_id: sauceId,
+      scanned_by: user.email,
+    });
+
+  if (insertError) {
+    return { error: `Failed to record scan: ${insertError.message}` };
+  }
+
+  // Count total scans for this sauce
+  const { count: scanCount, error: countError } = await supabase
+    .from('bottle_scans')
+    .select('*', { count: 'exact', head: true })
+    .eq('sauce_id', sauceId);
+
+  if (countError) {
+    return { error: `Failed to count scans: ${countError.message}` };
+  }
+
+  const totalScans = scanCount || 0;
+
+  // Auto-update to 'boxed' if 7 scans reached
+  if (totalScans >= 7) {
+    const { error: updateError } = await supabase
+      .from('sauces')
+      .update({ status: 'boxed' })
+      .eq('id', sauceId);
+
+    if (updateError) {
+      return { error: `Failed to update status: ${updateError.message}` };
+    }
+
+    revalidatePath('/dashboard');
+    return {
+      success: true,
+      scanCount: totalScans,
+      autoBoxed: true,
+      message: `✓ ${sauce.sauce_code} - ${sauce.name}: All 7 bottles scanned! Status updated to BOXED.`
+    };
+  }
+
+  revalidatePath('/dashboard');
+  return {
+    success: true,
+    scanCount: totalScans,
+    autoBoxed: false,
+    message: `✓ ${sauce.sauce_code} - ${sauce.name}: ${totalScans}/7 bottles scanned`
+  };
+}
+
+export async function manuallyMarkAsBoxed(sauceId: string) {
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+
+  // Admin check
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user?.email) return { error: 'You must be logged in.' };
+
+  const { data: adminCheck, error: adminError } = await supabase
+    .from('judges')
+    .select('type')
+    .eq('email', user.email)
+    .single();
+
+  if (adminError || adminCheck?.type !== 'admin') {
+    return { error: 'You are not authorized.' };
+  }
+
+  // Update status to boxed
+  const { error: updateError } = await supabase
+    .from('sauces')
+    .update({ status: 'boxed' })
+    .eq('id', sauceId);
+
+  if (updateError) {
+    return { error: `Failed to update status: ${updateError.message}` };
+  }
+
+  revalidatePath('/dashboard');
+  return { success: true, message: 'Sauce manually marked as boxed.' };
 }
