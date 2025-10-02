@@ -7,9 +7,18 @@ const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') ?? '', {
   apiVersion: '2023-10-16',
 });
 
+const projectUrl = Deno.env.get('PROJECT_URL');
+const serviceRoleKey = Deno.env.get('SERVICE_ROLE_KEY');
+
 const supabaseAdmin = createClient(
-  Deno.env.get('PROJECT_URL') ?? '',
-  Deno.env.get('SERVICE_ROLE_KEY') ?? ''
+  projectUrl ?? '',
+  serviceRoleKey ?? '',
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  }
 );
 
 const successUrl = Deno.env.get('SUPPLIER_PAYMENT_SUCCESS_URL') ?? 'https://awards.heatawards.eu/payment-success';
