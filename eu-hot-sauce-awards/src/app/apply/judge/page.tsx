@@ -94,9 +94,10 @@ export default function JudgeApplyPage() {
       });
 
       if (error) {
-        throw new Error(error.message);
+        throw new Error(`Registration failed: ${error.message}`);
       }
 
+      // Try to send magic link, but don't fail the whole process if it errors
       const { error: otpError } = await supabase.auth.signInWithOtp({
         email: payload.email,
         options: {
@@ -104,17 +105,21 @@ export default function JudgeApplyPage() {
         },
       });
 
-      if (otpError) {
-        throw new Error(otpError.message);
-      }
-
       form.reset();
       setHasIndustryAffiliation(false);
-      setSuccessMessage(
-        data?.judge_id
-          ? `Application received! Your judge profile (${data.judge_id}) has been created. Check your inbox for a magic link and payment instructions if required.`
-          : "Application received! Check your inbox for a magic link and payment instructions."
-      );
+
+      if (otpError) {
+        // Show partial success - registered but email failed
+        setSuccessMessage(
+          `Application received! Your judge profile has been created. However, we couldn't send the login email automatically. Please use the "Forgot Password" option on the login page with ${payload.email}.`
+        );
+      } else {
+        setSuccessMessage(
+          data?.judge_id
+            ? `Application received! Your judge profile (${data.judge_id}) has been created. Check your inbox for a magic link and payment instructions if required.`
+            : "Application received! Check your inbox for a magic link and payment instructions."
+        );
+      }
     } catch (submissionError) {
       if (submissionError instanceof Error) {
         setErrorMessage(submissionError.message);
