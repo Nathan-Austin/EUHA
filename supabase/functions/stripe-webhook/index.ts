@@ -32,14 +32,24 @@ Deno.serve(async (req) => {
   const body = await req.text();
   let event: Stripe.Event;
 
+  console.log('Webhook received', {
+    hasSignature: !!signature,
+    hasSecret: !!Deno.env.get('STRIPE_WEBHOOK_SIGNING_SECRET'),
+  });
+
   try {
     event = await stripe.webhooks.constructEventAsync(
       body,
       signature!,
       Deno.env.get('STRIPE_WEBHOOK_SIGNING_SECRET')!
     );
+    console.log('Signature verified successfully');
   } catch (err) {
-    return new Response(err.message, { status: 400 });
+    console.error('Signature verification failed:', err.message);
+    return new Response(JSON.stringify({ error: err.message }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
 
   try {
