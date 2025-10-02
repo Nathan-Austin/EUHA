@@ -47,7 +47,7 @@ const discountBands = [
   { min: 21, max: 100, percent: 16 },
 ];
 
-const ENTRY_PRICE_CENTS = 50_00;
+const ENTRY_PRICE_CENTS = 100; // 1.00 EUR (testing price, change to 50_00 for production)
 const IMAGE_BUCKET = process.env.NEXT_PUBLIC_SAUCE_IMAGE_BUCKET ?? "sauce-media";
 const MAX_IMAGE_DIMENSION = 1600;
 const WEBP_QUALITY = 0.85;

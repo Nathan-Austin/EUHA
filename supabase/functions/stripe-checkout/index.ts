@@ -28,7 +28,7 @@ Deno.serve(async (req) => {
             product_data: {
               name: 'Community Judge Fee',
             },
-            unit_amount: 1500, // 15.00 EUR
+            unit_amount: 100, // 1.00 EUR (testing price, change to 1500 for production)
           },
           quantity: 1,
         },

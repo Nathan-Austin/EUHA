@@ -18,7 +18,7 @@ interface SupplierIntakePayload {
   sauces: SaucePayload[];
 }
 
-const BASE_PRICE_CENTS = 50_00;
+const BASE_PRICE_CENTS = 100; // 1.00 EUR (testing price, change to 50_00 for production)
 const SAUCE_IMAGE_BUCKET = Deno.env.get('SAUCE_IMAGE_BUCKET') ?? 'sauce-media';
 
 const DISCOUNT_BANDS: { min: number; max: number; discount: number }[] = [
