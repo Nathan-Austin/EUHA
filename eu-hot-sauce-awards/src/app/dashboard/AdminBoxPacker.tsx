@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getPackingStatus, recordBottleScan, manuallyMarkAsBoxed, type SaucePackingStatus } from "../actions";
+import { getPackingStatus, recordBottleScan, manuallyMarkAsBoxed, checkConflictOfInterest, type SaucePackingStatus } from "../actions";
 
 export default function AdminBoxPacker() {
   const [sauces, setSauces] = useState<SaucePackingStatus[]>([]);
@@ -10,6 +10,9 @@ export default function AdminBoxPacker() {
   const [scanMessage, setScanMessage] = useState<string | null>(null);
   const [scanningEnabled, setScanningEnabled] = useState(false);
   const [scannedInput, setScannedInput] = useState("");
+  const [currentJudgeId, setCurrentJudgeId] = useState<string | null>(null);
+  const [currentJudgeName, setCurrentJudgeName] = useState<string | null>(null);
+  const [boxSauces, setBoxSauces] = useState<string[]>([]);
 
   const loadPackingStatus = async () => {
     setIsLoading(true);
@@ -39,15 +42,42 @@ export default function AdminBoxPacker() {
       if (e.key === 'Enter' && scannedInput.trim()) {
         e.preventDefault();
 
-        // Extract sauce ID from scanned input
-        // Assuming QR codes contain URLs like /judge/score/{sauceId}
+        // Extract ID from scanned input (could be judge or sauce)
         const match = scannedInput.match(/\/judge\/score\/([a-f0-9-]+)/i) ||
                       scannedInput.match(/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/i);
 
-        const sauceId = match ? match[1] : scannedInput.trim();
+        const scannedId = match ? match[1] : scannedInput.trim();
 
         setScannedInput("");
         setScanMessage(null);
+
+        // If no judge is selected, treat this as a judge scan
+        if (!currentJudgeId) {
+          setCurrentJudgeId(scannedId);
+          setCurrentJudgeName(`Judge ${scannedId.substring(0, 8)}`);
+          setScanMessage(`✓ Judge scanned. Now scan sauce bottles for their box (target: 12 sauces).`);
+          setBoxSauces([]);
+          setTimeout(() => setScanMessage(null), 3000);
+          return;
+        }
+
+        // Otherwise, treat as sauce scan
+        const sauceId = scannedId;
+
+        // Check for conflict of interest
+        const conflictCheck = await checkConflictOfInterest(currentJudgeId, sauceId);
+
+        if ('error' in conflictCheck) {
+          setScanMessage(`❌ Error: ${conflictCheck.error}`);
+          setTimeout(() => setScanMessage(null), 5000);
+          return;
+        }
+
+        if (conflictCheck.conflict) {
+          setScanMessage(conflictCheck.message || '⚠️ Conflict of interest detected!');
+          setTimeout(() => setScanMessage(null), 8000);
+          return;
+        }
 
         // Record the scan
         const result = await recordBottleScan(sauceId);
@@ -56,6 +86,11 @@ export default function AdminBoxPacker() {
           setScanMessage(`❌ Error: ${result.error}`);
         } else {
           setScanMessage(result.message || 'Scan recorded');
+
+          // Add to box
+          if (!boxSauces.includes(sauceId)) {
+            setBoxSauces(prev => [...prev, sauceId]);
+          }
 
           // Reload status to update counts
           await loadPackingStatus();
@@ -120,7 +155,15 @@ export default function AdminBoxPacker() {
       {/* Scanner Toggle */}
       <div className="flex items-center gap-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
         <button
-          onClick={() => setScanningEnabled(!scanningEnabled)}
+          onClick={() => {
+            setScanningEnabled(!scanningEnabled);
+            if (scanningEnabled) {
+              // Reset when stopping
+              setCurrentJudgeId(null);
+              setCurrentJudgeName(null);
+              setBoxSauces([]);
+            }
+          }}
           className={`px-6 py-3 rounded-lg font-semibold text-sm transition ${
             scanningEnabled
               ? 'bg-green-600 text-white hover:bg-green-700'
@@ -132,11 +175,49 @@ export default function AdminBoxPacker() {
 
         {scanningEnabled && (
           <div className="flex-1">
-            <div className="text-sm font-medium text-blue-900">Scanner ready - scan bottle QR codes</div>
+            <div className="text-sm font-medium text-blue-900">
+              {currentJudgeId ? `📦 Packing box for ${currentJudgeName}` : '🔍 Scan judge QR code first'}
+            </div>
             <div className="text-xs text-blue-600 mt-1">Scanned buffer: {scannedInput || '(waiting...)'}</div>
           </div>
         )}
+
+        {currentJudgeId && (
+          <button
+            onClick={() => {
+              setCurrentJudgeId(null);
+              setCurrentJudgeName(null);
+              setBoxSauces([]);
+              setScanMessage('Judge cleared. Scan a new judge QR code.');
+              setTimeout(() => setScanMessage(null), 3000);
+            }}
+            className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"
+          >
+            Clear Judge
+          </button>
+        )}
       </div>
+
+      {/* Current Box Progress */}
+      {currentJudgeId && (
+        <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="font-semibold text-purple-900">Current Box: {currentJudgeName}</h4>
+            <span className="text-sm font-semibold text-purple-700">{boxSauces.length}/12 sauces</span>
+          </div>
+          <div className="flex-1 bg-gray-200 rounded-full h-3">
+            <div
+              className={`h-3 rounded-full transition-all ${
+                boxSauces.length >= 12 ? 'bg-green-600' : 'bg-purple-600'
+              }`}
+              style={{ width: `${Math.min((boxSauces.length / 12) * 100, 100)}%` }}
+            />
+          </div>
+          {boxSauces.length >= 12 && (
+            <div className="mt-2 text-sm text-green-700 font-semibold">✓ Box complete! Scan a new judge to start another box.</div>
+          )}
+        </div>
+      )}
 
       {/* Scan Messages */}
       {scanMessage && (

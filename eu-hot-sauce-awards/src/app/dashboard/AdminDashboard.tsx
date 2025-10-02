@@ -6,6 +6,7 @@ import ExportResultsButton from './ExportResultsButton';
 import AddAdminUser from './AddAdminUser';
 import StickerGenerator from './StickerGenerator';
 import AdminBoxPacker from './AdminBoxPacker';
+import JudgeLabelGenerator from './JudgeLabelGenerator';
 
 export default async function AdminDashboard() {
   const cookieStore = cookies()
@@ -92,6 +93,8 @@ export default async function AdminDashboard() {
       <BoxManagement />
 
       <StickerGenerator />
+
+      <JudgeLabelGenerator />
 
       <AddAdminUser />
 

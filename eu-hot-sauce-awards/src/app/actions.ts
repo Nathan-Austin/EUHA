@@ -362,6 +362,15 @@ export interface SaucePackingStatus {
   brandName: string;
   status: string;
   scanCount: number;
+  supplierId?: string;
+}
+
+export interface JudgeLabelData {
+  judgeId: string;
+  name: string;
+  email: string;
+  type: string;
+  qrCodeUrl: string;
 }
 
 export async function generateStickerData() {
@@ -614,4 +623,137 @@ export async function manuallyMarkAsBoxed(sauceId: string) {
 
   revalidatePath('/dashboard');
   return { success: true, message: 'Sauce manually marked as boxed.' };
+}
+
+export async function generateJudgeQRCodes() {
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+
+  // Admin check
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user?.email) return { error: 'You must be logged in.' };
+
+  const { data: adminCheck, error: adminError } = await supabase
+    .from('judges')
+    .select('type')
+    .eq('email', user.email)
+    .single();
+
+  if (adminError || adminCheck?.type !== 'admin') {
+    return { error: 'You are not authorized.' };
+  }
+
+  // Fetch all active judges
+  const { data: judges, error: judgeError } = await supabase
+    .from('judges')
+    .select('id, email, name, type')
+    .eq('active', true);
+
+  if (judgeError) {
+    return { error: `Failed to fetch judges: ${judgeError.message}` };
+  }
+
+  if (!judges || judges.length === 0) {
+    return { error: 'No active judges found.' };
+  }
+
+  // Generate and update QR codes for judges without them
+  const updates = [];
+  for (const judge of judges) {
+    if (!judge.id) continue;
+
+    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?data=${judge.id}&size=200x200`;
+
+    updates.push(
+      supabase
+        .from('judges')
+        .update({ qr_code_url: qrCodeUrl })
+        .eq('id', judge.id)
+    );
+  }
+
+  const results = await Promise.all(updates);
+  const errors = results.filter(r => r.error);
+
+  if (errors.length > 0) {
+    return { error: `Failed to update some QR codes: ${errors[0].error?.message}` };
+  }
+
+  // Fetch updated judge data
+  const { data: updatedJudges, error: fetchError } = await supabase
+    .from('judges')
+    .select('id, email, name, type, qr_code_url')
+    .eq('active', true);
+
+  if (fetchError) {
+    return { error: `Failed to fetch updated judges: ${fetchError.message}` };
+  }
+
+  const judgeLabelData: JudgeLabelData[] = (updatedJudges || []).map((judge: any) => ({
+    judgeId: judge.id,
+    name: judge.name || judge.email.split('@')[0],
+    email: judge.email,
+    type: judge.type,
+    qrCodeUrl: judge.qr_code_url || '',
+  }));
+
+  return { judges: judgeLabelData };
+}
+
+export async function checkConflictOfInterest(judgeId: string, sauceId: string) {
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+
+  // Admin check
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user?.email) return { error: 'You must be logged in.' };
+
+  const { data: adminCheck, error: adminError } = await supabase
+    .from('judges')
+    .select('type')
+    .eq('email', user.email)
+    .single();
+
+  if (adminError || adminCheck?.type !== 'admin') {
+    return { error: 'You are not authorized.' };
+  }
+
+  // Get judge info
+  const { data: judge, error: judgeError } = await supabase
+    .from('judges')
+    .select('email, type, name')
+    .eq('id', judgeId)
+    .single();
+
+  if (judgeError || !judge) {
+    return { error: 'Judge not found.' };
+  }
+
+  // Get sauce info with supplier
+  const { data: sauce, error: sauceError } = await supabase
+    .from('sauces')
+    .select('id, name, sauce_code, suppliers ( email, brand_name )')
+    .eq('id', sauceId)
+    .single();
+
+  if (sauceError || !sauce) {
+    return { error: 'Sauce not found.' };
+  }
+
+  // Check if judge is a supplier judge and owns this sauce
+  const supplierEmail = (sauce as any).suppliers?.email;
+
+  if (judge.type === 'supplier' && judge.email === supplierEmail) {
+    return {
+      conflict: true,
+      message: `⚠️ CONFLICT OF INTEREST: Judge ${judge.name || judge.email} is the supplier of ${(sauce as any).sauce_code} - ${sauce.name}`,
+      judgeEmail: judge.email,
+      sauceCode: (sauce as any).sauce_code,
+    };
+  }
+
+  return {
+    conflict: false,
+    message: '✓ No conflict of interest detected',
+  };
 }
