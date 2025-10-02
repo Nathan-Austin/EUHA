@@ -25,6 +25,10 @@ export default async function AdminDashboard() {
     return <p className="text-red-600">Error loading sauces: {error.message}</p>
   }
 
+  if (!sauces) {
+    return <p className="text-gray-600">No sauces found.</p>
+  }
+
   return (
     <div className="space-y-8">
       <div className="flex justify-between items-center mb-4">
