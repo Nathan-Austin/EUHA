@@ -282,3 +282,67 @@ export async function exportResults() {
 
   return { csv: csvRows.join('\n') };
 }
+
+export async function addAdminUser(email: string) {
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+
+  // Check if current user is admin
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user?.email) return { error: 'You must be logged in.' };
+
+  const { data: adminCheck, error: adminError } = await supabase
+    .from('judges')
+    .select('type')
+    .eq('email', user.email)
+    .single();
+
+  if (adminError || adminCheck?.type !== 'admin') {
+    return { error: 'You are not authorized to add admin users.' };
+  }
+
+  if (!email || !email.includes('@')) {
+    return { error: 'Please provide a valid email address.' };
+  }
+
+  // Check if user already exists
+  const { data: existing } = await supabase
+    .from('judges')
+    .select('id, type')
+    .eq('email', email)
+    .single();
+
+  if (existing) {
+    if (existing.type === 'admin') {
+      return { error: 'This user is already an admin.' };
+    }
+    // Update existing user to admin
+    const { error: updateError } = await supabase
+      .from('judges')
+      .update({ type: 'admin' })
+      .eq('email', email);
+
+    if (updateError) {
+      return { error: `Failed to update user: ${updateError.message}` };
+    }
+
+    revalidatePath('/dashboard');
+    return { success: true, message: 'User updated to admin.' };
+  }
+
+  // Create new admin user
+  const { error: insertError } = await supabase
+    .from('judges')
+    .insert({
+      email,
+      type: 'admin',
+      active: true
+    });
+
+  if (insertError) {
+    return { error: `Failed to create admin user: ${insertError.message}` };
+  }
+
+  revalidatePath('/dashboard');
+  return { success: true, message: 'Admin user created successfully.' };
+}

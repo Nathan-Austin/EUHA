@@ -9,6 +9,8 @@ interface JudgePayload {
   city: string;
   country: string;
   experience: string;
+  industryAffiliation?: boolean;
+  affiliationDetails?: string;
 }
 
 function mapExperienceToType(experience: string): 'pro' | 'community' {
@@ -36,16 +38,21 @@ Deno.serve(async (req) => {
       Deno.env.get('SERVICE_ROLE_KEY') ?? ''
     );
 
-    const fullAddress = `${payload.address}, ${payload.zip} ${payload.city}, ${payload.country}`;
     const judgeType = mapExperienceToType(payload.experience);
 
     const { data, error } = await supabaseAdmin
       .from('judges')
       .upsert({
         email: payload.email,
-        // name: payload.name, // Our judges table doesn't have a name column, email is the identifier
-        address: fullAddress,
+        name: payload.name,
+        address: payload.address,
+        city: payload.city,
+        postal_code: payload.zip,
+        country: payload.country,
+        experience_level: payload.experience,
         type: judgeType,
+        industry_affiliation: payload.industryAffiliation || false,
+        affiliation_details: payload.affiliationDetails || null,
         active: false, // All new judges are inactive by default
       }, { onConflict: 'email' })
       .select('id')

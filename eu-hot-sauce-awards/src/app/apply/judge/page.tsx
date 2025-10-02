@@ -57,6 +57,7 @@ export default function JudgeApplyPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [hasIndustryAffiliation, setHasIndustryAffiliation] = useState(false);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -74,6 +75,10 @@ export default function JudgeApplyPage() {
       city: String(formData.get("city") || ""),
       country: String(formData.get("country") || ""),
       experience: String(formData.get("experience") || ""),
+      industryAffiliation: formData.get("industryAffiliation") === "yes",
+      affiliationDetails: formData.get("industryAffiliation") === "yes"
+        ? String(formData.get("affiliationDetails") || "")
+        : undefined,
     };
 
     if (!payload.name || !payload.email || !payload.address || !payload.city || !payload.zip || !payload.country) {
@@ -232,6 +237,60 @@ export default function JudgeApplyPage() {
               ))}
             </select>
           </label>
+
+          <div className="space-y-4">
+            <label className="flex flex-col gap-3">
+              <span className="text-xs uppercase tracking-[0.2em] text-white/60">
+                Industry Affiliation *
+              </span>
+              <div className="space-y-3">
+                <p className="text-sm text-white/70">
+                  Are you professionally associated with any chili sauce or hot sauce company?
+                </p>
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="industryAffiliation"
+                      value="no"
+                      defaultChecked
+                      onChange={() => setHasIndustryAffiliation(false)}
+                      className="h-4 w-4 accent-amber-300"
+                    />
+                    <span className="text-sm text-white">No</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="industryAffiliation"
+                      value="yes"
+                      onChange={() => setHasIndustryAffiliation(true)}
+                      className="h-4 w-4 accent-amber-300"
+                    />
+                    <span className="text-sm text-white">Yes</span>
+                  </label>
+                </div>
+              </div>
+            </label>
+
+            {hasIndustryAffiliation && (
+              <label className="flex flex-col gap-2">
+                <span className="text-xs uppercase tracking-[0.2em] text-white/60">
+                  Please provide details *
+                </span>
+                <textarea
+                  name="affiliationDetails"
+                  required={hasIndustryAffiliation}
+                  rows={3}
+                  className="rounded-xl border border-white/20 bg-black/30 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:border-amber-300 focus:outline-none"
+                  placeholder="Please describe your professional relationship with chili sauce companies..."
+                />
+                <span className="text-xs text-white/50">
+                  This helps us ensure fair and unbiased judging. Disclosure does not automatically disqualify you.
+                </span>
+              </label>
+            )}
+          </div>
 
           <div className="space-y-3 rounded-2xl border border-amber-200/20 bg-black/20 p-4 text-xs text-white/70">
             <p>

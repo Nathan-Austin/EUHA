@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import SauceStatusUpdater from './SauceStatusUpdater';
 import BoxManagement from './BoxManagement';
 import ExportResultsButton from './ExportResultsButton';
+import AddAdminUser from './AddAdminUser';
 
 export default async function AdminDashboard() {
   const cookieStore = cookies()
@@ -70,6 +71,8 @@ export default async function AdminDashboard() {
       </div>
       
       <BoxManagement />
+
+      <AddAdminUser />
 
     </div>
   );
