@@ -15,9 +15,9 @@ Deno.serve(async (req) => {
   try {
     const { email, judge_id } = await req.json();
 
-    // TODO: Replace with your actual frontend URLs
-    const success_url = 'http://localhost:3000/payment-success';
-    const cancel_url = 'http://localhost:3000/payment-cancelled';
+    const BASE_URL = Deno.env.get('JUDGE_PAYMENT_BASE_URL') ?? 'https://awards.heatawards.eu';
+    const success_url = `${BASE_URL}/payment-success`;
+    const cancel_url = `${BASE_URL}/payment-cancelled`;
 
     const session = await stripe.checkout.sessions.create({
       customer_email: email,
