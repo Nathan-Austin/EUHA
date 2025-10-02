@@ -58,7 +58,7 @@ export default async function AdminDashboard() {
                       <span className="text-gray-400 text-xs">—</span>
                     )}
                   </td>
-                  <td className="px-4 py-2">{sauce.suppliers?.[0]?.brand_name || 'N/A'}</td>
+                  <td className="px-4 py-2">{sauce.suppliers?.brand_name || 'N/A'}</td>
                   <td className="px-4 py-2">{sauce.name}</td>
                   <td className="px-4 py-2">{sauce.category}</td>
                   <td className="px-4 py-2">
