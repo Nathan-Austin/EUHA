@@ -6,9 +6,25 @@ const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') ?? '', {
   apiVersion: '2023-10-16',
 });
 
+const projectUrl = Deno.env.get('PROJECT_URL');
+const serviceRoleKey = Deno.env.get('SERVICE_ROLE_KEY');
+
+if (!projectUrl || !serviceRoleKey) {
+  console.error('Missing Supabase credentials', {
+    hasProjectUrl: !!projectUrl,
+    hasServiceRoleKey: !!serviceRoleKey,
+  });
+}
+
 const supabaseAdmin = createClient(
-  Deno.env.get('PROJECT_URL') ?? '',
-  Deno.env.get('SERVICE_ROLE_KEY') ?? ''
+  projectUrl ?? '',
+  serviceRoleKey ?? '',
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  }
 );
 
 Deno.serve(async (req) => {
