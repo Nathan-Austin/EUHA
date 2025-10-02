@@ -63,10 +63,12 @@ supabase db push --include-all
 ```
 
 This creates:
-- All database tables (suppliers, sauces, judges, judging_categories, judging_scores, box_assignments, supplier_payments)
+- All database tables (suppliers, sauces, judges, judging_categories, judging_scores, box_assignments, supplier_payments, bottle_scans)
 - RLS policies
 - Storage bucket (`sauce-media`) with policies
 - Judging categories data
+- Sauce codes (category prefix + 3-digit number)
+- Judge QR codes for box assignment
 
 ### 1.4 Deploy Edge Functions
 
@@ -210,6 +212,13 @@ supabase functions deploy supplier-intake
 
 ### Admin Functions
 - View all sauces and update status (registered → arrived → boxed → judged)
+- **Generate Sauce Stickers (PDF)**: Avery 4780 labels with QR codes and sauce codes
+- **Generate Judge Labels (PDF)**: Labels with judge QR codes for box assignment
+- **Box Packing Scanner**:
+  - Scan judge QR code, then scan sauce bottles
+  - Auto-checks conflict of interest (prevents suppliers judging their own sauces)
+  - Tracks 7 bottle scans per sauce, auto-updates to 'boxed' status
+  - Tracks 12 sauces per judge box
 - Assign sauces to judging boxes
 - Export results as CSV with weighted scoring
 - Add other admin users
@@ -223,12 +232,14 @@ supabase functions deploy supplier-intake
 - `type` (admin | pro | community | supplier)
 - `experience_level`, `industry_affiliation`, `affiliation_details`
 - `stripe_payment_status`, `active`
+- `qr_code_url` (for box assignment scanning)
 
 **suppliers**
 - `id`, `brand_name`, `contact_name`, `email`, `address`
 
 **sauces**
 - `id`, `supplier_id`, `name`, `ingredients`, `allergens`, `category`
+- `sauce_code` (e.g., D001, M042, H123 - category prefix + 3-digit number)
 - `qr_code_url`, `image_path`, `payment_id`
 - `status` (registered | arrived | boxed | judged)
 
@@ -239,6 +250,37 @@ supabase functions deploy supplier-intake
 
 **judging_scores**
 - `id`, `judge_id`, `sauce_id`, `category_id`, `score`, `comments`
+
+**bottle_scans**
+- `id`, `sauce_id`, `scanned_at`, `scanned_by`
+- Tracks QR scans during bottle packing (auto-boxes at 7 scans)
+
+### Sauce Code System
+
+Sauces are automatically assigned unique codes during registration:
+- **Format**: `[Category Letter][3-digit number]`
+- **Examples**: D001, M042, H123, X005
+- **Category Codes**:
+  - D = Mild Chili Sauce
+  - M = Medium Chili Sauce
+  - H = Hot Chili Sauce
+  - X = Extra Hot Chili Sauce
+  - E = Extract Based Chili Sauce
+  - B = BBQ Chili Sauce
+  - K = Chili Ketchup
+  - J = Chili Jam
+  - R = Chili Honey
+  - G = Garlic Chili Sauce
+  - L = Chili Pickle
+  - C = Chili Chutney
+  - T = Chili Oil
+  - F = Freestyle
+  - S = Sweet/Sour Chili Sauce
+  - P = Chili Paste
+  - A = Salt & Condiments
+  - Z = Maple Syrup Chili Sauce
+
+Numbers are sequential per category (D001, D002, D003...).
 
 ## 7. Scoring System
 
@@ -294,7 +336,41 @@ supabase db push --include-all
 # Go to: Supabase Dashboard → Edge Functions → [function] → Logs
 ```
 
-## 10. Pre-Launch Checklist
+## 10. Box Packing & Label Printing Workflow
+
+### Pre-Event Setup (After March 1st Submission Deadline)
+
+**1. Generate Sauce Stickers**
+- Admin Dashboard → "Judging Stickers" section
+- Click "Preview Sticker Count" to see totals
+- Click "Generate Stickers (PDF)" to download
+- Print on Avery 4780 label sheets (48.5 × 25.4 mm, 40 per sheet)
+- Apply stickers to all sample bottles
+
+**2. Generate Judge Labels**
+- Admin Dashboard → "Judge Labels" section
+- Click "Preview Judge Count"
+- Click "Generate Judge Labels (PDF)" to download
+- Print on 99.1 × 67.7mm label sheets (8 per A4)
+- Distribute to judges for box identification
+
+**3. Box Packing Process**
+- Admin Dashboard → "Box Packing Scanner" section
+- Click "Start Scanning"
+- **Step 1**: Scan judge QR code (from their label)
+- **Step 2**: Scan 12 sauce bottle QR codes for that judge's box
+- System auto-checks conflict of interest
+- System tracks bottle scans (7 per sauce type)
+- At 7 scans, sauce auto-updates to 'boxed' status
+- At 12 sauces, judge box is complete
+- Click "Clear Judge" to start next box
+
+**Conflict of Interest Protection**
+- System prevents supplier judges from receiving their own sauces
+- Shows warning: "⚠️ CONFLICT OF INTEREST" if detected
+- Sauce will NOT be added to that judge's box
+
+## 11. Pre-Launch Checklist
 
 - [ ] Update prices from €1 to production values
 - [ ] Test complete registration flows (judge + supplier)
@@ -307,7 +383,11 @@ supabase db push --include-all
 - [ ] Create initial admin user
 - [ ] Populate judging categories if not auto-populated
 - [ ] Test image uploads and storage access
-- [ ] Verify QR code generation for sauces
+- [ ] Verify QR code generation for sauces and judges
+- [ ] Test sauce sticker PDF generation
+- [ ] Test judge label PDF generation
+- [ ] Test box packing scanner workflow
+- [ ] Verify conflict of interest checking works
 
 ---
 
