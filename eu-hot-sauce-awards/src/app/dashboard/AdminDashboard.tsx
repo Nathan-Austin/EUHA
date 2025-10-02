@@ -4,6 +4,7 @@ import SauceStatusUpdater from './SauceStatusUpdater';
 import BoxManagement from './BoxManagement';
 import ExportResultsButton from './ExportResultsButton';
 import AddAdminUser from './AddAdminUser';
+import StickerGenerator from './StickerGenerator';
 
 export default async function AdminDashboard() {
   const cookieStore = cookies()
@@ -84,8 +85,10 @@ export default async function AdminDashboard() {
           </table>
         </div>
       </div>
-      
+
       <BoxManagement />
+
+      <StickerGenerator />
 
       <AddAdminUser />
 

@@ -346,3 +346,78 @@ export async function addAdminUser(email: string) {
   revalidatePath('/dashboard');
   return { success: true, message: 'Admin user created successfully.' };
 }
+
+export interface StickerData {
+  sauceId: string;
+  sauceCode: string;
+  sauceName: string;
+  brandName: string;
+  stickersNeeded: number;
+}
+
+export async function generateStickerData() {
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+
+  // Admin check
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user?.email) return { error: 'You must be logged in.' };
+
+  const { data: adminCheck, error: adminError } = await supabase
+    .from('judges')
+    .select('type')
+    .eq('email', user.email)
+    .single();
+
+  if (adminError || adminCheck?.type !== 'admin') {
+    return { error: 'You are not authorized.' };
+  }
+
+  // Count active judges
+  const { count: judgeCount, error: judgeError } = await supabase
+    .from('judges')
+    .select('*', { count: 'exact', head: true })
+    .eq('active', true);
+
+  if (judgeError) {
+    return { error: `Failed to count judges: ${judgeError.message}` };
+  }
+
+  // Fetch sauces that are ready for judging (arrived or boxed)
+  const { data: sauces, error: sauceError } = await supabase
+    .from('sauces')
+    .select(`
+      id,
+      sauce_code,
+      name,
+      suppliers ( brand_name )
+    `)
+    .in('status', ['arrived', 'boxed']);
+
+  if (sauceError) {
+    return { error: `Failed to fetch sauces: ${sauceError.message}` };
+  }
+
+  if (!sauces || sauces.length === 0) {
+    return { error: 'No sauces ready for judging. Update sauce status to "arrived" or "boxed" first.' };
+  }
+
+  const totalJudges = judgeCount || 0;
+  const boxesNeeded = Math.ceil(totalJudges / 12);
+  const stickersPerSauce = boxesNeeded * 7 + 2;
+
+  const stickerData: StickerData[] = sauces.map((sauce: any) => ({
+    sauceId: sauce.id,
+    sauceCode: sauce.sauce_code || 'N/A',
+    sauceName: sauce.name,
+    brandName: sauce.suppliers?.brand_name || 'Unknown',
+    stickersNeeded: stickersPerSauce,
+  }));
+
+  return {
+    stickerData,
+    totalJudges,
+    boxesNeeded,
+    stickersPerSauce,
+  };
+}
