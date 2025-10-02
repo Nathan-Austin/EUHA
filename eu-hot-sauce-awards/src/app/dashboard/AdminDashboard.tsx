@@ -19,7 +19,7 @@ export default async function AdminDashboard() {
       category,
       suppliers ( brand_name )
     `)
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false }) as { data: any[] | null; error: any };
 
   if (error) {
     return <p className="text-red-600">Error loading sauces: {error.message}</p>
