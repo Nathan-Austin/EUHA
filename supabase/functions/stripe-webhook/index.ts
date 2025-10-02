@@ -44,11 +44,51 @@ Deno.serve(async (req) => {
   });
 
   try {
-    event = await stripe.webhooks.constructEventAsync(
-      body,
-      signature!,
-      Deno.env.get('STRIPE_WEBHOOK_SIGNING_SECRET')!
+    // Manual signature verification using Deno's crypto API
+    const secret = Deno.env.get('STRIPE_WEBHOOK_SIGNING_SECRET')!;
+
+    if (!signature) {
+      throw new Error('No signature provided');
+    }
+
+    const sigElements = signature.split(',');
+    const timestampElement = sigElements.find((el) => el.startsWith('t='));
+    const signatureElement = sigElements.find((el) => el.startsWith('v1='));
+
+    if (!timestampElement || !signatureElement) {
+      throw new Error('Invalid signature format');
+    }
+
+    const timestamp = timestampElement.split('=')[1];
+    const providedSignature = signatureElement.split('=')[1];
+
+    // Create the signed payload
+    const payload = `${timestamp}.${body}`;
+
+    // Compute expected signature using Deno's crypto
+    const encoder = new TextEncoder();
+    const keyData = encoder.encode(secret);
+    const messageData = encoder.encode(payload);
+
+    const cryptoKey = await crypto.subtle.importKey(
+      'raw',
+      keyData,
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign']
     );
+
+    const signatureBuffer = await crypto.subtle.sign('HMAC', cryptoKey, messageData);
+    const signatureArray = Array.from(new Uint8Array(signatureBuffer));
+    const expectedSignature = signatureArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+    // Compare signatures
+    if (providedSignature !== expectedSignature) {
+      throw new Error('Signature mismatch');
+    }
+
+    // Parse the event
+    event = JSON.parse(body) as Stripe.Event;
     console.log('Signature verified successfully');
   } catch (err) {
     console.error('Signature verification failed:', err.message);
