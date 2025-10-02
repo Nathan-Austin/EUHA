@@ -65,7 +65,8 @@ export default function JudgeApplyPage() {
     setErrorMessage(null);
     setSuccessMessage(null);
 
-    const formData = new FormData(event.currentTarget);
+    const form = event.currentTarget;
+    const formData = new FormData(form);
 
     const payload = {
       name: String(formData.get("name") || ""),
@@ -107,7 +108,8 @@ export default function JudgeApplyPage() {
         throw new Error(otpError.message);
       }
 
-      event.currentTarget.reset();
+      form.reset();
+      setHasIndustryAffiliation(false);
       setSuccessMessage(
         data?.judge_id
           ? `Application received! Your judge profile (${data.judge_id}) has been created. Check your inbox for a magic link and payment instructions if required.`
