@@ -31,12 +31,21 @@ Deno.serve(async (req) => {
       const session = event.data.object as Stripe.Checkout.Session;
       const metadata = session.metadata ?? {};
 
+      console.log('Processing checkout.session.completed', {
+        sessionId: session.id,
+        metadata,
+        client_reference_id: session.client_reference_id,
+      });
+
       if (metadata.type === 'judge') {
         const judgeId = metadata.judge_id ?? session.client_reference_id;
 
         if (!judgeId) {
+          console.error('Missing judge identifier in checkout session');
           throw new Error('Missing judge identifier in checkout session');
         }
+
+        console.log('Updating judge payment status', { judgeId });
 
         const { error } = await supabaseAdmin
           .from('judges')
@@ -47,14 +56,20 @@ Deno.serve(async (req) => {
           .eq('id', judgeId);
 
         if (error) {
+          console.error('Failed to update judge', error);
           throw error;
         }
+
+        console.log('Judge payment status updated successfully');
       } else if (metadata.type === 'supplier') {
         const paymentId = metadata.payment_id;
 
         if (!paymentId) {
+          console.error('Missing supplier payment identifier in checkout session');
           throw new Error('Missing supplier payment identifier in checkout session');
         }
+
+        console.log('Updating supplier payment status', { paymentId });
 
         const { error } = await supabaseAdmin
           .from('supplier_payments')
@@ -64,13 +79,32 @@ Deno.serve(async (req) => {
           .eq('id', paymentId);
 
         if (error) {
+          console.error('Failed to update supplier payment', error);
           throw error;
         }
+
+        console.log('Supplier payment status updated successfully');
+      } else {
+        // No metadata type - might be an old session or test payment
+        console.warn('Webhook received payment without valid metadata.type', {
+          sessionId: session.id,
+          metadata,
+        });
+
+        // Still return 200 to acknowledge receipt, but log the issue
+        return new Response(
+          JSON.stringify({
+            received: true,
+            warning: 'Payment received but no valid metadata.type found'
+          }),
+          { status: 200 }
+        );
       }
     }
 
     return new Response(JSON.stringify({ received: true }), { status: 200 });
   } catch (err) {
-    return new Response(err.message, { status: 500 });
+    console.error('Webhook error:', err);
+    return new Response(JSON.stringify({ error: err.message }), { status: 500 });
   }
 });
