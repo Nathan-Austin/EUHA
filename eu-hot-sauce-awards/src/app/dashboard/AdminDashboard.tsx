@@ -14,6 +14,7 @@ export default async function AdminDashboard() {
     .select(`
       id,
       name,
+      sauce_code,
       status,
       category,
       suppliers ( brand_name )
@@ -37,6 +38,7 @@ export default async function AdminDashboard() {
           <table className="min-w-full bg-white border">
             <thead className="bg-gray-200">
               <tr>
+                <th className="px-4 py-2 text-left">Code</th>
                 <th className="px-4 py-2 text-left">Brand</th>
                 <th className="px-4 py-2 text-left">Sauce Name</th>
                 <th className="px-4 py-2 text-left">Category</th>
@@ -47,6 +49,15 @@ export default async function AdminDashboard() {
             <tbody>
               {sauces.map((sauce) => (
                 <tr key={sauce.id} className="border-t">
+                  <td className="px-4 py-2">
+                    {sauce.sauce_code ? (
+                      <span className="font-mono text-sm font-semibold bg-gray-100 px-2 py-1 rounded">
+                        {sauce.sauce_code}
+                      </span>
+                    ) : (
+                      <span className="text-gray-400 text-xs">—</span>
+                    )}
+                  </td>
                   <td className="px-4 py-2">{sauce.suppliers?.[0]?.brand_name || 'N/A'}</td>
                   <td className="px-4 py-2">{sauce.name}</td>
                   <td className="px-4 py-2">{sauce.category}</td>

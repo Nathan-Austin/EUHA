@@ -21,6 +21,28 @@ interface SupplierIntakePayload {
 const BASE_PRICE_CENTS = 100; // 1.00 EUR (testing price, change to 50_00 for production)
 const SAUCE_IMAGE_BUCKET = Deno.env.get('SAUCE_IMAGE_BUCKET') ?? 'sauce-media';
 
+// Category code mappings from the image spreadsheet
+const CATEGORY_CODES: Record<string, string> = {
+  'Mild Chili Sauce': 'D',
+  'Medium Chili Sauce': 'M',
+  'Hot Chili Sauce': 'H',
+  'Extra Hot Chili Sauce': 'X',
+  'Extract Based Chili Sauce': 'E',
+  'BBQ Chili Sauce': 'B',
+  'Chili Ketchup': 'K',
+  'Chili Jam': 'J',
+  'Chili Honey': 'R',
+  'Garlic Chili Sauce': 'G',
+  'Chili Pickle': 'L',
+  'Chili Chutney': 'C',
+  'Chili Oil': 'T',
+  'Freestyle': 'F',
+  'Sweet/Sour Chili Sauce': 'S',
+  'Chili Paste': 'P',
+  'Salt & Condiments': 'A',
+  'Maple Syrup Chili Sauce': 'Z',
+};
+
 const DISCOUNT_BANDS: { min: number; max: number; discount: number }[] = [
   { min: 1, max: 1, discount: 0 },
   { min: 2, max: 2, discount: 0.03 },
@@ -82,20 +104,49 @@ Deno.serve(async (req) => {
 
     if (judgeError) throw judgeError;
 
-    // 3. Insert new sauce
-    const sauceRows = payload.sauces.map((sauce) => ({
-      supplier_id: supplier.id,
-      name: sauce.name,
-      ingredients: sauce.ingredients,
-      allergens: sauce.allergens,
-      category: sauce.category,
-      status: 'registered',
-    }));
+    // 3. Generate sauce codes and insert new sauces
+    const saucesToCreate = [];
+
+    for (const sauce of payload.sauces) {
+      const categoryCode = CATEGORY_CODES[sauce.category];
+      if (!categoryCode) {
+        throw new Error(`Unknown category: ${sauce.category}`);
+      }
+
+      // Get the highest existing code number for this category
+      const { data: existingSauces, error: countError } = await supabaseAdmin
+        .from('sauces')
+        .select('sauce_code')
+        .like('sauce_code', `${categoryCode}%`)
+        .order('sauce_code', { ascending: false })
+        .limit(1);
+
+      if (countError) throw countError;
+
+      let nextNumber = 1;
+      if (existingSauces && existingSauces.length > 0) {
+        const lastCode = existingSauces[0].sauce_code;
+        const lastNumber = parseInt(lastCode.substring(1), 10);
+        nextNumber = lastNumber + 1;
+      }
+
+      const sauceCode = `${categoryCode}${String(nextNumber).padStart(3, '0')}`;
+
+      saucesToCreate.push({
+        supplier_id: supplier.id,
+        name: sauce.name,
+        ingredients: sauce.ingredients,
+        allergens: sauce.allergens,
+        category: sauce.category,
+        sauce_code: sauceCode,
+        status: 'registered',
+      });
+    }
 
     const { data: sauces, error: sauceError } = await supabaseAdmin
       .from('sauces')
-      .insert(sauceRows)
-      .select('id, name');
+      .insert(saucesToCreate)
+      .select('id, name, sauce_code');
 
     if (sauceError) throw sauceError;
     if (!sauces || sauces.length === 0) {

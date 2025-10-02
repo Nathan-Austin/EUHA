@@ -65,6 +65,7 @@ type SauceForm = {
 type SubmittedSauce = {
   id: string;
   name: string;
+  sauce_code?: string | null;
   image_path?: string | null;
 };
 
@@ -626,7 +627,14 @@ export default function SupplierApplyPage() {
                   <ul className="mt-3 space-y-1 text-emerald-100">
                     {submittedSauces.map((sauce) => (
                       <li key={sauce.id} className="flex items-center justify-between gap-4 rounded-lg border border-emerald-200/20 bg-emerald-400/10 px-3 py-2">
-                        <span>{sauce.name}</span>
+                        <div className="flex items-center gap-3">
+                          {sauce.sauce_code && (
+                            <span className="rounded bg-emerald-600/30 px-2 py-1 font-mono text-xs font-semibold text-emerald-100">
+                              {sauce.sauce_code}
+                            </span>
+                          )}
+                          <span>{sauce.name}</span>
+                        </div>
                         {sauce.image_path && (
                           <span className="text-xs uppercase tracking-[0.2em] text-emerald-200">Image uploaded</span>
                         )}
