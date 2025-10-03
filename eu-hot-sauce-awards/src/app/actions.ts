@@ -376,6 +376,21 @@ export interface JudgeLabelData {
   qrCodeUrl: string;
 }
 
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+
+function getServiceSupabase() {
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!SUPABASE_URL || !serviceRoleKey) {
+    return { error: 'Service role key not configured.' } as const;
+  }
+
+  const client = createServiceClient(SUPABASE_URL, serviceRoleKey, {
+    auth: { persistSession: false },
+  });
+
+  return { client } as const;
+}
+
 export async function generateStickerData() {
   const cookieStore = cookies();
   const supabase = createClient(cookieStore);
@@ -597,8 +612,15 @@ export async function recordBottleScan(judgeId: string, sauceId: string) {
     return { error: 'Scan a judge QR code before scanning sauces.' };
   }
 
+  const serviceClientResult = getServiceSupabase();
+  if ('error' in serviceClientResult) {
+    return { error: serviceClientResult.error };
+  }
+
+  const adminSupabase = serviceClientResult.client;
+
   // Validate judge
-  const { data: judge, error: judgeError } = await supabase
+  const { data: judge, error: judgeError } = await adminSupabase
     .from('judges')
     .select('id, name, email, active')
     .eq('id', judgeId)
@@ -613,7 +635,7 @@ export async function recordBottleScan(judgeId: string, sauceId: string) {
   }
 
   // Check sauce exists and is in 'arrived' status
-  const { data: sauce, error: sauceError } = await supabase
+  const { data: sauce, error: sauceError } = await adminSupabase
     .from('sauces')
     .select('id, status, sauce_code, name, suppliers ( brand_name )')
     .eq('id', sauceId)
@@ -628,7 +650,7 @@ export async function recordBottleScan(judgeId: string, sauceId: string) {
   }
 
   // Ensure sauce is not already assigned to another judge
-  const { data: existingAssignments, error: existingError } = await supabase
+  const { data: existingAssignments, error: existingError } = await adminSupabase
     .from('box_assignments')
     .select('id, judge_id')
     .eq('sauce_id', sauceId);
@@ -644,7 +666,7 @@ export async function recordBottleScan(judgeId: string, sauceId: string) {
   }
 
   // Record the scan
-  const { error: insertError } = await supabase
+  const { error: insertError } = await adminSupabase
     .from('bottle_scans')
     .insert({
       sauce_id: sauceId,
@@ -656,7 +678,7 @@ export async function recordBottleScan(judgeId: string, sauceId: string) {
   }
 
   // Count total scans for this sauce
-  const { count: scanCount, error: countError } = await supabase
+  const { count: scanCount, error: countError } = await adminSupabase
     .from('bottle_scans')
     .select('*', { count: 'exact', head: true })
     .eq('sauce_id', sauceId);
@@ -673,7 +695,7 @@ export async function recordBottleScan(judgeId: string, sauceId: string) {
   if ((existingAssignments || []).length > 0) {
     const assignmentId = existingAssignments?.[0]?.id;
     if (assignmentId) {
-      const { error: updateAssignmentError } = await supabase
+      const { error: updateAssignmentError } = await adminSupabase
         .from('box_assignments')
         .update({ judge_id: judgeId, box_label: boxLabel })
         .eq('id', assignmentId);
@@ -683,7 +705,7 @@ export async function recordBottleScan(judgeId: string, sauceId: string) {
       }
     }
   } else {
-    const { error: assignmentInsertError } = await supabase
+    const { error: assignmentInsertError } = await adminSupabase
       .from('box_assignments')
       .insert({
         sauce_id: sauceId,
@@ -696,7 +718,7 @@ export async function recordBottleScan(judgeId: string, sauceId: string) {
     }
   }
 
-  const { count: assignedCount, error: assignedCountError } = await supabase
+  const { count: assignedCount, error: assignedCountError } = await adminSupabase
     .from('box_assignments')
     .select('*', { count: 'exact', head: true })
     .eq('judge_id', judgeId);
@@ -716,7 +738,7 @@ export async function recordBottleScan(judgeId: string, sauceId: string) {
 
   // Auto-update to 'boxed' if 7 scans reached
   if (totalScans >= 7) {
-    const { error: updateError } = await supabase
+    const { error: updateError } = await adminSupabase
       .from('sauces')
       .update({ status: 'boxed' })
       .eq('id', sauceId);
@@ -801,18 +823,12 @@ export async function generateJudgeQRCodes() {
     return { error: 'You are not authorized.' };
   }
 
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!serviceRoleKey) {
-    return { error: 'Service role key not configured.' };
+  const serviceClientResult = getServiceSupabase();
+  if ('error' in serviceClientResult) {
+    return { error: serviceClientResult.error };
   }
 
-  const adminSupabase = createServiceClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    serviceRoleKey,
-    {
-      auth: { persistSession: false },
-    }
-  );
+  const adminSupabase = serviceClientResult.client;
 
   // Fetch all active judges
   const { data: judges, error: judgeError } = await adminSupabase
