@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import jsPDF from "jspdf";
+import QRCode from "qrcode";
 import { generateJudgeQRCodes, type JudgeLabelData } from "../actions";
 
 export default function JudgeLabelGenerator() {
@@ -79,25 +80,23 @@ export default function JudgeLabelGenerator() {
         // pdf.setDrawColor(200, 200, 200);
         // pdf.rect(x, y, labelWidth, labelHeight);
 
-        // QR Code (centered at top)
+        // QR Code (centered at top) - generate locally with judge ID
         const qrSize = 40;
         const qrX = x + (labelWidth - qrSize) / 2;
         const qrY = y + 8;
 
-        if (judge.qrCodeUrl) {
-          // Fetch and add QR code
+        if (judge.judgeId) {
           try {
-            const qrResponse = await fetch(judge.qrCodeUrl);
-            const qrBlob = await qrResponse.blob();
-            const qrDataUrl = await new Promise<string>((resolve) => {
-              const reader = new FileReader();
-              reader.onloadend = () => resolve(reader.result as string);
-              reader.readAsDataURL(qrBlob);
+            // Generate QR code locally with the judge ID
+            const qrDataUrl = await QRCode.toDataURL(judge.judgeId, {
+              width: 400,
+              margin: 1,
+              errorCorrectionLevel: 'M',
             });
 
             pdf.addImage(qrDataUrl, 'PNG', qrX, qrY, qrSize, qrSize);
           } catch (err) {
-            console.error('Failed to load QR code:', err);
+            console.error('Failed to generate QR code:', err);
           }
         }
 
