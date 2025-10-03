@@ -34,29 +34,29 @@ export default async function AdminDashboard() {
 
   return (
     <div className="space-y-8">
-      <div className="flex justify-between items-center mb-4">
+      <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h2 className="text-2xl font-bold">Admin Control Panel</h2>
         <ExportResultsButton />
       </div>
 
       <div>
         <h3 className="text-xl font-semibold mb-4">Sauce Management</h3>
-        <div className="overflow-x-auto">
-          <table className="min-w-full bg-white border">
-            <thead className="bg-gray-200">
+        <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
+          <table className="min-w-full text-sm">
+            <thead className="bg-gray-200 text-gray-700">
               <tr>
-                <th className="px-4 py-2 text-left">Code</th>
-                <th className="px-4 py-2 text-left">Brand</th>
-                <th className="px-4 py-2 text-left">Sauce Name</th>
-                <th className="px-4 py-2 text-left">Category</th>
-                <th className="px-4 py-2 text-left">Status</th>
-                <th className="px-4 py-2 text-left">Actions</th>
+                <th className="px-4 py-3 text-left">Code</th>
+                <th className="px-4 py-3 text-left">Brand</th>
+                <th className="px-4 py-3 text-left">Sauce Name</th>
+                <th className="px-4 py-3 text-left">Category</th>
+                <th className="px-4 py-3 text-left">Status</th>
+                <th className="px-4 py-3 text-left">Actions</th>
               </tr>
             </thead>
             <tbody>
               {sauces.map((sauce) => (
-                <tr key={sauce.id} className="border-t">
-                  <td className="px-4 py-2">
+                <tr key={sauce.id} className="border-t text-sm">
+                  <td className="whitespace-nowrap px-4 py-3">
                     {sauce.sauce_code ? (
                       <span className="font-mono text-sm font-semibold bg-gray-100 px-2 py-1 rounded">
                         {sauce.sauce_code}
@@ -65,10 +65,10 @@ export default async function AdminDashboard() {
                       <span className="text-gray-400 text-xs">—</span>
                     )}
                   </td>
-                  <td className="px-4 py-2">{sauce.suppliers?.brand_name || 'N/A'}</td>
-                  <td className="px-4 py-2">{sauce.name}</td>
-                  <td className="px-4 py-2">{sauce.category}</td>
-                  <td className="px-4 py-2">
+                  <td className="px-4 py-3 text-gray-700">{sauce.suppliers?.brand_name || 'N/A'}</td>
+                  <td className="px-4 py-3 text-gray-900">{sauce.name}</td>
+                  <td className="px-4 py-3 text-gray-600">{sauce.category}</td>
+                  <td className="px-4 py-3">
                     <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
                       sauce.status === 'registered' ? 'bg-blue-200 text-blue-800' :
                       sauce.status === 'arrived' ? 'bg-yellow-200 text-yellow-800' :
@@ -78,7 +78,7 @@ export default async function AdminDashboard() {
                       {sauce.status}
                     </span>
                   </td>
-                  <td className="px-4 py-2">
+                  <td className="px-4 py-3">
                     <SauceStatusUpdater sauceId={sauce.id} currentStatus={sauce.status} />
                   </td>
                 </tr>

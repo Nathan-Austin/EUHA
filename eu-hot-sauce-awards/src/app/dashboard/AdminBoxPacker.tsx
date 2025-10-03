@@ -1,7 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { getPackingStatus, recordBottleScan, manuallyMarkAsBoxed, checkConflictOfInterest, type SaucePackingStatus } from "../actions";
+
+const QrScanner = dynamic(
+  async () => (await import("@yudiel/react-qr-scanner")).QrScanner,
+  { ssr: false }
+);
 
 export default function AdminBoxPacker() {
   const [sauces, setSauces] = useState<SaucePackingStatus[]>([]);
@@ -13,8 +19,13 @@ export default function AdminBoxPacker() {
   const [currentJudgeId, setCurrentJudgeId] = useState<string | null>(null);
   const [currentJudgeName, setCurrentJudgeName] = useState<string | null>(null);
   const [boxSauces, setBoxSauces] = useState<string[]>([]);
+  const [cameraActive, setCameraActive] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const [isCameraSupported, setIsCameraSupported] = useState(true);
+  const [lastProcessedScan, setLastProcessedScan] = useState<{ value: string; timestamp: number } | null>(null);
+  const messageTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const loadPackingStatus = async () => {
+  const loadPackingStatus = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
@@ -28,76 +39,125 @@ export default function AdminBoxPacker() {
 
     setSauces(result.sauces || []);
     setIsLoading(false);
-  };
+  }, []);
 
-  useEffect(() => {
-    loadPackingStatus();
+  const clearScanMessage = useCallback(() => {
+    if (messageTimeoutRef.current) {
+      clearTimeout(messageTimeoutRef.current);
+      messageTimeoutRef.current = null;
+    }
+    setScanMessage(null);
+  }, []);
+
+  const showTimedMessage = useCallback((message: string, duration = 5000) => {
+    clearScanMessage();
+    setScanMessage(message);
+    messageTimeoutRef.current = setTimeout(() => {
+      setScanMessage(null);
+      messageTimeoutRef.current = null;
+    }, duration);
+  }, [clearScanMessage]);
+
+  const resetJudgeContext = useCallback(() => {
+    setCurrentJudgeId(null);
+    setCurrentJudgeName(null);
+    setBoxSauces([]);
   }, []);
 
   useEffect(() => {
-    if (!scanningEnabled) return;
+    return () => {
+      if (messageTimeoutRef.current) {
+        clearTimeout(messageTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    void loadPackingStatus();
+  }, [loadPackingStatus]);
+
+  useEffect(() => {
+    if (typeof navigator !== "undefined") {
+      const supported = Boolean(navigator.mediaDevices?.getUserMedia);
+      setIsCameraSupported(supported);
+      if (!supported) {
+        setCameraActive(false);
+      }
+    }
+  }, []);
+
+  const handleScan = useCallback(async (rawValue: string) => {
+    const trimmedValue = rawValue.trim();
+    if (!trimmedValue) {
+      return;
+    }
+
+    const now = Date.now();
+    if (
+      lastProcessedScan &&
+      lastProcessedScan.value === trimmedValue &&
+      now - lastProcessedScan.timestamp < 1500
+    ) {
+      return;
+    }
+
+    setLastProcessedScan({ value: trimmedValue, timestamp: now });
+
+    const match =
+      trimmedValue.match(/\/judge\/score\/([a-f0-9-]+)/i) ||
+      trimmedValue.match(/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/i);
+
+    const scannedId = match ? match[1] : trimmedValue;
+
+    if (!currentJudgeId) {
+      setCurrentJudgeId(scannedId);
+      setCurrentJudgeName(`Judge ${scannedId.substring(0, 8)}`);
+      setBoxSauces([]);
+      showTimedMessage('✓ Judge scanned. Now scan sauce bottles for their box (target: 12 sauces).', 3000);
+      return;
+    }
+
+    const sauceId = scannedId;
+
+    const conflictCheck = await checkConflictOfInterest(currentJudgeId, sauceId);
+
+    if ('error' in conflictCheck) {
+      showTimedMessage(`❌ Error: ${conflictCheck.error}`, 5000);
+      return;
+    }
+
+    if (conflictCheck.conflict) {
+      showTimedMessage(conflictCheck.message || '⚠️ Conflict of interest detected!', 8000);
+      return;
+    }
+
+    const result = await recordBottleScan(sauceId);
+
+    if ('error' in result) {
+      showTimedMessage(`❌ Error: ${result.error}`, 5000);
+    } else {
+      showTimedMessage(result.message || 'Scan recorded', 5000);
+
+      setBoxSauces(prev => (prev.includes(sauceId) ? prev : [...prev, sauceId]));
+
+      await loadPackingStatus();
+    }
+  }, [currentJudgeId, lastProcessedScan, loadPackingStatus, showTimedMessage]);
+
+  useEffect(() => {
+    if (!scanningEnabled) {
+      return;
+    }
 
     const handleKeyPress = async (e: KeyboardEvent) => {
       // QR scanners typically send characters followed by Enter
       if (e.key === 'Enter' && scannedInput.trim()) {
         e.preventDefault();
+        clearScanMessage();
 
-        // Extract ID from scanned input (could be judge or sauce)
-        const match = scannedInput.match(/\/judge\/score\/([a-f0-9-]+)/i) ||
-                      scannedInput.match(/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/i);
-
-        const scannedId = match ? match[1] : scannedInput.trim();
+        await handleScan(scannedInput);
 
         setScannedInput("");
-        setScanMessage(null);
-
-        // If no judge is selected, treat this as a judge scan
-        if (!currentJudgeId) {
-          setCurrentJudgeId(scannedId);
-          setCurrentJudgeName(`Judge ${scannedId.substring(0, 8)}`);
-          setScanMessage(`✓ Judge scanned. Now scan sauce bottles for their box (target: 12 sauces).`);
-          setBoxSauces([]);
-          setTimeout(() => setScanMessage(null), 3000);
-          return;
-        }
-
-        // Otherwise, treat as sauce scan
-        const sauceId = scannedId;
-
-        // Check for conflict of interest
-        const conflictCheck = await checkConflictOfInterest(currentJudgeId, sauceId);
-
-        if ('error' in conflictCheck) {
-          setScanMessage(`❌ Error: ${conflictCheck.error}`);
-          setTimeout(() => setScanMessage(null), 5000);
-          return;
-        }
-
-        if (conflictCheck.conflict) {
-          setScanMessage(conflictCheck.message || '⚠️ Conflict of interest detected!');
-          setTimeout(() => setScanMessage(null), 8000);
-          return;
-        }
-
-        // Record the scan
-        const result = await recordBottleScan(sauceId);
-
-        if ('error' in result) {
-          setScanMessage(`❌ Error: ${result.error}`);
-        } else {
-          setScanMessage(result.message || 'Scan recorded');
-
-          // Add to box
-          if (!boxSauces.includes(sauceId)) {
-            setBoxSauces(prev => [...prev, sauceId]);
-          }
-
-          // Reload status to update counts
-          await loadPackingStatus();
-        }
-
-        // Clear message after 5 seconds
-        setTimeout(() => setScanMessage(null), 5000);
       } else if (e.key.length === 1 || e.key === 'Backspace') {
         // Build up the scanned string
         if (e.key === 'Backspace') {
@@ -115,7 +175,47 @@ export default function AdminBoxPacker() {
     return () => {
       window.removeEventListener('keydown', handleKeyPress);
     };
-  }, [scanningEnabled, scannedInput]);
+  }, [scanningEnabled, scannedInput, clearScanMessage, handleScan]);
+
+  const handleToggleHardwareScanner = useCallback(() => {
+    const nextState = !scanningEnabled;
+    setScanningEnabled(nextState);
+
+    if (nextState) {
+      setCameraActive(false);
+      setCameraError(null);
+    } else {
+      resetJudgeContext();
+      setScannedInput("");
+      clearScanMessage();
+    }
+  }, [clearScanMessage, resetJudgeContext, scanningEnabled]);
+
+  const handleToggleCamera = useCallback(async () => {
+    if (cameraActive) {
+      setCameraActive(false);
+      setCameraError(null);
+      return;
+    }
+
+    if (!isCameraSupported || typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
+      setCameraError('Camera access is not supported on this device.');
+      setIsCameraSupported(false);
+      return;
+    }
+
+    try {
+      setCameraError(null);
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } });
+      stream.getTracks().forEach(track => track.stop());
+      setScanningEnabled(false);
+      setScannedInput("");
+      setCameraActive(true);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unable to access camera.';
+      setCameraError(`Unable to access camera: ${message}`);
+    }
+  }, [cameraActive, isCameraSupported]);
 
   const handleManualMarkAsBoxed = async (sauceId: string) => {
     if (!confirm('Are you sure you want to manually mark this sauce as boxed? This will skip the 7-scan requirement.')) {
@@ -127,7 +227,7 @@ export default function AdminBoxPacker() {
     if ('error' in result) {
       setError(result.error || 'Failed to mark as boxed');
     } else {
-      setScanMessage('✓ Sauce manually marked as boxed');
+      showTimedMessage('✓ Sauce manually marked as boxed', 4000);
       await loadPackingStatus();
     }
   };
@@ -136,13 +236,13 @@ export default function AdminBoxPacker() {
   const incompleteSauces = sauces.filter(s => s.scanCount < 7);
 
   return (
-    <div className="space-y-4 rounded-3xl border border-white/15 bg-white/[0.05] p-8 backdrop-blur">
-      <div className="flex justify-between items-center mb-4">
+    <div className="space-y-4 rounded-3xl border border-white/15 bg-white/[0.05] p-6 sm:p-8 backdrop-blur">
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h3 className="text-xl font-semibold">Box Packing Scanner</h3>
         <button
-          onClick={() => loadPackingStatus()}
+          onClick={() => void loadPackingStatus()}
           disabled={isLoading}
-          className="text-sm px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-50"
+          className="px-4 py-2 text-sm rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-50"
         >
           {isLoading ? 'Loading...' : 'Refresh'}
         </button>
@@ -153,48 +253,85 @@ export default function AdminBoxPacker() {
       </p>
 
       {/* Scanner Toggle */}
-      <div className="flex items-center gap-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-        <button
-          onClick={() => {
-            setScanningEnabled(!scanningEnabled);
-            if (scanningEnabled) {
-              // Reset when stopping
-              setCurrentJudgeId(null);
-              setCurrentJudgeName(null);
-              setBoxSauces([]);
-            }
-          }}
-          className={`px-6 py-3 rounded-lg font-semibold text-sm transition ${
-            scanningEnabled
-              ? 'bg-green-600 text-white hover:bg-green-700'
-              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-          }`}
-        >
-          {scanningEnabled ? '🟢 Scanner Active' : 'Start Scanning'}
-        </button>
+      <div className="flex flex-col gap-4 rounded-lg border border-blue-200 bg-blue-50 p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+            <button
+              onClick={handleToggleHardwareScanner}
+              className={`px-6 py-3 text-sm font-semibold transition rounded-lg ${
+                scanningEnabled
+                  ? 'bg-green-600 text-white hover:bg-green-700'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              {scanningEnabled ? '🟢 Hardware Scanner Active' : 'Use Hardware QR Scanner'}
+            </button>
+            <button
+              onClick={() => void handleToggleCamera()}
+              disabled={!isCameraSupported}
+              className={`px-6 py-3 text-sm font-semibold transition rounded-lg ${
+                cameraActive
+                  ? 'bg-violet-600 text-white hover:bg-violet-700'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              } ${!isCameraSupported ? 'cursor-not-allowed opacity-50' : ''}`}
+            >
+              {cameraActive ? '📷 Camera Scanner Active' : 'Use Camera QR Scanner'}
+            </button>
+          </div>
+
+          {currentJudgeId && (
+            <button
+              onClick={() => {
+                resetJudgeContext();
+                showTimedMessage('Judge cleared. Scan a new judge QR code.', 3000);
+              }}
+              className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"
+            >
+              Clear Judge
+            </button>
+          )}
+        </div>
 
         {scanningEnabled && (
-          <div className="flex-1">
-            <div className="text-sm font-medium text-blue-900">
+          <div className="rounded-lg border border-dashed border-blue-200 bg-white/70 p-3 text-sm text-blue-900">
+            <div className="font-medium">
               {currentJudgeId ? `📦 Packing box for ${currentJudgeName}` : '🔍 Scan judge QR code first'}
             </div>
-            <div className="text-xs text-blue-600 mt-1">Scanned buffer: {scannedInput || '(waiting...)'}</div>
+            <div className="mt-1 text-xs text-blue-600">Scanned buffer: {scannedInput || '(waiting...)'}</div>
           </div>
         )}
 
-        {currentJudgeId && (
-          <button
-            onClick={() => {
-              setCurrentJudgeId(null);
-              setCurrentJudgeName(null);
-              setBoxSauces([]);
-              setScanMessage('Judge cleared. Scan a new judge QR code.');
-              setTimeout(() => setScanMessage(null), 3000);
-            }}
-            className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"
-          >
-            Clear Judge
-          </button>
+        {cameraActive && (
+          <div className="flex flex-col gap-3">
+            <div className="overflow-hidden rounded-xl border border-gray-200 bg-black/80">
+              <QrScanner
+                constraints={{ facingMode: { ideal: 'environment' } }}
+                onDecode={(result) => {
+                  void handleScan(result);
+                }}
+                onError={(error) => {
+                  if (!error) {
+                    return;
+                  }
+                  const message = error instanceof Error
+                    ? error.message
+                    : typeof error === 'string'
+                      ? error
+                      : 'Camera error encountered.';
+                  setCameraError(message);
+                }}
+              />
+            </div>
+            <p className="text-xs text-blue-900">
+              Tip: Grant camera permissions when prompted. For best results on mobile, steady the QR code within the frame.
+            </p>
+          </div>
+        )}
+
+        {cameraError && (
+          <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+            {cameraError}
+          </div>
         )}
       </div>
 
@@ -239,7 +376,7 @@ export default function AdminBoxPacker() {
       )}
 
       {/* Progress Summary */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 gap-4 mb-6 sm:grid-cols-3">
         <div className="bg-white border rounded-lg p-4">
           <div className="text-2xl font-bold text-gray-900">{sauces.length}</div>
           <div className="text-sm text-gray-600">Total Sauces</div>
@@ -260,16 +397,16 @@ export default function AdminBoxPacker() {
           <h4 className="font-semibold text-lg mb-3 text-yellow-700">📦 In Progress ({incompleteSauces.length})</h4>
           <div className="space-y-2">
             {incompleteSauces.map((sauce) => (
-              <div key={sauce.sauceId} className="bg-white border rounded-lg p-4 flex items-center justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3">
+              <div key={sauce.sauceId} className="flex flex-col gap-4 rounded-lg border bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex-1 space-y-2">
+                  <div className="flex flex-wrap items-center gap-3">
                     <span className="font-mono text-sm font-semibold bg-gray-100 px-2 py-1 rounded">
                       {sauce.sauceCode}
                     </span>
                     <span className="font-medium">{sauce.sauceName}</span>
                     <span className="text-sm text-gray-500">by {sauce.brandName}</span>
                   </div>
-                  <div className="mt-2">
+                  <div>
                     <div className="flex items-center gap-2">
                       <div className="flex-1 bg-gray-200 rounded-full h-2">
                         <div
@@ -283,12 +420,14 @@ export default function AdminBoxPacker() {
                     </div>
                   </div>
                 </div>
-                <button
-                  onClick={() => handleManualMarkAsBoxed(sauce.sauceId)}
-                  className="ml-4 px-4 py-2 text-xs border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-700"
-                >
-                  Mark Boxed
-                </button>
+                <div className="sm:ml-4">
+                  <button
+                    onClick={() => handleManualMarkAsBoxed(sauce.sauceId)}
+                    className="w-full sm:w-auto px-4 py-2 text-xs border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-700"
+                  >
+                    Mark Boxed
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -301,17 +440,17 @@ export default function AdminBoxPacker() {
           <h4 className="font-semibold text-lg mb-3 text-green-700">✅ Completed ({completedSauces.length})</h4>
           <div className="space-y-2">
             {completedSauces.map((sauce) => (
-              <div key={sauce.sauceId} className="bg-green-50 border border-green-200 rounded-lg p-4">
-                <div className="flex items-center gap-3">
+              <div key={sauce.sauceId} className="space-y-3 rounded-lg border border-green-200 bg-green-50 p-4 sm:space-y-0 sm:flex sm:items-center sm:gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                   <span className="font-mono text-sm font-semibold bg-green-100 px-2 py-1 rounded">
                     {sauce.sauceCode}
                   </span>
                   <span className="font-medium text-green-900">{sauce.sauceName}</span>
                   <span className="text-sm text-green-700">by {sauce.brandName}</span>
-                  <span className="ml-auto text-xs font-semibold text-green-700">
-                    {sauce.scanCount}/7 ✓
-                  </span>
                 </div>
+                <span className="block text-xs font-semibold text-green-700 sm:ml-auto">
+                  {sauce.scanCount}/7 ✓
+                </span>
               </div>
             ))}
           </div>
