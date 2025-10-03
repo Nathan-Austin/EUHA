@@ -105,33 +105,17 @@ export default function StickerGenerator() {
           }
         );
 
-        // Position QR code on left side
-        const qrX = contentX + 1;
-        const qrY = contentY + (contentHeight - qrSize) / 2;
+        // Center QR code horizontally in the label
+        const qrX = contentX + (contentWidth - qrSize) / 2;
+        const qrY = contentY + 1;
         pdf.addImage(qrCodeDataUrl, 'PNG', qrX, qrY, qrSize, qrSize);
 
-        // Text area on right side
-        const textX = qrX + qrSize + 2;
-        const textWidth = contentWidth - qrSize - 3;
-
-        // Sauce code (large and bold)
-        pdf.setFontSize(14);
+        // Sauce code centered below QR code
+        pdf.setFontSize(11);
         pdf.setFont('helvetica', 'bold');
-        const codeY = contentY + 6;
-        pdf.text(sticker.sauceCode, textX, codeY, { maxWidth: textWidth });
-
-        // Sauce name (smaller)
-        pdf.setFontSize(7);
-        pdf.setFont('helvetica', 'normal');
-        const nameY = codeY + 4;
-        const nameSplit = pdf.splitTextToSize(sticker.sauceName, textWidth);
-        pdf.text(nameSplit.slice(0, 2), textX, nameY);
-
-        // Brand name (tiny)
-        pdf.setFontSize(6);
-        const brandY = nameY + (nameSplit.length > 1 ? 6 : 4);
-        const brandSplit = pdf.splitTextToSize(sticker.brandName, textWidth);
-        pdf.text(brandSplit.slice(0, 1), textX, brandY);
+        const codeY = qrY + qrSize + 3;
+        const textX = contentX + contentWidth / 2;
+        pdf.text(sticker.sauceCode, textX, codeY, { align: 'center' });
 
         labelIndex++;
       }
