@@ -126,17 +126,25 @@ export default function AdminBoxPacker() {
 
     setLastProcessedScan({ value: trimmedValue, timestamp: now });
 
-    const match =
-      trimmedValue.match(/\/judge\/score\/([a-f0-9-]+)/i) ||
-      trimmedValue.match(/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/i);
+    // Check if this is a sauce QR code (contains /judge/score/ URL pattern)
+    const sauceUrlMatch = trimmedValue.match(/\/judge\/score\/([a-f0-9-]+)/i);
 
-    const scannedId = match ? match[1] : trimmedValue;
+    // If it's a sauce URL but we don't have a judge yet, show error
+    if (sauceUrlMatch && !currentJudgeId) {
+      showTimedMessage('❌ Please scan a judge QR code first before scanning sauces.', 5000);
+      return;
+    }
 
+    // If no judge selected yet, treat this as a judge scan
     if (!currentJudgeId) {
-      setCurrentJudgeId(scannedId);
+      // Extract UUID from plain value (judge QR codes are just UUIDs)
+      const judgeIdMatch = trimmedValue.match(/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/i);
+      const judgeId = judgeIdMatch ? judgeIdMatch[1] : trimmedValue;
+
+      setCurrentJudgeId(judgeId);
       setBoxSauces([]);
-      const assignmentInfo = await loadJudgeBoxAssignments(scannedId);
-      const judgeLabel = assignmentInfo?.judgeName || `Judge ${scannedId.substring(0, 8)}`;
+      const assignmentInfo = await loadJudgeBoxAssignments(judgeId);
+      const judgeLabel = assignmentInfo?.judgeName || `Judge ${judgeId.substring(0, 8)}`;
       setCurrentJudgeName(judgeLabel);
       const assignedCount = assignmentInfo?.assignments.length ?? 0;
 
@@ -148,7 +156,8 @@ export default function AdminBoxPacker() {
       return;
     }
 
-    const sauceId = scannedId;
+    // We have a judge, now scan the sauce
+    const sauceId = sauceUrlMatch ? sauceUrlMatch[1] : trimmedValue;
 
     const conflictCheck = await checkConflictOfInterest(currentJudgeId, sauceId);
 
@@ -277,24 +286,24 @@ export default function AdminBoxPacker() {
   const incompleteSauces = sauces.filter(s => s.scanCount < 7);
 
   return (
-    <div className="space-y-4 rounded-3xl border border-white/15 bg-white/[0.05] p-6 sm:p-8 backdrop-blur">
+    <div className="space-y-4 rounded-3xl border border-gray-300 bg-white p-4 sm:p-8">
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h3 className="text-xl font-semibold">Box Packing Scanner</h3>
+        <h3 className="text-xl font-semibold text-gray-900">Box Packing Scanner</h3>
         <button
           onClick={() => void loadPackingStatus()}
           disabled={isLoading}
-          className="px-4 py-2 text-sm rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-50"
+          className="px-4 py-2 text-sm rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50"
         >
           {isLoading ? 'Loading...' : 'Refresh'}
         </button>
       </div>
 
-      <p className="text-sm text-gray-600 mb-4">
+      <p className="text-sm text-gray-700 mb-4">
         Scan sauce bottle QR codes to track packing progress. Each sauce needs 7 bottles scanned before being marked as boxed.
       </p>
 
       {/* Scanner Toggle */}
-      <div className="flex flex-col gap-4 rounded-lg border border-blue-200 bg-blue-50 p-4">
+      <div className="flex flex-col gap-4 rounded-lg border border-blue-300 bg-blue-50 p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
             <button
@@ -302,7 +311,7 @@ export default function AdminBoxPacker() {
               className={`px-6 py-3 text-sm font-semibold transition rounded-lg ${
                 scanningEnabled
                   ? 'bg-green-600 text-white hover:bg-green-700'
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
               }`}
             >
               {scanningEnabled ? '🟢 Hardware Scanner Active' : 'Use Hardware QR Scanner'}
@@ -313,7 +322,7 @@ export default function AdminBoxPacker() {
               className={`px-6 py-3 text-sm font-semibold transition rounded-lg ${
                 cameraActive
                   ? 'bg-violet-600 text-white hover:bg-violet-700'
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
               } ${!isCameraSupported ? 'cursor-not-allowed opacity-50' : ''}`}
             >
               {cameraActive ? '📷 Camera Scanner Active' : 'Use Camera QR Scanner'}
@@ -326,7 +335,7 @@ export default function AdminBoxPacker() {
                 resetJudgeContext();
                 showTimedMessage('Judge cleared. Scan a new judge QR code.', 3000);
               }}
-              className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"
+              className="px-4 py-2 text-sm border border-gray-300 bg-white rounded-lg text-gray-700 hover:bg-gray-50"
             >
               Clear Judge
             </button>
@@ -334,17 +343,17 @@ export default function AdminBoxPacker() {
         </div>
 
         {scanningEnabled && (
-          <div className="rounded-lg border border-dashed border-blue-200 bg-white/70 p-3 text-sm text-blue-900">
-            <div className="font-medium">
+          <div className="rounded-lg border border-blue-300 bg-white p-3 text-sm">
+            <div className="font-medium text-blue-900">
               {currentJudgeId ? `📦 Packing box for ${currentJudgeName}` : '🔍 Scan judge QR code first'}
             </div>
-            <div className="mt-1 text-xs text-blue-600">Scanned buffer: {scannedInput || '(waiting...)'}</div>
+            <div className="mt-1 text-xs text-blue-700">Scanned buffer: {scannedInput || '(waiting...)'}</div>
           </div>
         )}
 
         {cameraActive && (
           <div className="flex flex-col gap-3">
-            <div className="overflow-hidden rounded-xl border border-gray-200 bg-black/80">
+            <div className="overflow-hidden rounded-xl border border-gray-300 bg-black">
               <QrScanner
                 constraints={{ facingMode: { ideal: 'environment' } }}
                 onDecode={(result) => {
@@ -370,18 +379,37 @@ export default function AdminBoxPacker() {
         )}
 
         {cameraError && (
-          <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          <div className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-800">
             {cameraError}
           </div>
         )}
       </div>
 
+      {/* Scan Messages */}
+      {scanMessage && (
+        <div className={`p-4 rounded-lg border ${
+          scanMessage.includes('❌')
+            ? 'bg-red-50 border-red-300 text-red-800'
+            : scanMessage.includes('BOXED')
+            ? 'bg-green-50 border-green-300 text-green-800'
+            : 'bg-blue-50 border-blue-300 text-blue-800'
+        }`}>
+          <div className="font-semibold">{scanMessage}</div>
+        </div>
+      )}
+
+      {error && (
+        <div className="bg-red-50 border border-red-300 rounded-lg p-4 text-sm text-red-800">
+          {error}
+        </div>
+      )}
+
       {/* Current Box Progress */}
       {currentJudgeId && (
-        <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
+        <div className="p-4 bg-purple-50 border border-purple-300 rounded-lg">
           <div className="flex items-center justify-between mb-3">
             <h4 className="font-semibold text-purple-900">Current Box: {currentJudgeName || 'Judge selected'}</h4>
-            <span className="text-sm font-semibold text-purple-700">{boxSauces.length}/{BOX_TARGET} sauces</span>
+            <span className="text-sm font-semibold text-purple-900">{boxSauces.length}/{BOX_TARGET} sauces</span>
           </div>
           <div className="flex-1 bg-gray-200 rounded-full h-3">
             <div
@@ -392,49 +420,30 @@ export default function AdminBoxPacker() {
             />
           </div>
           {boxSauces.length >= BOX_TARGET && (
-            <div className="mt-2 text-sm text-green-700 font-semibold">✓ Box complete! Scan a new judge to start another box.</div>
+            <div className="mt-2 text-sm text-green-800 font-semibold">✓ Box complete! Scan a new judge to start another box.</div>
           )}
         </div>
       )}
 
       {currentJudgeId && (
-        <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+        <div className="rounded-2xl border border-gray-300 bg-white p-4 shadow-sm">
           <div className="flex items-center justify-between">
             <h4 className="font-semibold text-gray-900">Box Contents</h4>
-            <span className="text-xs font-medium text-gray-500">{boxSauces.length}/{BOX_TARGET}</span>
+            <span className="text-xs font-medium text-gray-600">{boxSauces.length}/{BOX_TARGET}</span>
           </div>
           {boxSauces.length > 0 ? (
             <ul className="mt-3 space-y-2 text-sm text-gray-700">
               {boxSauces.map((item) => (
-                <li key={item.sauceId} className="flex flex-wrap items-center gap-2 rounded-lg border border-gray-100 bg-gray-50 px-3 py-2">
-                  <span className="font-mono text-xs font-semibold bg-white px-2 py-1 rounded">{item.sauceCode}</span>
-                  <span className="font-medium">{item.sauceName}</span>
-                  <span className="text-xs text-gray-500">by {item.brandName}</span>
+                <li key={item.sauceId} className="flex flex-wrap items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
+                  <span className="font-mono text-xs font-semibold bg-white border border-gray-200 px-2 py-1 rounded text-gray-900">{item.sauceCode}</span>
+                  <span className="font-medium text-gray-900">{item.sauceName}</span>
+                  <span className="text-xs text-gray-600">by {item.brandName}</span>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="mt-3 text-sm text-gray-500">No sauces scanned for this box yet.</p>
+            <p className="mt-3 text-sm text-gray-600">No sauces scanned for this box yet.</p>
           )}
-        </div>
-      )}
-
-      {/* Scan Messages */}
-      {scanMessage && (
-        <div className={`p-4 rounded-lg border ${
-          scanMessage.includes('❌')
-            ? 'bg-red-50 border-red-200 text-red-800'
-            : scanMessage.includes('BOXED')
-            ? 'bg-green-50 border-green-200 text-green-800'
-            : 'bg-blue-50 border-blue-200 text-blue-800'
-        }`}>
-          <div className="font-semibold">{scanMessage}</div>
-        </div>
-      )}
-
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-sm text-red-700">
-          {error}
         </div>
       )}
 
