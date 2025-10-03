@@ -141,6 +141,10 @@ export default function AdminBoxPacker() {
       const judgeIdMatch = trimmedValue.match(/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/i);
       const judgeId = judgeIdMatch ? judgeIdMatch[1] : trimmedValue;
 
+      // Debug: Log what we're scanning
+      console.log('Raw scanned value:', trimmedValue);
+      console.log('Extracted judge ID:', judgeId);
+
       setCurrentJudgeId(judgeId);
       setBoxSauces([]);
       const assignmentInfo = await loadJudgeBoxAssignments(judgeId);
@@ -149,7 +153,7 @@ export default function AdminBoxPacker() {
       const assignedCount = assignmentInfo?.assignments.length ?? 0;
 
       if (assignmentInfo?.error) {
-        showTimedMessage(`⚠️ ${assignmentInfo.error}. You can still scan bottles for ${judgeLabel}.`, 7000);
+        showTimedMessage(`⚠️ ${assignmentInfo.error}. Scanned: "${trimmedValue.substring(0, 50)}". Extracted ID: "${judgeId}"`, 10000);
       } else {
         showTimedMessage(`✓ ${judgeLabel} scanned. Box currently has ${assignedCount}/${BOX_TARGET} sauces. Start scanning bottles.`, 6000);
       }
