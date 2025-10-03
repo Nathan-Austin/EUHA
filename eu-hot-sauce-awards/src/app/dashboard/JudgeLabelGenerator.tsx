@@ -118,11 +118,27 @@ export default function JudgeLabelGenerator() {
         pdf.setTextColor(typeColor[0], typeColor[1], typeColor[2]);
         pdf.text(typeText, x + labelWidth / 2, textY + 6, { align: 'center' });
 
+        // Address lines
+        pdf.setFontSize(8);
+        pdf.setTextColor(60, 60, 60);
+        const addressLines = [judge.addressLine1, judge.addressLine2].filter(Boolean);
+        let addressY = textY + 11;
+        for (const line of addressLines) {
+          const splitLine = pdf.splitTextToSize(line, labelWidth - 10);
+          for (const segment of splitLine) {
+            pdf.text(segment, x + labelWidth / 2, addressY, { align: 'center' });
+            addressY += 4;
+          }
+        }
+
         // Email (smaller)
         pdf.setFontSize(7);
         pdf.setTextColor(100, 100, 100);
         const emailSplit = pdf.splitTextToSize(judge.email, labelWidth - 10);
-        pdf.text(emailSplit, x + labelWidth / 2, textY + 11, { align: 'center' });
+        for (const segment of emailSplit) {
+          pdf.text(segment, x + labelWidth / 2, addressY + 2, { align: 'center' });
+          addressY += 4;
+        }
 
         // Reset text color
         pdf.setTextColor(0, 0, 0);

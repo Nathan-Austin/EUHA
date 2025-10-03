@@ -370,6 +370,8 @@ export interface JudgeLabelData {
   name: string;
   email: string;
   type: string;
+  addressLine1: string;
+  addressLine2: string;
   qrCodeUrl: string;
 }
 
@@ -801,20 +803,28 @@ export async function generateJudgeQRCodes() {
   // Fetch all active judges
   const { data: judges, error: judgeError } = await supabase
     .from('judges')
-    .select('id, email, name, type')
-    .eq('active', true);
+    .select('id, email, name, type, active, stripe_payment_status, address, city, postal_code, country')
+    .in('type', ['admin', 'pro', 'community'])
+    .or('active.eq.true,type.eq.admin');
 
   if (judgeError) {
     return { error: `Failed to fetch judges: ${judgeError.message}` };
   }
 
-  if (!judges || judges.length === 0) {
+  const eligibleCurrentJudges = (judges || []).filter((judge) => {
+    if (judge.type === 'community') {
+      return judge.stripe_payment_status === 'succeeded';
+    }
+    return judge.type === 'admin' || judge.active;
+  });
+
+  if (eligibleCurrentJudges.length === 0) {
     return { error: 'No active judges found.' };
   }
 
   // Generate and update QR codes for judges without them
   const updates = [];
-  for (const judge of judges) {
+  for (const judge of eligibleCurrentJudges) {
     if (!judge.id) continue;
 
     const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?data=${judge.id}&size=200x200`;
@@ -837,20 +847,36 @@ export async function generateJudgeQRCodes() {
   // Fetch updated judge data
   const { data: updatedJudges, error: fetchError } = await supabase
     .from('judges')
-    .select('id, email, name, type, qr_code_url')
-    .eq('active', true);
+    .select('id, email, name, type, qr_code_url, address, city, postal_code, country, active, stripe_payment_status')
+    .in('type', ['admin', 'pro', 'community'])
+    .or('active.eq.true,type.eq.admin');
 
   if (fetchError) {
     return { error: `Failed to fetch updated judges: ${fetchError.message}` };
   }
 
-  const judgeLabelData: JudgeLabelData[] = (updatedJudges || []).map((judge: any) => ({
-    judgeId: judge.id,
-    name: judge.name || judge.email.split('@')[0],
-    email: judge.email,
-    type: judge.type,
-    qrCodeUrl: judge.qr_code_url || '',
-  }));
+  const filteredJudges = (updatedJudges || []).filter((judge: any) => {
+    if (judge.type === 'community') {
+      return judge.stripe_payment_status === 'succeeded';
+    }
+    return judge.type === 'admin' || judge.active;
+  });
+
+  const judgeLabelData: JudgeLabelData[] = filteredJudges.map((judge: any) => {
+    const line1 = judge.address || '';
+    const cityParts = [judge.city, judge.postal_code, judge.country].filter(Boolean);
+    const line2 = cityParts.join(', ');
+
+    return {
+      judgeId: judge.id,
+      name: judge.name || judge.email.split('@')[0],
+      email: judge.email,
+      type: judge.type,
+      addressLine1: line1,
+      addressLine2: line2,
+      qrCodeUrl: judge.qr_code_url || '',
+    };
+  });
 
   return { judges: judgeLabelData };
 }
