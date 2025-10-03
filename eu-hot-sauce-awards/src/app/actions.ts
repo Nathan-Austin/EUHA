@@ -550,7 +550,15 @@ export async function getJudgeBoxAssignments(judgeId: string) {
     return { error: 'You are not authorized.' };
   }
 
-  const { data: judge, error: judgeFetchError } = await supabase
+  // Use service client for admin operations
+  const serviceClientResult = getServiceSupabase();
+  if ('error' in serviceClientResult) {
+    return { error: serviceClientResult.error };
+  }
+
+  const adminSupabase = serviceClientResult.client;
+
+  const { data: judge, error: judgeFetchError } = await adminSupabase
     .from('judges')
     .select('name, email')
     .eq('id', judgeId)
@@ -560,7 +568,7 @@ export async function getJudgeBoxAssignments(judgeId: string) {
     return { error: `Failed to load judge: ${judgeFetchError.message}` };
   }
 
-  const { data: assignments, error: assignmentError } = await supabase
+  const { data: assignments, error: assignmentError } = await adminSupabase
     .from('box_assignments')
     .select(`
       sauce_id,
