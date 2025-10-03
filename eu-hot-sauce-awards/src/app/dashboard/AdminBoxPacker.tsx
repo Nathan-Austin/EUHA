@@ -2,12 +2,14 @@
 
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { getPackingStatus, recordBottleScan, manuallyMarkAsBoxed, checkConflictOfInterest, type SaucePackingStatus } from "../actions";
+import { getPackingStatus, recordBottleScan, manuallyMarkAsBoxed, checkConflictOfInterest, getJudgeBoxAssignments, type SaucePackingStatus, type JudgeBoxAssignment } from "../actions";
 
 const QrScanner = dynamic(
   async () => (await import("@yudiel/react-qr-scanner")).QrScanner,
   { ssr: false }
 );
+
+const BOX_TARGET = 12;
 
 export default function AdminBoxPacker() {
   const [sauces, setSauces] = useState<SaucePackingStatus[]>([]);
@@ -18,7 +20,7 @@ export default function AdminBoxPacker() {
   const [scannedInput, setScannedInput] = useState("");
   const [currentJudgeId, setCurrentJudgeId] = useState<string | null>(null);
   const [currentJudgeName, setCurrentJudgeName] = useState<string | null>(null);
-  const [boxSauces, setBoxSauces] = useState<string[]>([]);
+  const [boxSauces, setBoxSauces] = useState<JudgeBoxAssignment[]>([]);
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [isCameraSupported, setIsCameraSupported] = useState(true);
@@ -57,6 +59,27 @@ export default function AdminBoxPacker() {
       messageTimeoutRef.current = null;
     }, duration);
   }, [clearScanMessage]);
+
+  const loadJudgeBoxAssignments = useCallback(async (judgeId: string): Promise<{ assignments: JudgeBoxAssignment[]; judgeName?: string; error?: string }> => {
+    if (!judgeId) {
+      setBoxSauces([]);
+      return { assignments: [], judgeName: undefined, error: 'No judge selected' };
+    }
+
+    const result = await getJudgeBoxAssignments(judgeId);
+
+    if ('error' in result) {
+      setBoxSauces([]);
+      return { assignments: [], judgeName: undefined, error: result.error || 'Unable to load box assignments' };
+    }
+
+    const assignments = result.assignments || [];
+    const judgeLabel = result.judgeName || `Judge ${judgeId.substring(0, 8)}`;
+    setBoxSauces(assignments);
+    setCurrentJudgeName(judgeLabel);
+
+    return { assignments, judgeName: judgeLabel };
+  }, []);
 
   const resetJudgeContext = useCallback(() => {
     setCurrentJudgeId(null);
@@ -111,9 +134,17 @@ export default function AdminBoxPacker() {
 
     if (!currentJudgeId) {
       setCurrentJudgeId(scannedId);
-      setCurrentJudgeName(`Judge ${scannedId.substring(0, 8)}`);
       setBoxSauces([]);
-      showTimedMessage('✓ Judge scanned. Now scan sauce bottles for their box (target: 12 sauces).', 3000);
+      const assignmentInfo = await loadJudgeBoxAssignments(scannedId);
+      const judgeLabel = assignmentInfo?.judgeName || `Judge ${scannedId.substring(0, 8)}`;
+      setCurrentJudgeName(judgeLabel);
+      const assignedCount = assignmentInfo?.assignments.length ?? 0;
+
+      if (assignmentInfo?.error) {
+        showTimedMessage(`⚠️ ${assignmentInfo.error}. You can still scan bottles for ${judgeLabel}.`, 7000);
+      } else {
+        showTimedMessage(`✓ ${judgeLabel} scanned. Box currently has ${assignedCount}/${BOX_TARGET} sauces. Start scanning bottles.`, 6000);
+      }
       return;
     }
 
@@ -122,7 +153,7 @@ export default function AdminBoxPacker() {
     const conflictCheck = await checkConflictOfInterest(currentJudgeId, sauceId);
 
     if ('error' in conflictCheck) {
-      showTimedMessage(`❌ Error: ${conflictCheck.error}`, 5000);
+      showTimedMessage(`❌ Error: ${conflictCheck.error}`, 6000);
       return;
     }
 
@@ -131,18 +162,28 @@ export default function AdminBoxPacker() {
       return;
     }
 
-    const result = await recordBottleScan(sauceId);
+    const result = await recordBottleScan(currentJudgeId, sauceId);
 
     if ('error' in result) {
-      showTimedMessage(`❌ Error: ${result.error}`, 5000);
-    } else {
-      showTimedMessage(result.message || 'Scan recorded', 5000);
-
-      setBoxSauces(prev => (prev.includes(sauceId) ? prev : [...prev, sauceId]));
-
-      await loadPackingStatus();
+      showTimedMessage(`❌ Error: ${result.error}`, 6000);
+      return;
     }
-  }, [currentJudgeId, lastProcessedScan, loadPackingStatus, showTimedMessage]);
+
+    const assignmentInfo = await loadJudgeBoxAssignments(currentJudgeId);
+    const judgeLabel = assignmentInfo?.judgeName ?? result.judgeName ?? currentJudgeName ?? `Judge ${currentJudgeId.substring(0, 8)}`;
+    setCurrentJudgeName(judgeLabel);
+
+    if (assignmentInfo?.error) {
+      const fallback = result.message || `Scan recorded for ${judgeLabel}`;
+      showTimedMessage(`⚠️ ${assignmentInfo.error}. ${fallback}`, 7000);
+    } else {
+      const messageParts = [result.boxMessage, result.message].filter(Boolean);
+      const finalMessage = messageParts.length > 0 ? messageParts.join(' • ') : `✓ ${judgeLabel}: scan recorded`;
+      showTimedMessage(finalMessage, 7000);
+    }
+
+    await loadPackingStatus();
+  }, [currentJudgeId, currentJudgeName, lastProcessedScan, loadJudgeBoxAssignments, loadPackingStatus, showTimedMessage]);
 
   useEffect(() => {
     if (!scanningEnabled) {
@@ -339,19 +380,41 @@ export default function AdminBoxPacker() {
       {currentJudgeId && (
         <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
           <div className="flex items-center justify-between mb-3">
-            <h4 className="font-semibold text-purple-900">Current Box: {currentJudgeName}</h4>
-            <span className="text-sm font-semibold text-purple-700">{boxSauces.length}/12 sauces</span>
+            <h4 className="font-semibold text-purple-900">Current Box: {currentJudgeName || 'Judge selected'}</h4>
+            <span className="text-sm font-semibold text-purple-700">{boxSauces.length}/{BOX_TARGET} sauces</span>
           </div>
           <div className="flex-1 bg-gray-200 rounded-full h-3">
             <div
               className={`h-3 rounded-full transition-all ${
-                boxSauces.length >= 12 ? 'bg-green-600' : 'bg-purple-600'
+                boxSauces.length >= BOX_TARGET ? 'bg-green-600' : 'bg-purple-600'
               }`}
-              style={{ width: `${Math.min((boxSauces.length / 12) * 100, 100)}%` }}
+              style={{ width: `${Math.min((boxSauces.length / BOX_TARGET) * 100, 100)}%` }}
             />
           </div>
-          {boxSauces.length >= 12 && (
+          {boxSauces.length >= BOX_TARGET && (
             <div className="mt-2 text-sm text-green-700 font-semibold">✓ Box complete! Scan a new judge to start another box.</div>
+          )}
+        </div>
+      )}
+
+      {currentJudgeId && (
+        <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+          <div className="flex items-center justify-between">
+            <h4 className="font-semibold text-gray-900">Box Contents</h4>
+            <span className="text-xs font-medium text-gray-500">{boxSauces.length}/{BOX_TARGET}</span>
+          </div>
+          {boxSauces.length > 0 ? (
+            <ul className="mt-3 space-y-2 text-sm text-gray-700">
+              {boxSauces.map((item) => (
+                <li key={item.sauceId} className="flex flex-wrap items-center gap-2 rounded-lg border border-gray-100 bg-gray-50 px-3 py-2">
+                  <span className="font-mono text-xs font-semibold bg-white px-2 py-1 rounded">{item.sauceCode}</span>
+                  <span className="font-medium">{item.sauceName}</span>
+                  <span className="text-xs text-gray-500">by {item.brandName}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-3 text-sm text-gray-500">No sauces scanned for this box yet.</p>
           )}
         </div>
       )}

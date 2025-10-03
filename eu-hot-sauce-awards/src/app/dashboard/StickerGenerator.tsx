@@ -42,20 +42,19 @@ export default function StickerGenerator() {
 
       const { stickerData } = result;
 
-      // Avery 4780 specifications (in mm)
+      // Avery L7781 specifications (in mm)
       const pageWidth = 210; // A4 width
       const pageHeight = 297; // A4 height
-      const labelWidth = 48.5;
+      const labelWidth = 45.7;
       const labelHeight = 25.4;
-      const cols = 8;
-      const rows = 5;
-      const labelsPerPage = cols * rows; // 40
+      const cols = 4;
+      const rows = 10;
+      const labelsPerPage = cols * rows; // 40 labels per sheet
 
-      // Calculate margins to center labels on page
-      const totalLabelsWidth = cols * labelWidth;
-      const totalLabelsHeight = rows * labelHeight;
-      const marginX = (pageWidth - totalLabelsWidth) / 2;
-      const marginY = (pageHeight - totalLabelsHeight) / 2;
+      const marginLeft = 9.7;
+      const marginTop = 21.5;
+      const horizontalPitch = 48.3; // label width + horizontal gap
+      const verticalPitch = 25.4; // label height + vertical gap (no gap)
 
       // Content area (with 2mm border)
       const contentBorder = 2;
@@ -68,7 +67,6 @@ export default function StickerGenerator() {
         format: 'a4',
       });
 
-      let isFirstPage = true;
       let labelIndex = 0;
 
       // Flatten sticker data (repeat each sauce N times)
@@ -89,8 +87,8 @@ export default function StickerGenerator() {
         // Calculate position
         const col = labelIndex % cols;
         const row = Math.floor(labelIndex / cols);
-        const x = marginX + (col * labelWidth);
-        const y = marginY + (row * labelHeight);
+        const x = marginLeft + (col * horizontalPitch);
+        const y = marginTop + (row * verticalPitch);
 
         // Content area position (inside border)
         const contentX = x + contentBorder;
@@ -153,7 +151,7 @@ export default function StickerGenerator() {
       <h3 className="text-xl font-semibold mb-4">Judging Stickers</h3>
 
       <p className="text-sm text-gray-600 mb-4">
-        Generate printable Avery 4780 label sheets (48.5 × 25.4 mm, 40 labels per A4 sheet) with QR codes and sauce codes for the judging process.
+        Generate printable Avery L7781 label sheets (45.7 × 25.4 mm, 40 labels per A4 sheet) with QR codes and sauce codes for the judging process.
       </p>
 
       {preview && (

@@ -507,7 +507,72 @@ export async function getPackingStatus() {
   return { sauces: packingStatus };
 }
 
-export async function recordBottleScan(sauceId: string) {
+export interface JudgeBoxAssignment {
+  sauceId: string;
+  sauceCode: string;
+  sauceName: string;
+  brandName: string;
+}
+
+export async function getJudgeBoxAssignments(judgeId: string) {
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user?.email) return { error: 'You must be logged in.' };
+
+  const { data: adminCheck, error: adminError } = await supabase
+    .from('judges')
+    .select('type')
+    .eq('email', user.email)
+    .single();
+
+  if (adminError || adminCheck?.type !== 'admin') {
+    return { error: 'You are not authorized.' };
+  }
+
+  const { data: judge, error: judgeFetchError } = await supabase
+    .from('judges')
+    .select('name, email')
+    .eq('id', judgeId)
+    .single();
+
+  if (judgeFetchError) {
+    return { error: `Failed to load judge: ${judgeFetchError.message}` };
+  }
+
+  const { data: assignments, error: assignmentError } = await supabase
+    .from('box_assignments')
+    .select(`
+      sauce_id,
+      sauces (
+        sauce_code,
+        name,
+        suppliers ( brand_name )
+      )
+    `)
+    .eq('judge_id', judgeId);
+
+  if (assignmentError) {
+    return { error: `Failed to load box assignments: ${assignmentError.message}` };
+  }
+
+  const mappedAssignments: JudgeBoxAssignment[] = (assignments || []).map((assignment: any) => ({
+    sauceId: assignment.sauce_id,
+    sauceCode: assignment.sauces?.sauce_code || 'N/A',
+    sauceName: assignment.sauces?.name || 'Unknown sauce',
+    brandName: assignment.sauces?.suppliers?.brand_name || 'Unknown brand',
+  }));
+
+  const judgeName = judge?.name || judge?.email?.split('@')[0] || 'Unknown judge';
+
+  return {
+    judgeName,
+    assignments: mappedAssignments,
+  };
+}
+
+export async function recordBottleScan(judgeId: string, sauceId: string) {
   const cookieStore = cookies();
   const supabase = createClient(cookieStore);
 
@@ -525,10 +590,29 @@ export async function recordBottleScan(sauceId: string) {
     return { error: 'You are not authorized.' };
   }
 
+  if (!judgeId) {
+    return { error: 'Scan a judge QR code before scanning sauces.' };
+  }
+
+  // Validate judge
+  const { data: judge, error: judgeError } = await supabase
+    .from('judges')
+    .select('id, name, email, active')
+    .eq('id', judgeId)
+    .single();
+
+  if (judgeError || !judge) {
+    return { error: 'Judge not found.' };
+  }
+
+  if (judge.active === false) {
+    return { error: 'This judge is not active.' };
+  }
+
   // Check sauce exists and is in 'arrived' status
   const { data: sauce, error: sauceError } = await supabase
     .from('sauces')
-    .select('id, status, sauce_code, name')
+    .select('id, status, sauce_code, name, suppliers ( brand_name )')
     .eq('id', sauceId)
     .single();
 
@@ -538,6 +622,22 @@ export async function recordBottleScan(sauceId: string) {
 
   if (sauce.status !== 'arrived') {
     return { error: `Sauce ${sauce.sauce_code} is not in "arrived" status. Current status: ${sauce.status}` };
+  }
+
+  // Ensure sauce is not already assigned to another judge
+  const { data: existingAssignments, error: existingError } = await supabase
+    .from('box_assignments')
+    .select('id, judge_id')
+    .eq('sauce_id', sauceId);
+
+  if (existingError) {
+    return { error: `Failed to check existing assignments: ${existingError.message}` };
+  }
+
+  const assignedToOtherJudge = (existingAssignments || []).find((assignment: any) => assignment.judge_id && assignment.judge_id !== judgeId);
+
+  if (assignedToOtherJudge) {
+    return { error: 'This sauce is already assigned to a different judge box.' };
   }
 
   // Record the scan
@@ -564,6 +664,53 @@ export async function recordBottleScan(sauceId: string) {
 
   const totalScans = scanCount || 0;
 
+  const judgeDisplayName = judge.name || judge.email?.split('@')[0] || `Judge ${judge.id.substring(0, 8)}`;
+  const boxLabel = `Judge ${judgeDisplayName}`;
+
+  if ((existingAssignments || []).length > 0) {
+    const assignmentId = existingAssignments?.[0]?.id;
+    if (assignmentId) {
+      const { error: updateAssignmentError } = await supabase
+        .from('box_assignments')
+        .update({ judge_id: judgeId, box_label: boxLabel })
+        .eq('id', assignmentId);
+
+      if (updateAssignmentError) {
+        return { error: `Failed to update box assignment: ${updateAssignmentError.message}` };
+      }
+    }
+  } else {
+    const { error: assignmentInsertError } = await supabase
+      .from('box_assignments')
+      .insert({
+        sauce_id: sauceId,
+        judge_id: judgeId,
+        box_label: boxLabel,
+      });
+
+    if (assignmentInsertError) {
+      return { error: `Failed to assign sauce to judge box: ${assignmentInsertError.message}` };
+    }
+  }
+
+  const { count: assignedCount, error: assignedCountError } = await supabase
+    .from('box_assignments')
+    .select('*', { count: 'exact', head: true })
+    .eq('judge_id', judgeId);
+
+  if (assignedCountError) {
+    return { error: `Failed to count box assignments: ${assignedCountError.message}` };
+  }
+
+  const assignmentSummary: JudgeBoxAssignment = {
+    sauceId: sauce.id,
+    sauceCode: (sauce as any).sauce_code || 'N/A',
+    sauceName: sauce.name,
+    brandName: (sauce as any).suppliers?.brand_name || 'Unknown brand',
+  };
+
+  const boxMessage = `Box progress for ${judgeDisplayName}: ${(assignedCount || 0)}/12 sauces assigned`;
+
   // Auto-update to 'boxed' if 7 scans reached
   if (totalScans >= 7) {
     const { error: updateError } = await supabase
@@ -580,7 +727,11 @@ export async function recordBottleScan(sauceId: string) {
       success: true,
       scanCount: totalScans,
       autoBoxed: true,
-      message: `✓ ${sauce.sauce_code} - ${sauce.name}: All 7 bottles scanned! Status updated to BOXED.`
+      message: `✓ ${(sauce as any).sauce_code} - ${sauce.name}: All 7 bottles scanned! Status updated to BOXED.`,
+      assignment: assignmentSummary,
+      assignedCount: assignedCount || 0,
+      boxMessage,
+      judgeName: judgeDisplayName,
     };
   }
 
@@ -589,7 +740,11 @@ export async function recordBottleScan(sauceId: string) {
     success: true,
     scanCount: totalScans,
     autoBoxed: false,
-    message: `✓ ${sauce.sauce_code} - ${sauce.name}: ${totalScans}/7 bottles scanned`
+    message: `✓ ${(sauce as any).sauce_code} - ${sauce.name}: ${totalScans}/7 bottles scanned`,
+    assignment: assignmentSummary,
+    assignedCount: assignedCount || 0,
+    boxMessage,
+    judgeName: judgeDisplayName,
   };
 }
 
