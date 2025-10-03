@@ -2,6 +2,7 @@
 
 import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { revalidatePath } from 'next/cache'
 
 type SauceStatus = 'registered' | 'arrived' | 'boxed' | 'judged';
@@ -800,8 +801,21 @@ export async function generateJudgeQRCodes() {
     return { error: 'You are not authorized.' };
   }
 
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!serviceRoleKey) {
+    return { error: 'Service role key not configured.' };
+  }
+
+  const adminSupabase = createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    serviceRoleKey,
+    {
+      auth: { persistSession: false },
+    }
+  );
+
   // Fetch all active judges
-  const { data: judges, error: judgeError } = await supabase
+  const { data: judges, error: judgeError } = await adminSupabase
     .from('judges')
     .select('id, email, name, type, active, stripe_payment_status, address, city, postal_code, country')
     .in('type', ['admin', 'pro', 'community'])
@@ -830,7 +844,7 @@ export async function generateJudgeQRCodes() {
     const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?data=${judge.id}&size=200x200`;
 
     updates.push(
-      supabase
+      adminSupabase
         .from('judges')
         .update({ qr_code_url: qrCodeUrl })
         .eq('id', judge.id)
@@ -845,7 +859,7 @@ export async function generateJudgeQRCodes() {
   }
 
   // Fetch updated judge data
-  const { data: updatedJudges, error: fetchError } = await supabase
+  const { data: updatedJudges, error: fetchError } = await adminSupabase
     .from('judges')
     .select('id, email, name, type, qr_code_url, address, city, postal_code, country, active, stripe_payment_status')
     .in('type', ['admin', 'pro', 'community'])
