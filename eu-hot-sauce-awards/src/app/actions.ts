@@ -440,7 +440,8 @@ export async function generateStickerData() {
 
   const totalJudges = judgeCount || 0;
   const boxesNeeded = Math.ceil(totalJudges / 12);
-  const stickersPerSauce = boxesNeeded * 7 + 2;
+  // Each sauce needs 7 bottles for packing verification
+  const stickersPerSauce = 7;
 
   const stickerData: StickerData[] = sauces.map((sauce: any) => ({
     sauceId: sauce.id,
