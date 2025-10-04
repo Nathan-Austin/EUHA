@@ -8,7 +8,10 @@ WITH supplier_seed AS (
     ('3db3676a-9b26-456b-9c39-6bf3d6c61da2', 'Molten Mountain',      'Gregor Huber',  'supplier+molten@test.euha',  '77 Bergstraße, Munich, DE'),
     ('44bad6ce-0f8a-4d3f-8a8f-4b4e2e097378', 'Crimson Tide Sauces',  'Florence Keane','supplier+crimson@test.euha', '19 Dockside Way, Dublin, IE'),
     ('8b9b907f-79c9-4a06-8e71-9a52ef462ed1', 'Zen Heat Labs',        'Sumi Watanabe', 'supplier+zen@test.euha',     '5 Quiet Lane, Copenhagen, DK'),
-    ('09b99841-1977-4ee1-aa9c-8498e6e3c07d', 'Verdant Inferno',      'Kai Müller',    'supplier+verdant@test.euha', '10 Greenmarket, Vienna, AT')
+    ('09b99841-1977-4ee1-aa9c-8498e6e3c07d', 'Verdant Inferno',      'Kai Müller',    'supplier+verdant@test.euha', '10 Greenmarket, Vienna, AT'),
+    ('f2a8c9d3-4e5f-6a7b-8c9d-0e1f2a3b4c5d', 'Thunder Strike Sauce', 'Nikolai Volkov','supplier+thunder@test.euha', '33 Storm Road, Prague, CZ'),
+    ('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'Island Fire Co.',      'Mariana Costa', 'supplier+island@test.euha',  '88 Tropicana St, Malta, MT'),
+    ('b2c3d4e5-f6a7-8901-bcde-f12345678901', 'Nordic Burn Labs',     'Anders Larsen', 'supplier+nordic@test.euha',  '12 Fjord Lane, Oslo, NO')
   ON CONFLICT (email) DO UPDATE
     SET brand_name = EXCLUDED.brand_name,
         contact_name = EXCLUDED.contact_name,
@@ -24,19 +27,27 @@ WITH supplier_seed AS (
     'supplier+molten@test.euha',
     'supplier+crimson@test.euha',
     'supplier+zen@test.euha',
-    'supplier+verdant@test.euha'
+    'supplier+verdant@test.euha',
+    'supplier+thunder@test.euha',
+    'supplier+island@test.euha',
+    'supplier+nordic@test.euha'
   )
 ), sauce_data AS (
   SELECT * FROM (
     VALUES
       ('5f0a4ad5-6b38-4541-a906-95dd2d404d2c'::uuid, 'supplier+solar@test.euha',   'Solar Flare Mango Habanero', 'Mango, habanero, lime, agave, sea salt',         'None',   'Fruit-forward',  'arrived'::sauce_status,   'F201'),
-      ('0f0d41b9-28a4-4652-95f5-908b55a8b861'::uuid, 'supplier+solar@test.euha',   'Noon Ember Pineapple',       'Pineapple, scotch bonnet, turmeric, cider vinegar','None', 'Fruit-forward',  'registered'::sauce_status,'F202'),
+      ('0f0d41b9-28a4-4652-95f5-908b55a8b861'::uuid, 'supplier+solar@test.euha',   'Noon Ember Pineapple',       'Pineapple, scotch bonnet, turmeric, cider vinegar','None', 'Fruit-forward',  'arrived'::sauce_status,   'F202'),
       ('95dda30f-cc1d-48f2-a0fe-6b7e0cc0b032'::uuid, 'supplier+molten@test.euha',  'Alpine Ghost Reduction',     'Ghost pepper, black garlic, molasses, cocoa',    'Soy',    'Experimental',   'arrived'::sauce_status,   'E301'),
-      ('ae551b64-6d3b-4f69-b5f3-38fa38fd1e2a'::uuid, 'supplier+crimson@test.euha', 'Harbor Blaze Sriracha',      'Red jalapeño, garlic, palm sugar, rice vinegar', 'None',   'Classic',        'boxed'::sauce_status,     'C401'),
-      ('5a58f4c5-b874-45ad-9e06-13b6f33f27be'::uuid, 'supplier+zen@test.euha',     'Umami Ember Gochujang',      'Gochujang, smoked chili, sesame oil, mirin',     'Sesame', 'Asian-inspired', 'registered'::sauce_status,'A501'),
+      ('ae551b64-6d3b-4f69-b5f3-38fa38fd1e2a'::uuid, 'supplier+crimson@test.euha', 'Harbor Blaze Sriracha',      'Red jalapeño, garlic, palm sugar, rice vinegar', 'None',   'Classic',        'arrived'::sauce_status,   'C401'),
+      ('5a58f4c5-b874-45ad-9e06-13b6f33f27be'::uuid, 'supplier+zen@test.euha',     'Umami Ember Gochujang',      'Gochujang, smoked chili, sesame oil, mirin',     'Sesame', 'Asian-inspired', 'arrived'::sauce_status,   'A501'),
       ('d8f9e4e5-e5aa-484a-97c9-1d965a45e146'::uuid, 'supplier+verdant@test.euha', 'Garden Fury Verde',          'Tomatillo, serrano, cilantro, roasted garlic',   'None',   'Verde',          'arrived'::sauce_status,   'V601'),
-      ('a4695716-0dfd-4bee-8f9e-4dd45da0766a'::uuid, 'supplier+verdant@test.euha', 'Greenhouse Blaze',           'Jalapeño, kiwi, parsley, white wine vinegar',    'None',   'Verde',          'registered'::sauce_status,'V602'),
-      ('7086a4e3-64a3-4d93-9be3-381d61f2cef4'::uuid, 'supplier+molten@test.euha',  'Midnight Ember Espresso',    'Cascabel chili, espresso, cacao nibs, panela',  'None',   'Experimental',   'registered'::sauce_status,'E302')
+      ('a4695716-0dfd-4bee-8f9e-4dd45da0766a'::uuid, 'supplier+verdant@test.euha', 'Greenhouse Blaze',           'Jalapeño, kiwi, parsley, white wine vinegar',    'None',   'Verde',          'arrived'::sauce_status,   'V602'),
+      ('7086a4e3-64a3-4d93-9be3-381d61f2cef4'::uuid, 'supplier+molten@test.euha',  'Midnight Ember Espresso',    'Cascabel chili, espresso, cacao nibs, panela',   'None',   'Experimental',   'arrived'::sauce_status,   'E302'),
+      ('c5d6e7f8-9a0b-1c2d-3e4f-567890abcdef'::uuid, 'supplier+thunder@test.euha', 'Lightning Strike Carolina',  'Carolina reaper, honey, apple cider, mustard',   'Mustard','Superhot',       'arrived'::sauce_status,   'S701'),
+      ('d6e7f8a9-0b1c-2d3e-4f56-7890abcdef01'::uuid, 'supplier+island@test.euha',  'Tropical Thunder Passion',   'Passionfruit, habanero, coconut, lime zest',     'None',   'Fruit-forward',  'arrived'::sauce_status,   'F703'),
+      ('e7f8a9b0-1c2d-3e4f-5678-90abcdef0123'::uuid, 'supplier+nordic@test.euha',  'Arctic Blaze Birch Smoke',   'Smoked birch, chipotle, maple syrup, sea salt',  'None',   'Smoke & Wood',   'arrived'::sauce_status,   'S804'),
+      ('f8a9b0c1-2d3e-4f56-7890-abcdef012345'::uuid, 'supplier+thunder@test.euha', 'Storm Surge Scorpion',       'Trinidad scorpion, mango, ginger, rice vinegar', 'None',   'Superhot',       'arrived'::sauce_status,   'S702'),
+      ('a9b0c1d2-3e4f-5678-90ab-cdef01234567'::uuid, 'supplier+island@test.euha',  'Volcanic Pineapple Heat',    'Pineapple, ghost pepper, brown sugar, allspice', 'None',   'Fruit-forward',  'arrived'::sauce_status,   'F704')
   ) AS t(id, supplier_email, name, ingredients, allergens, category, status, sauce_code)
 ), sauce_source AS (
   SELECT
