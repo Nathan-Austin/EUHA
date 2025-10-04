@@ -22,6 +22,7 @@ export default function CommunityJudgeDashboard() {
   const router = useRouter();
   const [storedScores, setStoredScores] = useState<StoredScore[]>([]);
   const [scoredSauces, setScoredSauces] = useState<ScoredSauce[]>([]);
+  const [totalAssigned, setTotalAssigned] = useState<number>(0);
   const [isSubmitting, startSubmitTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -38,6 +39,7 @@ export default function CommunityJudgeDashboard() {
       const result = await getJudgeScoredSauces();
       if ('scoredSauces' in result && result.scoredSauces) {
         setScoredSauces(result.scoredSauces);
+        setTotalAssigned(result.totalAssigned || 0);
       }
     };
     loadScoredSauces();
@@ -72,15 +74,17 @@ export default function CommunityJudgeDashboard() {
         <div>
           <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Judge Dashboard</h2>
           <p className="text-sm text-gray-600 mt-1">
-            <span className="font-semibold text-orange-600">{scoredSauces.length}/12</span> sauces judged
+            <span className="font-semibold text-orange-600">{scoredSauces.length}/{totalAssigned}</span> sauces judged
           </p>
         </div>
-        <button
-          onClick={handleStartJudging}
-          className="w-full sm:w-auto px-4 py-3 font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700 text-center"
-        >
-          Scan Sauce QR Code
-        </button>
+        {scoredSauces.length < totalAssigned && (
+          <button
+            onClick={handleStartJudging}
+            className="w-full sm:w-auto px-4 py-3 font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700 text-center"
+          >
+            Scan Sauce QR Code
+          </button>
+        )}
       </div>
 
       <div>

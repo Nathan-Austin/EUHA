@@ -202,7 +202,7 @@ export async function exportResults() {
   };
 
   // 2. Process data
-  const JUDGE_WEIGHTS: Record<JudgeType, number> = { pro: 0.8, community: 1.5, supplier: 0.8 };
+  const JUDGE_WEIGHTS: Record<JudgeType, number> = { pro: 2.0, community: 1.0, supplier: 1.0 };
   const sauceAggregates = new Map<string, {
     name: string;
     brand: string;
@@ -1026,5 +1026,11 @@ export async function getJudgeScoredSauces() {
     return acc;
   }, []) || [];
 
-  return { scoredSauces: uniqueSauces };
+  // Get total assigned sauces count
+  const { count: assignedCount } = await supabase
+    .from('box_assignments')
+    .select('*', { count: 'exact', head: true })
+    .eq('judge_id', judge.id);
+
+  return { scoredSauces: uniqueSauces, totalAssigned: assignedCount || 0 };
 }

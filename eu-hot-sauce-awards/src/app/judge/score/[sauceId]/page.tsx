@@ -30,15 +30,17 @@ export default async function ScorePage({ params }: ScorePageProps) {
     notFound();
   }
 
-  // Fetch sauce details and categories in parallel
+  // Fetch sauce details, categories, and verify assignment in parallel
   const [
     { data: sauce, error: sauceError },
     { data: categories, error: categoriesError },
-    { data: existingScores }
+    { data: existingScores },
+    { data: assignment, error: assignmentError }
   ] = await Promise.all([
     supabase.from('sauces').select('id, name, sauce_code, supplier_id, suppliers(brand_name)').eq('id', sauceId).single(),
     supabase.from('judging_categories').select('*'),
-    supabase.from('judging_scores').select('id').eq('judge_id', judge.id).eq('sauce_id', sauceId).limit(1)
+    supabase.from('judging_scores').select('id').eq('judge_id', judge.id).eq('sauce_id', sauceId).limit(1),
+    supabase.from('box_assignments').select('id').eq('judge_id', judge.id).eq('sauce_id', sauceId).single()
   ]);
 
   // Log errors for debugging
@@ -51,6 +53,31 @@ export default async function ScorePage({ params }: ScorePageProps) {
 
   if (sauceError || !sauce || categoriesError || !categories) {
     notFound();
+  }
+
+  // Check if this sauce is assigned to the judge
+  if (assignmentError || !assignment) {
+    return (
+      <div className="container mx-auto p-4 md:p-8">
+        <div className="max-w-3xl mx-auto">
+          <div className="bg-red-50 border border-red-300 p-8 rounded-lg shadow-md">
+            <h1 className="text-2xl font-bold text-red-800 mb-4">Not Assigned</h1>
+            <p className="text-red-700 mb-4">
+              This sauce is not assigned to you. Please only score sauces in your judging box.
+            </p>
+            <p className="text-sm text-red-600 mb-6">
+              If you believe this is an error, please contact an administrator.
+            </p>
+            <a
+              href="/dashboard"
+              className="inline-block px-6 py-3 bg-red-600 text-white font-semibold rounded-md hover:bg-red-700"
+            >
+              Return to Dashboard
+            </a>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   // Check if judge has already scored this sauce
