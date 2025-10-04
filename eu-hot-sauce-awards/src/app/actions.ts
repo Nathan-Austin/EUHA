@@ -985,3 +985,46 @@ export async function checkConflictOfInterest(judgeId: string, sauceId: string) 
     message: '✓ No conflict of interest detected',
   };
 }
+
+export async function getJudgeScoredSauces() {
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user?.email) {
+    return { error: 'Not authenticated' };
+  }
+
+  // Get judge ID
+  const { data: judge } = await supabase
+    .from('judges')
+    .select('id')
+    .eq('email', user.email)
+    .single();
+
+  if (!judge) {
+    return { error: 'Judge not found' };
+  }
+
+  // Get distinct sauces that this judge has scored
+  const { data: scores, error } = await supabase
+    .from('judging_scores')
+    .select('sauce_id, sauces(sauce_code)')
+    .eq('judge_id', judge.id);
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  // Get unique sauce codes
+  const uniqueSauces = scores?.reduce((acc: { sauceId: string; sauceCode: string }[], score) => {
+    const sauceCode = (score.sauces as any)?.sauce_code || 'N/A';
+    const existing = acc.find(s => s.sauceId === score.sauce_id);
+    if (!existing) {
+      acc.push({ sauceId: score.sauce_id, sauceCode });
+    }
+    return acc;
+  }, []) || [];
+
+  return { scoredSauces: uniqueSauces };
+}

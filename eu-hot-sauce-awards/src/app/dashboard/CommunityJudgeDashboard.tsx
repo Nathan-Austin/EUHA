@@ -3,7 +3,7 @@
 import { useState, useEffect, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { submitAllScores } from '@/app/actions';
+import { submitAllScores, getJudgeScoredSauces } from '@/app/actions';
 
 // The shape of our local storage data
 interface StoredScore {
@@ -13,9 +13,15 @@ interface StoredScore {
   comment: string;
 }
 
+interface ScoredSauce {
+  sauceId: string;
+  sauceCode: string;
+}
+
 export default function CommunityJudgeDashboard() {
   const router = useRouter();
   const [storedScores, setStoredScores] = useState<StoredScore[]>([]);
+  const [scoredSauces, setScoredSauces] = useState<ScoredSauce[]>([]);
   const [isSubmitting, startSubmitTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -26,6 +32,15 @@ export default function CommunityJudgeDashboard() {
     if (savedScores) {
       setStoredScores(Object.values(JSON.parse(savedScores)));
     }
+
+    // Load scored sauces from database
+    const loadScoredSauces = async () => {
+      const result = await getJudgeScoredSauces();
+      if ('scoredSauces' in result) {
+        setScoredSauces(result.scoredSauces);
+      }
+    };
+    loadScoredSauces();
   }, []);
 
   const handleSubmitAll = () => {
@@ -54,7 +69,12 @@ export default function CommunityJudgeDashboard() {
 
       {/* Mobile-optimized header */}
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
-        <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Judge Dashboard</h2>
+        <div>
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Judge Dashboard</h2>
+          <p className="text-sm text-gray-600 mt-1">
+            <span className="font-semibold text-orange-600">{scoredSauces.length}/12</span> sauces judged
+          </p>
+        </div>
         <button
           onClick={handleStartJudging}
           className="w-full sm:w-auto px-4 py-3 font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700 text-center"
@@ -104,6 +124,26 @@ export default function CommunityJudgeDashboard() {
           <p className="text-gray-600 text-sm sm:text-base">You have no scores pending submission. Scan a QR code to begin.</p>
         )}
       </div>
+
+      {/* Scored Sauces Section */}
+      <div className="pt-4 border-t border-gray-300">
+        <h3 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4 text-gray-900">Completed Scores</h3>
+        {scoredSauces.length > 0 ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+            {scoredSauces.map((sauce) => (
+              <div
+                key={sauce.sauceId}
+                className="px-3 py-2 bg-green-50 border border-green-300 rounded-lg text-center"
+              >
+                <p className="text-sm font-semibold text-green-800">{sauce.sauceCode}</p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-gray-600 text-sm sm:text-base">No sauces scored yet. Scan a QR code to begin.</p>
+        )}
+      </div>
+
       {error && <p className="mt-4 text-sm text-center text-red-600">{error}</p>}
       {success && <p className="mt-4 text-sm text-center text-green-600">{success}</p>}
     </div>
