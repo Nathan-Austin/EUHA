@@ -99,16 +99,15 @@ export default function ScoringForm({
 
             try {
               // Get all scores from local storage
-              const allScores = [];
-              for (let i = 0; i < localStorage.length; i++) {
-                const key = localStorage.key(i);
-                if (key?.startsWith('sauce_')) {
-                  const scoreData = localStorage.getItem(key);
-                  if (scoreData) {
-                    allScores.push(JSON.parse(scoreData));
-                  }
-                }
+              const raw = localStorage.getItem('judgeScores');
+              if (!raw) {
+                setSubmitError('No scores to submit.');
+                setIsSubmitting(false);
+                return;
               }
+
+              const scoresData = JSON.parse(raw);
+              const allScores = Object.values(scoresData);
 
               if (allScores.length === 0) {
                 setSubmitError('No scores to submit.');
@@ -126,12 +125,7 @@ export default function ScoringForm({
               }
 
               // Clear local storage on success
-              for (let i = localStorage.length - 1; i >= 0; i--) {
-                const key = localStorage.key(i);
-                if (key?.startsWith('sauce_')) {
-                  localStorage.removeItem(key);
-                }
-              }
+              localStorage.removeItem('judgeScores');
 
               // Redirect to dashboard
               router.push('/dashboard');

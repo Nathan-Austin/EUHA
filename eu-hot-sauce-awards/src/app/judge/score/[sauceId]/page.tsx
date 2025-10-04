@@ -36,7 +36,7 @@ export default async function ScorePage({ params }: ScorePageProps) {
     { data: categories, error: categoriesError },
     { data: existingScores }
   ] = await Promise.all([
-    supabase.from('sauces').select('id, name, supplier_id, suppliers(brand_name)').eq('id', sauceId).single(),
+    supabase.from('sauces').select('id, name, code, supplier_id, suppliers(brand_name)').eq('id', sauceId).single(),
     supabase.from('judging_categories').select('*'),
     supabase.from('judging_scores').select('id').eq('judge_id', judge.id).eq('sauce_id', sauceId).limit(1)
   ]);
@@ -89,8 +89,12 @@ export default async function ScorePage({ params }: ScorePageProps) {
     <div className="container mx-auto p-4 md:p-8">
       <div className="max-w-3xl mx-auto">
         <div className="bg-white p-8 rounded-lg shadow-md">
-          <h1 className="text-3xl font-bold text-gray-900">{sauce.name}</h1>
-          <p className="text-lg text-gray-700">by {brandName}</p>
+          <div className="mb-6">
+            <div className="inline-block px-4 py-2 bg-orange-100 border-2 border-orange-600 rounded-lg mb-3">
+              <p className="text-2xl font-bold text-orange-900">Code: {sauce.code || 'N/A'}</p>
+            </div>
+            <p className="text-lg text-gray-700">by {brandName}</p>
+          </div>
           <div className="mt-4 pt-4 border-t border-gray-300">
             <h2 className="text-2xl font-semibold mb-4 text-gray-900">Submit Your Scores</h2>
             <ScoringForm
