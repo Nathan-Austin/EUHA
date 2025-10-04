@@ -45,15 +45,8 @@ export default function CommunityJudgeDashboard() {
   };
 
   const handleStartJudging = () => {
-    // Check if judge session exists
-    const sessionData = localStorage.getItem('activeJudgeSession');
-    if (sessionData) {
-      // Session exists, go directly to sauce scanner
-      router.push('/judge/scan');
-    } else {
-      // No session, need to scan judge QR code first
-      router.push('/judge/start');
-    }
+    // Go directly to scanner - it will auto-create session from logged-in user
+    router.push('/judge/scan');
   };
 
   return (

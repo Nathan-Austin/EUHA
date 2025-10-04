@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useCallback, useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
+import { createClient } from '@/lib/supabase/client';
 
 const QrScanner = dynamic(
   () => import('@yudiel/react-qr-scanner').then(mod => mod.QrScanner),
@@ -55,21 +56,45 @@ export default function ScanPage() {
   }, []);
 
   useEffect(() => {
-    // Check if active judge session exists
-    const sessionData = localStorage.getItem('activeJudgeSession');
-    if (!sessionData) {
-      router.push('/judge/start');
-      return;
-    }
+    // Auto-create session from logged-in user
+    const initializeSession = async () => {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
 
-    // Session exists, allow scanning
-    setIsCheckingSession(false);
+      if (!user?.email) {
+        router.push('/login');
+        return;
+      }
+
+      // Get judge info
+      const { data: judge } = await supabase
+        .from('judges')
+        .select('id, type, stripe_payment_status')
+        .eq('email', user.email)
+        .single();
+
+      if (!judge) {
+        router.push('/dashboard');
+        return;
+      }
+
+      // Create/update session automatically
+      localStorage.setItem('activeJudgeSession', JSON.stringify({
+        judgeId: judge.id,
+        email: user.email,
+        timestamp: Date.now()
+      }));
+
+      setIsCheckingSession(false);
+    };
+
+    initializeSession();
   }, [router]);
 
   if (isCheckingSession) {
     return (
       <div className="container mx-auto p-4 text-center">
-        <h1 className="text-2xl font-bold mb-4">Verifying session...</h1>
+        <h1 className="text-2xl font-bold mb-4">Preparing scanner...</h1>
       </div>
     );
   }
