@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 
 const QrScanner = dynamic(
@@ -13,6 +13,7 @@ export default function ScanPage() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
 
   const handleDecode = useCallback(
     (value: string | null) => {
@@ -41,6 +42,26 @@ export default function ScanPage() {
       setError(scanError.message);
     }
   }, []);
+
+  useEffect(() => {
+    // Check if active judge session exists
+    const sessionData = localStorage.getItem('activeJudgeSession');
+    if (!sessionData) {
+      router.push('/judge/start');
+      return;
+    }
+
+    // Session exists, allow scanning
+    setIsCheckingSession(false);
+  }, [router]);
+
+  if (isCheckingSession) {
+    return (
+      <div className="container mx-auto p-4 text-center">
+        <h1 className="text-2xl font-bold mb-4">Verifying session...</h1>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto p-4 text-center">

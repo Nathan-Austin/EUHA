@@ -1,7 +1,9 @@
 'use client';
 
 import { useScoreStorage } from '@/hooks/useScoreStorage';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
+import { submitAllScores } from '@/app/actions';
 
 interface Category {
   id: string;
@@ -19,7 +21,10 @@ export default function ScoringForm({
   sauceName,
   categories,
 }: ScoringFormProps) {
+  const router = useRouter();
   const { scores, comment, handleScoreChange, handleCommentChange } = useScoreStorage(sauceId, sauceName);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   return (
     <form className="space-y-6">
@@ -65,14 +70,83 @@ export default function ScoringForm({
         />
       </div>
 
-      <div className="pt-6">
-        <Link
-          href="/dashboard"
-          className="w-full flex justify-center px-4 py-3 font-medium text-white bg-green-600 rounded-md hover:bg-green-700"
+      {submitError && (
+        <div className="p-4 bg-red-100 border border-red-300 rounded-md text-red-700">
+          {submitError}
+        </div>
+      )}
+
+      <div className="pt-6 space-y-3">
+        <button
+          type="button"
+          onClick={async () => {
+            // Scores are already saved in local storage, just navigate to scanner
+            router.push('/judge/scan');
+          }}
+          className="w-full flex justify-center px-4 py-3 font-semibold text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={isSubmitting}
         >
-          Save & Close
-        </Link>
-        <p className="text-xs text-center text-gray-500 mt-2">Your progress is saved automatically.</p>
+          Save & Scan Next Sauce
+        </button>
+
+        <button
+          type="button"
+          onClick={async () => {
+            setIsSubmitting(true);
+            setSubmitError(null);
+
+            try {
+              // Get all scores from local storage
+              const allScores = [];
+              for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key?.startsWith('sauce_')) {
+                  const scoreData = localStorage.getItem(key);
+                  if (scoreData) {
+                    allScores.push(JSON.parse(scoreData));
+                  }
+                }
+              }
+
+              if (allScores.length === 0) {
+                setSubmitError('No scores to submit.');
+                setIsSubmitting(false);
+                return;
+              }
+
+              // Submit all scores to database
+              const result = await submitAllScores(JSON.stringify(allScores));
+
+              if ('error' in result) {
+                setSubmitError(result.error);
+                setIsSubmitting(false);
+                return;
+              }
+
+              // Clear local storage on success
+              for (let i = localStorage.length - 1; i >= 0; i--) {
+                const key = localStorage.key(i);
+                if (key?.startsWith('sauce_')) {
+                  localStorage.removeItem(key);
+                }
+              }
+
+              // Redirect to dashboard
+              router.push('/dashboard');
+            } catch (err) {
+              setSubmitError('An unexpected error occurred. Please try again.');
+              setIsSubmitting(false);
+            }
+          }}
+          className="w-full flex justify-center px-4 py-3 font-medium text-white bg-green-600 rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? 'Submitting...' : 'Save & Continue Later'}
+        </button>
+
+        <p className="text-xs text-center text-gray-500">
+          Scores are saved automatically as you go. "Continue Later" submits all your scores to the database.
+        </p>
       </div>
     </form>
   );
