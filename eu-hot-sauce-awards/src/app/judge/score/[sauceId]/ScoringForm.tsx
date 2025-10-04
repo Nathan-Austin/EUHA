@@ -118,7 +118,7 @@ export default function ScoringForm({
               const result = await submitAllScores(JSON.stringify(allScores));
 
               if ('error' in result) {
-                setSubmitError(result.error);
+                setSubmitError(result.error || 'Failed to submit scores');
                 setIsSubmitting(false);
                 return;
               }

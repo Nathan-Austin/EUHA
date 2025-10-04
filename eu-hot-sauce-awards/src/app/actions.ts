@@ -658,20 +658,33 @@ export async function recordBottleScan(judgeId: string, sauceId: string) {
     return { error: `Sauce ${sauce.sauce_code} is not in "arrived" status. Current status: ${sauce.status}` };
   }
 
-  // Ensure sauce is not already assigned to another judge
+  // Check if sauce is already assigned to THIS judge (prevent duplicates in same box)
   const { data: existingAssignments, error: existingError } = await adminSupabase
     .from('box_assignments')
     .select('id, judge_id')
-    .eq('sauce_id', sauceId);
+    .eq('sauce_id', sauceId)
+    .eq('judge_id', judgeId);
 
   if (existingError) {
     return { error: `Failed to check existing assignments: ${existingError.message}` };
   }
 
-  const assignedToOtherJudge = (existingAssignments || []).find((assignment: any) => assignment.judge_id && assignment.judge_id !== judgeId);
+  if (existingAssignments && existingAssignments.length > 0) {
+    return { error: 'This sauce is already in this judge\'s box.' };
+  }
 
-  if (assignedToOtherJudge) {
-    return { error: 'This sauce is already assigned to a different judge box.' };
+  // Check if sauce has reached maximum assignments (7 bottles total)
+  const { count: totalAssignments, error: countError } = await adminSupabase
+    .from('box_assignments')
+    .select('*', { count: 'exact', head: true })
+    .eq('sauce_id', sauceId);
+
+  if (countError) {
+    return { error: `Failed to count assignments: ${countError.message}` };
+  }
+
+  if ((totalAssignments || 0) >= 7) {
+    return { error: 'This sauce has already been assigned to 7 judges (maximum reached).' };
   }
 
   // Record the scan
@@ -701,30 +714,17 @@ export async function recordBottleScan(judgeId: string, sauceId: string) {
   const judgeDisplayName = judge.name || judge.email?.split('@')[0] || `Judge ${judge.id.substring(0, 8)}`;
   const boxLabel = `Judge ${judgeDisplayName}`;
 
-  if ((existingAssignments || []).length > 0) {
-    const assignmentId = existingAssignments?.[0]?.id;
-    if (assignmentId) {
-      const { error: updateAssignmentError } = await adminSupabase
-        .from('box_assignments')
-        .update({ judge_id: judgeId, box_label: boxLabel })
-        .eq('id', assignmentId);
+  // Create new assignment (we already checked this judge doesn't have this sauce)
+  const { error: assignmentInsertError } = await adminSupabase
+    .from('box_assignments')
+    .insert({
+      sauce_id: sauceId,
+      judge_id: judgeId,
+      box_label: boxLabel,
+    });
 
-      if (updateAssignmentError) {
-        return { error: `Failed to update box assignment: ${updateAssignmentError.message}` };
-      }
-    }
-  } else {
-    const { error: assignmentInsertError } = await adminSupabase
-      .from('box_assignments')
-      .insert({
-        sauce_id: sauceId,
-        judge_id: judgeId,
-        box_label: boxLabel,
-      });
-
-    if (assignmentInsertError) {
-      return { error: `Failed to assign sauce to judge box: ${assignmentInsertError.message}` };
-    }
+  if (assignmentInsertError) {
+    return { error: `Failed to assign sauce to judge box: ${assignmentInsertError.message}` };
   }
 
   const { count: assignedCount, error: assignedCountError } = await adminSupabase
