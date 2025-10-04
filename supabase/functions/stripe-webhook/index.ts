@@ -135,6 +135,7 @@ Deno.serve(async (req) => {
         console.log('Judge payment status updated successfully');
       } else if (metadata.type === 'supplier') {
         const paymentId = metadata.payment_id;
+        const supplierEmail = metadata.supplier_email;
 
         if (!paymentId) {
           console.error('Missing supplier payment identifier in checkout session');
@@ -143,6 +144,30 @@ Deno.serve(async (req) => {
 
         console.log('Updating supplier payment status', { paymentId });
 
+        // Get supplier and payment details
+        const { data: payment, error: paymentError } = await supabaseAdmin
+          .from('supplier_payments')
+          .select('supplier_id, entry_count, amount_due_cents')
+          .eq('id', paymentId)
+          .single();
+
+        if (paymentError) {
+          console.error('Failed to fetch payment details', paymentError);
+          throw paymentError;
+        }
+
+        const { data: supplier, error: supplierError } = await supabaseAdmin
+          .from('suppliers')
+          .select('email, brand_name')
+          .eq('id', payment.supplier_id)
+          .single();
+
+        if (supplierError) {
+          console.error('Failed to fetch supplier', supplierError);
+          throw supplierError;
+        }
+
+        // Update payment status
         const { error } = await supabaseAdmin
           .from('supplier_payments')
           .update({
@@ -156,6 +181,38 @@ Deno.serve(async (req) => {
         }
 
         console.log('Supplier payment status updated successfully');
+
+        // Create or update judge profile for supplier
+        const { error: judgeError } = await supabaseAdmin
+          .from('judges')
+          .upsert({
+            email: supplier.email,
+            type: 'supplier',
+            active: true,
+          }, {
+            onConflict: 'email',
+            ignoreDuplicates: false,
+          });
+
+        if (judgeError) {
+          console.error('Failed to create/update supplier judge', judgeError);
+          // Don't throw - payment already succeeded, this is a secondary operation
+        } else {
+          console.log('Supplier judge profile created/updated');
+        }
+
+        // TODO: Send confirmation email
+        // await sendEmail({
+        //   to: supplier.email,
+        //   subject: 'EU Hot Sauce Awards - Payment Confirmed',
+        //   html: emailTemplates.supplierPaymentConfirmation(
+        //     supplier.brand_name,
+        //     payment.entry_count,
+        //     (payment.amount_due_cents / 100).toFixed(2)
+        //   ).html
+        // });
+
+        console.log('Supplier payment confirmation complete');
       } else {
         // No metadata type - might be an old session or test payment
         console.warn('Webhook received payment without valid metadata.type', {
