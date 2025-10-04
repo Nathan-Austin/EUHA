@@ -700,13 +700,13 @@ export async function recordBottleScan(judgeId: string, sauceId: string) {
   }
 
   // Count total scans for this sauce
-  const { count: scanCount, error: countError } = await adminSupabase
+  const { count: scanCount, error: scanCountError } = await adminSupabase
     .from('bottle_scans')
     .select('*', { count: 'exact', head: true })
     .eq('sauce_id', sauceId);
 
-  if (countError) {
-    return { error: `Failed to count scans: ${countError.message}` };
+  if (scanCountError) {
+    return { error: `Failed to count scans: ${scanCountError.message}` };
   }
 
   const totalScans = scanCount || 0;
