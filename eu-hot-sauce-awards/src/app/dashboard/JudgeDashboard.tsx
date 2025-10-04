@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useTransition } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { submitAllScores } from '@/app/actions';
 
 // The shape of our local storage data
@@ -13,6 +14,7 @@ interface StoredScore {
 }
 
 export default function JudgeDashboard() {
+  const router = useRouter();
   const [storedScores, setStoredScores] = useState<StoredScore[]>([]);
   const [isSubmitting, startSubmitTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -42,49 +44,79 @@ export default function JudgeDashboard() {
     });
   };
 
+  const handleStartJudging = () => {
+    // Check if judge session exists
+    const sessionData = localStorage.getItem('activeJudgeSession');
+    if (sessionData) {
+      // Session exists, go directly to sauce scanner
+      router.push('/judge/scan');
+    } else {
+      // No session, need to scan judge QR code first
+      router.push('/judge/start');
+    }
+  };
+
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Judge Dashboard</h2>
-        <Link href="/judge/scan" className="px-4 py-2 font-medium text-white bg-green-600 rounded-md hover:bg-green-700">
-          Scan New Sauce
-        </Link>
+    <div className="space-y-4 sm:space-y-6">
+      {/* Header Banner */}
+      <div className="w-full -mt-6 -mx-8 mb-4 sm:mb-6">
+        <img
+          src="/cropped-banner-website.jpg"
+          alt="EU Hot Sauce Awards"
+          className="w-full h-auto"
+        />
+      </div>
+
+      {/* Mobile-optimized header */}
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Judge Dashboard</h2>
+        <button
+          onClick={handleStartJudging}
+          className="w-full sm:w-auto px-4 py-3 font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700 text-center"
+        >
+          Scan Sauce QR Code
+        </button>
       </div>
 
       <div>
-        <h3 className="text-xl font-semibold mb-4">Sauces Pending Submission</h3>
+        <h3 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4 text-gray-900">Sauces Pending Submission</h3>
         {storedScores.length > 0 ? (
           <div className="space-y-4">
-            <div className="border rounded-md">
-              <table className="min-w-full">
-                <tbody>
-                  {storedScores.map((score) => (
-                    <tr key={score.sauceId} className="border-t">
-                      <td className="px-4 py-3">
-                        <p className="font-medium">{score.sauceName}</p>
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <Link href={`/judge/score/${score.sauceId}`} className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700">
-                          Edit Score
-                        </Link>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            {/* Mobile: Card layout, Desktop: Table */}
+            <div className="space-y-3 sm:space-y-0 sm:border sm:border-gray-300 sm:rounded-md sm:bg-white">
+              {storedScores.map((score, index) => (
+                <div
+                  key={score.sauceId}
+                  className="border border-gray-300 rounded-lg p-4 bg-white sm:border-0 sm:rounded-none sm:border-t sm:first:border-t-0 sm:p-0"
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-0">
+                    <div className="flex-1 sm:px-4 sm:py-3">
+                      <p className="font-medium text-gray-900">{score.sauceName}</p>
+                    </div>
+                    <div className="sm:px-4 sm:py-3">
+                      <Link
+                        href={`/judge/score/${score.sauceId}`}
+                        className="block w-full sm:inline-block sm:w-auto px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 text-center"
+                      >
+                        Edit Score
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
-            <div className="pt-4 text-right">
+            <div className="pt-2">
               <button
                 onClick={handleSubmitAll}
                 disabled={isSubmitting}
-                className="px-6 py-3 font-semibold text-white bg-red-600 rounded-md hover:bg-red-700 disabled:bg-red-400"
+                className="w-full sm:w-auto sm:float-right px-6 py-3 font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:bg-red-400"
               >
                 {isSubmitting ? 'Submitting...' : 'Submit All Final Scores'}
               </button>
             </div>
           </div>
         ) : (
-          <p className="text-gray-500">You have no scores pending submission. Scan a QR code to begin.</p>
+          <p className="text-gray-600 text-sm sm:text-base">You have no scores pending submission. Scan a QR code to begin.</p>
         )}
       </div>
       {error && <p className="mt-4 text-sm text-center text-red-600">{error}</p>}
