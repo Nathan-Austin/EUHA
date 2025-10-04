@@ -8,7 +8,7 @@ import { submitAllScores } from '@/app/actions';
 // The shape of our local storage data
 interface StoredScore {
   sauceId: string;
-  sauceName: string; // It's helpful to store the name too
+  sauceCode: string;
   scores: Record<string, number>;
   comment: string;
 }
@@ -76,7 +76,7 @@ export default function JudgeDashboard() {
                 >
                   <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-0">
                     <div className="flex-1 sm:px-4 sm:py-3">
-                      <p className="font-medium text-gray-900">{score.sauceName}</p>
+                      <p className="font-medium text-gray-900">Code: {score.sauceCode}</p>
                     </div>
                     <div className="sm:px-4 sm:py-3">
                       <Link

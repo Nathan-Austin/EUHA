@@ -68,7 +68,7 @@ export default async function ScorePage({ params }: ScorePageProps) {
           <div className="bg-yellow-50 border border-yellow-300 p-8 rounded-lg shadow-md">
             <h1 className="text-2xl font-bold text-yellow-800 mb-4">Already Scored</h1>
             <p className="text-yellow-700 mb-4">
-              You have already submitted scores for <strong>{sauce.name}</strong> by {brandName}.
+              You have already submitted scores for sauce code <strong>{sauce.sauce_code || 'N/A'}</strong> by {brandName}.
             </p>
             <p className="text-sm text-yellow-600 mb-6">
               Each sauce can only be scored once. If you need to update your score, please contact an administrator.
@@ -99,7 +99,7 @@ export default async function ScorePage({ params }: ScorePageProps) {
             <h2 className="text-2xl font-semibold mb-4 text-gray-900">Submit Your Scores</h2>
             <ScoringForm
               sauceId={sauce.id}
-              sauceName={sauce.name}
+              sauceCode={sauce.sauce_code || 'N/A'}
               categories={categories}
             />
           </div>

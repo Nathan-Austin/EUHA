@@ -12,17 +12,17 @@ interface Category {
 
 interface ScoringFormProps {
   sauceId: string;
-  sauceName: string;
+  sauceCode: string;
   categories: Category[];
 }
 
 export default function ScoringForm({
   sauceId,
-  sauceName,
+  sauceCode,
   categories,
 }: ScoringFormProps) {
   const router = useRouter();
-  const { scores, comment, handleScoreChange, handleCommentChange } = useScoreStorage(sauceId, sauceName);
+  const { scores, comment, handleScoreChange, handleCommentChange } = useScoreStorage(sauceId, sauceCode);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 

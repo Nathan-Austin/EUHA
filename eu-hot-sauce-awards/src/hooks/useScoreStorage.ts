@@ -6,14 +6,14 @@ const STORAGE_KEY = 'judgeScores';
 
 export interface StoredScoreData {
   sauceId: string;
-  sauceName: string;
+  sauceCode: string;
   scores: Record<string, number>;
   comment: string;
 }
 
 type ScoreStorage = Record<string, StoredScoreData>;
 
-export function useScoreStorage(sauceId: string, sauceName: string) {
+export function useScoreStorage(sauceId: string, sauceCode: string) {
   const [scores, setScores] = useState<Record<string, number>>({});
   const [comment, setComment] = useState('');
 
@@ -47,13 +47,13 @@ export function useScoreStorage(sauceId: string, sauceName: string) {
 
     const currentData = allScores[sauceId] || {
       sauceId,
-      sauceName,
+      sauceCode,
       scores: {},
       comment: '',
     };
 
     const updatedData = { ...currentData, [key]: value };
-    
+
     const newAllScores = { ...allScores, [sauceId]: updatedData };
 
     try {
@@ -61,7 +61,7 @@ export function useScoreStorage(sauceId: string, sauceName: string) {
     } catch (writeError) {
       console.warn('Unable to persist judge scores', writeError);
     }
-  }, [readAllScores, sauceId, sauceName]);
+  }, [readAllScores, sauceId, sauceCode]);
 
 
   const handleScoreChange = (categoryId: string, newScore: number) => {
