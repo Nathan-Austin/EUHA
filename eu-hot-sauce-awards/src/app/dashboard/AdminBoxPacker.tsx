@@ -26,6 +26,7 @@ export default function AdminBoxPacker() {
   const [isCameraSupported, setIsCameraSupported] = useState(true);
   const [lastProcessedScan, setLastProcessedScan] = useState<{ value: string; timestamp: number } | null>(null);
   const messageTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const currentJudgeIdRef = useRef<string | null>(null);
 
   const loadPackingStatus = useCallback(async () => {
     setIsLoading(true);
@@ -83,6 +84,7 @@ export default function AdminBoxPacker() {
 
   const resetJudgeContext = useCallback(() => {
     setCurrentJudgeId(null);
+    currentJudgeIdRef.current = null;
     setCurrentJudgeName(null);
     setBoxSauces([]);
   }, []);
@@ -130,22 +132,19 @@ export default function AdminBoxPacker() {
     const sauceUrlMatch = trimmedValue.match(/\/judge\/score\/([a-f0-9-]+)/i);
 
     // If it's a sauce URL but we don't have a judge yet, show error
-    if (sauceUrlMatch && !currentJudgeId) {
+    if (sauceUrlMatch && !currentJudgeIdRef.current) {
       showTimedMessage('❌ Please scan a judge QR code first before scanning sauces.', 5000);
       return;
     }
 
     // If no judge selected yet, treat this as a judge scan
-    if (!currentJudgeId) {
+    if (!currentJudgeIdRef.current) {
       // Extract UUID from plain value (judge QR codes are just UUIDs)
       const judgeIdMatch = trimmedValue.match(/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/i);
       const judgeId = judgeIdMatch ? judgeIdMatch[1] : trimmedValue;
 
-      // Debug: Log what we're scanning
-      console.log('Raw scanned value:', trimmedValue);
-      console.log('Extracted judge ID:', judgeId);
-
       setCurrentJudgeId(judgeId);
+      currentJudgeIdRef.current = judgeId;
       setBoxSauces([]);
       const assignmentInfo = await loadJudgeBoxAssignments(judgeId);
       const judgeLabel = assignmentInfo?.judgeName || `Judge ${judgeId.substring(0, 8)}`;
@@ -162,8 +161,16 @@ export default function AdminBoxPacker() {
 
     // We have a judge, now scan the sauce
     const sauceId = sauceUrlMatch ? sauceUrlMatch[1] : trimmedValue;
+    const activeJudgeId = currentJudgeIdRef.current!;
 
-    const conflictCheck = await checkConflictOfInterest(currentJudgeId, sauceId);
+    // Check if we're accidentally scanning a judge QR code instead of a sauce
+    const isPossiblyJudgeQR = !sauceUrlMatch && /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(trimmedValue);
+    if (isPossiblyJudgeQR && trimmedValue === activeJudgeId) {
+      showTimedMessage('⚠️ You scanned the same judge QR code again. Please scan a sauce QR code.', 4000);
+      return;
+    }
+
+    const conflictCheck = await checkConflictOfInterest(activeJudgeId, sauceId);
 
     if ('error' in conflictCheck) {
       showTimedMessage(`❌ Error: ${conflictCheck.error}`, 6000);
@@ -175,15 +182,15 @@ export default function AdminBoxPacker() {
       return;
     }
 
-    const result = await recordBottleScan(currentJudgeId, sauceId);
+    const result = await recordBottleScan(activeJudgeId, sauceId);
 
     if ('error' in result) {
       showTimedMessage(`❌ Error: ${result.error}`, 6000);
       return;
     }
 
-    const assignmentInfo = await loadJudgeBoxAssignments(currentJudgeId);
-    const judgeLabel = assignmentInfo?.judgeName ?? result.judgeName ?? currentJudgeName ?? `Judge ${currentJudgeId.substring(0, 8)}`;
+    const assignmentInfo = await loadJudgeBoxAssignments(activeJudgeId);
+    const judgeLabel = assignmentInfo?.judgeName ?? result.judgeName ?? currentJudgeName ?? `Judge ${activeJudgeId.substring(0, 8)}`;
     setCurrentJudgeName(judgeLabel);
 
     if (assignmentInfo?.error) {

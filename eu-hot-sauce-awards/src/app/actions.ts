@@ -636,7 +636,7 @@ export async function recordBottleScan(judgeId: string, sauceId: string) {
     .single();
 
   if (judgeError || !judge) {
-    return { error: 'Judge not found.' };
+    return { error: `Judge not found. Error: ${judgeError?.message || 'No judge data'}` };
   }
 
   if (judge.active === false) {
@@ -938,19 +938,27 @@ export async function checkConflictOfInterest(judgeId: string, sauceId: string) 
     return { error: 'You are not authorized.' };
   }
 
+  // Use service client to bypass RLS
+  const serviceClientResult = getServiceSupabase();
+  if ('error' in serviceClientResult) {
+    return { error: serviceClientResult.error };
+  }
+
+  const adminSupabase = serviceClientResult.client;
+
   // Get judge info
-  const { data: judge, error: judgeError } = await supabase
+  const { data: judge, error: judgeError } = await adminSupabase
     .from('judges')
     .select('email, type, name')
     .eq('id', judgeId)
     .single();
 
   if (judgeError || !judge) {
-    return { error: 'Judge not found.' };
+    return { error: `Judge not found. ${judgeError?.message || ''}` };
   }
 
   // Get sauce info with supplier
-  const { data: sauce, error: sauceError } = await supabase
+  const { data: sauce, error: sauceError } = await adminSupabase
     .from('sauces')
     .select('id, name, sauce_code, suppliers ( email, brand_name )')
     .eq('id', sauceId)
