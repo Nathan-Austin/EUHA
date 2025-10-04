@@ -63,17 +63,19 @@ export default async function DashboardPage() {
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100">
-      <div className="w-full max-w-2xl p-8 space-y-6 bg-white rounded-lg shadow-md">
-        <header className="flex items-center justify-between">
-            <div>
-                <h1 className="text-2xl font-bold">Dashboard</h1>
-                <p className="text-sm text-gray-600">Logged in as {user.email}</p>
-            </div>
-            <LogoutButton />
-        </header>
-        <main className="pt-4 border-t">
-            {renderDashboard()}
-        </main>
+      <div className="w-full max-w-2xl bg-white rounded-lg shadow-md overflow-hidden">
+        <div className="p-8 space-y-6">
+          <header className="flex items-center justify-between">
+              <div>
+                  <h1 className="text-2xl font-bold">Dashboard</h1>
+                  <p className="text-sm text-gray-600">Logged in as {user.email}</p>
+              </div>
+              <LogoutButton />
+          </header>
+          <main className="pt-4 border-t">
+              {renderDashboard()}
+          </main>
+        </div>
       </div>
     </div>
   )
