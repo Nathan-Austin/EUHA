@@ -58,34 +58,44 @@ export default function ScanPage() {
   useEffect(() => {
     // Auto-create session from logged-in user
     const initializeSession = async () => {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
+      try {
+        const supabase = createClient();
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
 
-      if (!user?.email) {
-        router.push('/login');
-        return;
+        if (userError || !user?.email) {
+          console.error('Auth error:', userError);
+          router.push('/login');
+          return;
+        }
+
+        // Get judge info
+        const { data: judge, error: judgeError } = await supabase
+          .from('judges')
+          .select('id, type, stripe_payment_status')
+          .eq('email', user.email)
+          .single();
+
+        if (judgeError || !judge) {
+          console.error('Judge lookup error:', judgeError);
+          router.push('/dashboard');
+          return;
+        }
+
+        // Create/update session automatically (only in browser)
+        if (typeof window !== 'undefined' && window.localStorage) {
+          localStorage.setItem('activeJudgeSession', JSON.stringify({
+            judgeId: judge.id,
+            email: user.email,
+            timestamp: Date.now()
+          }));
+        }
+
+        setIsCheckingSession(false);
+      } catch (err) {
+        console.error('Session initialization error:', err);
+        setError(err instanceof Error ? err.message : 'Failed to initialize session');
+        setIsCheckingSession(false);
       }
-
-      // Get judge info
-      const { data: judge } = await supabase
-        .from('judges')
-        .select('id, type, stripe_payment_status')
-        .eq('email', user.email)
-        .single();
-
-      if (!judge) {
-        router.push('/dashboard');
-        return;
-      }
-
-      // Create/update session automatically
-      localStorage.setItem('activeJudgeSession', JSON.stringify({
-        judgeId: judge.id,
-        email: user.email,
-        timestamp: Date.now()
-      }));
-
-      setIsCheckingSession(false);
     };
 
     initializeSession();

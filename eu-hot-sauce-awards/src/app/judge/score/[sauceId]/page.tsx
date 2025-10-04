@@ -36,7 +36,7 @@ export default async function ScorePage({ params }: ScorePageProps) {
     { data: categories, error: categoriesError },
     { data: existingScores }
   ] = await Promise.all([
-    supabase.from('sauces').select('*, suppliers(brand_name)').eq('id', sauceId).single(),
+    supabase.from('sauces').select('*, suppliers!inner(brand_name)').eq('id', sauceId).single(),
     supabase.from('judging_categories').select('*'),
     supabase.from('judging_scores').select('id').eq('judge_id', judge.id).eq('sauce_id', sauceId).limit(1)
   ]);
@@ -48,6 +48,11 @@ export default async function ScorePage({ params }: ScorePageProps) {
   // Check if judge has already scored this sauce
   const alreadyScored = existingScores && existingScores.length > 0;
 
+  // Get brand name safely
+  const brandName = Array.isArray(sauce.suppliers) && sauce.suppliers.length > 0
+    ? sauce.suppliers[0]?.brand_name
+    : (sauce.suppliers as any)?.brand_name || 'Unknown Brand';
+
   if (alreadyScored) {
     return (
       <div className="container mx-auto p-4 md:p-8">
@@ -55,7 +60,7 @@ export default async function ScorePage({ params }: ScorePageProps) {
           <div className="bg-yellow-50 border border-yellow-300 p-8 rounded-lg shadow-md">
             <h1 className="text-2xl font-bold text-yellow-800 mb-4">Already Scored</h1>
             <p className="text-yellow-700 mb-4">
-              You have already submitted scores for <strong>{sauce.name}</strong> by {sauce.suppliers[0]?.brand_name}.
+              You have already submitted scores for <strong>{sauce.name}</strong> by {brandName}.
             </p>
             <p className="text-sm text-yellow-600 mb-6">
               Each sauce can only be scored once. If you need to update your score, please contact an administrator.
@@ -77,7 +82,7 @@ export default async function ScorePage({ params }: ScorePageProps) {
       <div className="max-w-3xl mx-auto">
         <div className="bg-white p-8 rounded-lg shadow-md">
           <h1 className="text-3xl font-bold">{sauce.name}</h1>
-          <p className="text-lg text-gray-600">by {sauce.suppliers[0]?.brand_name}</p>
+          <p className="text-lg text-gray-600">by {brandName}</p>
           <div className="mt-4 pt-4 border-t">
             <h2 className="text-2xl font-semibold mb-4">Submit Your Scores</h2>
             <ScoringForm
