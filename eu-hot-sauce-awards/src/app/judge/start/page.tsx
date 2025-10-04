@@ -124,8 +124,8 @@ export default function JudgeStartPage() {
   return (
     <div className="container mx-auto p-4 text-center">
       <h1 className="text-2xl font-bold mb-4">Scan Your Judge QR Code</h1>
-      <p className="text-gray-600 mb-6">
-        Logged in as: <span className="font-semibold">{currentUser?.email}</span>
+      <p className="text-gray-700 mb-6">
+        Logged in as: <span className="font-semibold text-gray-900">{currentUser?.email}</span>
       </p>
       <div className="max-w-md mx-auto bg-gray-200 rounded-lg overflow-hidden shadow-lg">
         <QrScanner
@@ -136,11 +136,11 @@ export default function JudgeStartPage() {
         />
       </div>
       {error && (
-        <div className="mt-4 p-4 bg-red-100 text-red-700 rounded-md">
-          <p>{error}</p>
+        <div className="mt-4 p-4 bg-red-100 text-red-800 rounded-md border border-red-300">
+          <p className="font-medium">{error}</p>
         </div>
       )}
-      <p className="mt-4 text-gray-600">
+      <p className="mt-4 text-gray-700 font-medium">
         Point your camera at your judge QR code label to start your judging session.
       </p>
     </div>

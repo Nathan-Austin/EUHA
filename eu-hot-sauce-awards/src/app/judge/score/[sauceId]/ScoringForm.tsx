@@ -30,33 +30,35 @@ export default function ScoringForm({
     <form className="space-y-6">
       {categories.map(category => (
         <div key={category.id}>
-          <label htmlFor={`score-${category.id}`} className="block text-md font-medium text-gray-800">
+          <label htmlFor={`score-${category.id}`} className="block text-md font-semibold text-gray-900">
             {category.name}
           </label>
-          <div className="flex items-center gap-4 mt-1">
+          <div className="flex items-center gap-4 mt-2">
             <input
               type="range"
               id={`score-${category.id}`}
-              min="0"
-              max="100"
-              value={scores[category.id] || 0}
+              min="1"
+              max="10"
+              step="1"
+              value={scores[category.id] || 1}
               onChange={(e) => handleScoreChange(category.id, parseInt(e.target.value, 10))}
-              className="w-full"
+              className="w-full h-3 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-orange-600"
             />
             <input
               type="number"
-              min="0"
-              max="100"
-              value={scores[category.id] || 0}
+              min="1"
+              max="10"
+              step="1"
+              value={scores[category.id] || 1}
               onChange={(e) => handleScoreChange(category.id, parseInt(e.target.value, 10))}
-              className="w-20 p-1 border rounded-md text-center"
+              className="w-16 p-2 border-2 border-gray-300 rounded-md text-center text-gray-900 font-semibold text-lg"
             />
           </div>
         </div>
       ))}
 
-      <div className="pt-4 border-t">
-        <label htmlFor="overallComment" className="block text-md font-medium text-gray-800">
+      <div className="pt-4 border-t border-gray-300">
+        <label htmlFor="overallComment" className="block text-md font-semibold text-gray-900">
           Overall Comments
         </label>
         <textarea
@@ -65,7 +67,7 @@ export default function ScoringForm({
           rows={4}
           value={comment}
           onChange={(e) => handleCommentChange(e.target.value)}
-          className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+          className="mt-2 block w-full px-3 py-2 border-2 border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-gray-900"
           placeholder="Overall thoughts on the sauce..."
         />
       </div>
@@ -144,7 +146,7 @@ export default function ScoringForm({
           {isSubmitting ? 'Submitting...' : 'Save & Continue Later'}
         </button>
 
-        <p className="text-xs text-center text-gray-500">
+        <p className="text-sm text-center text-gray-700">
           Scores are saved automatically as you go. "Continue Later" submits all your scores to the database.
         </p>
       </div>

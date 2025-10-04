@@ -35,7 +35,7 @@ export default function JudgeReadyPage() {
           Judge: <span className="font-semibold">{judgeEmail}</span>
         </p>
 
-        <p className="text-gray-600 mb-8">
+        <p className="text-gray-700 mb-8">
           Your judging session is now active. You can start scanning sauce QR codes to begin scoring.
         </p>
 
@@ -55,9 +55,9 @@ export default function JudgeReadyPage() {
           </Link>
         </div>
 
-        <div className="mt-8 pt-6 border-t text-sm text-gray-600">
-          <p className="mb-2"><strong>Important Notes:</strong></p>
-          <ul className="text-left space-y-1 max-w-md mx-auto">
+        <div className="mt-8 pt-6 border-t border-gray-300 text-sm text-gray-700">
+          <p className="mb-2 font-semibold text-gray-900">Important Notes:</p>
+          <ul className="text-left space-y-1 max-w-md mx-auto text-gray-700">
             <li>• You have 12 sauces to judge</li>
             <li>• Your scores are saved automatically as you go</li>
             <li>• You can pause and resume judging at any time</li>

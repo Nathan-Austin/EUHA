@@ -104,14 +104,14 @@ export default function ScanPage() {
   if (isCheckingSession) {
     return (
       <div className="container mx-auto p-4 text-center">
-        <h1 className="text-2xl font-bold mb-4">Preparing scanner...</h1>
+        <h1 className="text-2xl font-bold mb-4 text-gray-900">Preparing scanner...</h1>
       </div>
     );
   }
 
   return (
     <div className="container mx-auto p-4 text-center">
-      <h1 className="text-2xl font-bold mb-4">Scan Sauce QR Code</h1>
+      <h1 className="text-2xl font-bold mb-4 text-gray-900">Scan Sauce QR Code</h1>
       <div className="max-w-md mx-auto bg-gray-200 rounded-lg overflow-hidden shadow-lg">
         <QrScanner
           onDecode={handleDecode}
@@ -121,11 +121,11 @@ export default function ScanPage() {
         />
       </div>
       {error && (
-        <div className="mt-4 p-4 bg-red-100 text-red-700 rounded-md">
-          <p>{error}</p>
+        <div className="mt-4 p-4 bg-red-100 text-red-800 rounded-md border border-red-300">
+          <p className="font-medium">{error}</p>
         </div>
       )}
-      <p className="mt-4 text-gray-600">Point your camera at the QR code on the sauce bottle.</p>
+      <p className="mt-4 text-gray-700 font-medium">Point your camera at the QR code on the sauce bottle.</p>
     </div>
   );
 }
