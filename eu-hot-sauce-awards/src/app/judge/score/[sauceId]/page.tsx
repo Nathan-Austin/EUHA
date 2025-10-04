@@ -36,10 +36,18 @@ export default async function ScorePage({ params }: ScorePageProps) {
     { data: categories, error: categoriesError },
     { data: existingScores }
   ] = await Promise.all([
-    supabase.from('sauces').select('*, suppliers!inner(brand_name)').eq('id', sauceId).single(),
+    supabase.from('sauces').select('id, name, supplier_id, suppliers(brand_name)').eq('id', sauceId).single(),
     supabase.from('judging_categories').select('*'),
     supabase.from('judging_scores').select('id').eq('judge_id', judge.id).eq('sauce_id', sauceId).limit(1)
   ]);
+
+  // Log errors for debugging
+  if (sauceError) {
+    console.error('Sauce query error:', sauceError);
+  }
+  if (categoriesError) {
+    console.error('Categories query error:', categoriesError);
+  }
 
   if (sauceError || !sauce || categoriesError || !categories) {
     notFound();
