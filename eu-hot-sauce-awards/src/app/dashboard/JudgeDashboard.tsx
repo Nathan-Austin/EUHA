@@ -50,17 +50,7 @@ export default function JudgeDashboard() {
   };
 
   return (
-    <>
-      {/* Header Banner */}
-      <div className="w-full -mx-8 -mt-14 mb-6">
-        <img
-          src="/cropped-banner-website.jpg"
-          alt="EU Hot Sauce Awards"
-          className="w-full h-auto"
-        />
-      </div>
-
-      <div className="space-y-4 sm:space-y-6">
+    <div className="space-y-4 sm:space-y-6">
 
       {/* Mobile-optimized header */}
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
@@ -114,9 +104,8 @@ export default function JudgeDashboard() {
           <p className="text-gray-600 text-sm sm:text-base">You have no scores pending submission. Scan a QR code to begin.</p>
         )}
       </div>
-        {error && <p className="mt-4 text-sm text-center text-red-600">{error}</p>}
-        {success && <p className="mt-4 text-sm text-center text-green-600">{success}</p>}
-      </div>
-    </>
+      {error && <p className="mt-4 text-sm text-center text-red-600">{error}</p>}
+      {success && <p className="mt-4 text-sm text-center text-green-600">{success}</p>}
+    </div>
   );
 }

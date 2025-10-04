@@ -64,6 +64,15 @@ export default async function DashboardPage() {
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100">
       <div className="w-full max-w-2xl bg-white rounded-lg shadow-md overflow-hidden">
+        {/* Banner at the very top */}
+        <div className="w-full">
+          <img
+            src="/cropped-banner-website.jpg"
+            alt="EU Hot Sauce Awards"
+            className="w-full h-auto"
+          />
+        </div>
+
         <div className="p-8 space-y-6">
           <header className="flex items-center justify-between">
               <div>
