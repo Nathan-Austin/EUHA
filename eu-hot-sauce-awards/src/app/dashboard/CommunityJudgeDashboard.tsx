@@ -74,10 +74,14 @@ export default function CommunityJudgeDashboard() {
         <div>
           <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Judge Dashboard</h2>
           <p className="text-sm text-gray-600 mt-1">
-            <span className="font-semibold text-orange-600">{scoredSauces.length}/{totalAssigned}</span> sauces judged
+            {totalAssigned === 0 ? (
+              <span className="font-semibold text-green-600">Judging complete, thank you</span>
+            ) : (
+              <><span className="font-semibold text-orange-600">{scoredSauces.length}/{totalAssigned}</span> sauces judged</>
+            )}
           </p>
         </div>
-        {scoredSauces.length < totalAssigned && (
+        {totalAssigned > 0 && scoredSauces.length < totalAssigned && (
           <button
             onClick={handleStartJudging}
             className="w-full sm:w-auto px-4 py-3 font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700 text-center"
@@ -125,7 +129,7 @@ export default function CommunityJudgeDashboard() {
             </div>
           </div>
         ) : (
-          <p className="text-gray-600 text-sm sm:text-base">You have no scores pending submission. Scan a QR code to begin.</p>
+          <p className="text-gray-600 text-sm sm:text-base">You have no scores pending submission.</p>
         )}
       </div>
 
