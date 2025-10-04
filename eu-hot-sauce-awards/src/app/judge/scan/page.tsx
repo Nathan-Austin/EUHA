@@ -25,13 +25,24 @@ export default function ScanPage() {
       setError(null);
 
       const trimmedValue = value.trim();
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-      if (uuidRegex.test(trimmedValue)) {
-        router.push(`/judge/score/${trimmedValue}`);
+      // Check if this is a sauce URL (contains /judge/score/ pattern)
+      const sauceUrlMatch = trimmedValue.match(/\/judge\/score\/([a-f0-9-]+)/i);
+
+      if (sauceUrlMatch) {
+        // Extract sauce ID from URL
+        const sauceId = sauceUrlMatch[1];
+        router.push(`/judge/score/${sauceId}`);
       } else {
-        setError('Invalid QR code. Please scan an official sauce QR code.');
-        setIsProcessing(false);
+        // Check if it's a plain UUID
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+        if (uuidRegex.test(trimmedValue)) {
+          router.push(`/judge/score/${trimmedValue}`);
+        } else {
+          setError('Invalid QR code. Please scan an official sauce QR code.');
+          setIsProcessing(false);
+        }
       }
     },
     [isProcessing, router]
