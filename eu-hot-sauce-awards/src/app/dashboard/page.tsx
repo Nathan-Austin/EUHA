@@ -3,8 +3,8 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import LogoutButton from './LogoutButton'
 import AdminDashboard from './AdminDashboard'
-import JudgeDashboard from './JudgeDashboard'
 import CommunityJudgeDashboard from './CommunityJudgeDashboard'
+import SupplierDashboard from './SupplierDashboard'
 import StripeCheckoutButton from './StripeCheckoutButton'
 
 export default async function DashboardPage() {
@@ -39,12 +39,32 @@ export default async function DashboardPage() {
     )
   }
 
-  const renderDashboard = () => {
+  const renderDashboard = async () => {
     switch (judge.type) {
       case 'admin':
         return <AdminDashboard />
       case 'pro':
-        return <JudgeDashboard />
+        return <CommunityJudgeDashboard />
+      case 'supplier': {
+        // Fetch supplier data for dashboard
+        const { data: supplier } = await supabase
+          .from('suppliers')
+          .select('brand_name, tracking_number, postal_service_name, package_status, package_received_at')
+          .eq('email', user.email!)
+          .single();
+
+        if (!supplier) {
+          return <p>Supplier profile not found. Please contact support.</p>;
+        }
+
+        return <SupplierDashboard supplierData={{
+          brandName: supplier.brand_name,
+          trackingNumber: supplier.tracking_number,
+          postalServiceName: supplier.postal_service_name,
+          packageStatus: supplier.package_status || 'pending',
+          packageReceivedAt: supplier.package_received_at,
+        }} />;
+      }
       case 'community':
         if (judge.stripe_payment_status === 'succeeded') {
           return <CommunityJudgeDashboard />
@@ -82,7 +102,7 @@ export default async function DashboardPage() {
               <LogoutButton />
           </header>
           <main className="pt-4 border-t">
-              {renderDashboard()}
+              {await renderDashboard()}
           </main>
         </div>
       </div>

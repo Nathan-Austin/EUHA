@@ -986,6 +986,125 @@ export async function checkConflictOfInterest(judgeId: string, sauceId: string) 
   };
 }
 
+// Supplier tracking submission
+export async function submitTrackingInfo(trackingNumber: string, postalServiceName: string) {
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user?.email) {
+    return { error: 'You must be logged in.' };
+  }
+
+  // Verify user is a supplier
+  const { data: judge } = await supabase
+    .from('judges')
+    .select('type')
+    .eq('email', user.email)
+    .single();
+
+  if (!judge || judge.type !== 'supplier') {
+    return { error: 'Only suppliers can submit tracking information.' };
+  }
+
+  // Update supplier record
+  const { error } = await supabase
+    .from('suppliers')
+    .update({
+      tracking_number: trackingNumber,
+      postal_service_name: postalServiceName,
+      package_status: 'shipped',
+    })
+    .eq('email', user.email);
+
+  if (error) {
+    return { error: `Failed to submit tracking: ${error.message}` };
+  }
+
+  // TODO: Send confirmation email
+  // const { data: supplier } = await supabase
+  //   .from('suppliers')
+  //   .select('brand_name')
+  //   .eq('email', user.email)
+  //   .single();
+  //
+  // await sendEmail({
+  //   to: user.email,
+  //   ...emailTemplates.supplierTrackingConfirmation(
+  //     supplier.brand_name,
+  //     trackingNumber,
+  //     postalServiceName
+  //   )
+  // });
+
+  revalidatePath('/dashboard');
+  return { success: true };
+}
+
+// Admin: Mark package as received
+export async function markPackageReceived(supplierId: string) {
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+
+  // Admin check
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user?.email) return { error: 'You must be logged in.' };
+
+  const { data: adminCheck, error: adminError } = await supabase
+    .from('judges')
+    .select('type')
+    .eq('email', user.email)
+    .single();
+
+  if (adminError || adminCheck?.type !== 'admin') {
+    return { error: 'You are not authorized.' };
+  }
+
+  // Get supplier details for email
+  const { data: supplier } = await supabase
+    .from('suppliers')
+    .select('email, brand_name')
+    .eq('id', supplierId)
+    .single();
+
+  if (!supplier) {
+    return { error: 'Supplier not found.' };
+  }
+
+  // Update supplier status
+  const { error } = await supabase
+    .from('suppliers')
+    .update({
+      package_status: 'received',
+      package_received_at: new Date().toISOString(),
+    })
+    .eq('id', supplierId);
+
+  if (error) {
+    return { error: `Failed to update package status: ${error.message}` };
+  }
+
+  // Get sauce names for email
+  const { data: sauces } = await supabase
+    .from('sauces')
+    .select('name')
+    .eq('supplier_id', supplierId);
+
+  const sauceNames = sauces?.map(s => s.name) || [];
+
+  // TODO: Send confirmation email
+  // await sendEmail({
+  //   to: supplier.email,
+  //   ...emailTemplates.supplierPackageReceived(
+  //     supplier.brand_name,
+  //     sauceNames
+  //   )
+  // });
+
+  revalidatePath('/dashboard');
+  return { success: true, brandName: supplier.brand_name };
+}
+
 export async function getJudgeScoredSauces() {
   const cookieStore = cookies();
   const supabase = createClient(cookieStore);

@@ -7,6 +7,7 @@ import AddAdminUser from './AddAdminUser';
 import StickerGenerator from './StickerGenerator';
 import AdminBoxPacker from './AdminBoxPacker';
 import JudgeLabelGenerator from './JudgeLabelGenerator';
+import PackageTracker from './PackageTracker';
 
 export default async function AdminDashboard() {
   const cookieStore = cookies()
@@ -23,6 +24,12 @@ export default async function AdminDashboard() {
       suppliers ( brand_name )
     `)
     .order('created_at', { ascending: false }) as { data: any[] | null; error: any };
+
+  // Fetch suppliers for package tracking
+  const { data: suppliers } = await supabase
+    .from('suppliers')
+    .select('id, brand_name, email, tracking_number, postal_service_name, package_status, package_received_at')
+    .order('package_status', { ascending: true }) as { data: any[] | null; error: any };
 
   if (error) {
     return <p className="text-red-600">Error loading sauces: {error.message}</p>
@@ -87,6 +94,18 @@ export default async function AdminDashboard() {
           </table>
         </div>
       </div>
+
+      {suppliers && suppliers.length > 0 && (
+        <PackageTracker suppliers={suppliers.map(s => ({
+          id: s.id,
+          brandName: s.brand_name,
+          email: s.email,
+          trackingNumber: s.tracking_number,
+          postalServiceName: s.postal_service_name,
+          packageStatus: s.package_status || 'pending',
+          packageReceivedAt: s.package_received_at,
+        }))} />
+      )}
 
       <AdminBoxPacker />
 
