@@ -36,7 +36,7 @@ export default function JudgeDashboard() {
     // Load scored sauces from database
     const loadScoredSauces = async () => {
       const result = await getJudgeScoredSauces();
-      if ('scoredSauces' in result) {
+      if ('scoredSauces' in result && result.scoredSauces) {
         setScoredSauces(result.scoredSauces);
       }
     };
