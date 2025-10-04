@@ -36,7 +36,7 @@ export default async function ScorePage({ params }: ScorePageProps) {
     { data: categories, error: categoriesError },
     { data: existingScores }
   ] = await Promise.all([
-    supabase.from('sauces').select('id, name, code, supplier_id, suppliers(brand_name)').eq('id', sauceId).single(),
+    supabase.from('sauces').select('id, name, sauce_code, supplier_id, suppliers(brand_name)').eq('id', sauceId).single(),
     supabase.from('judging_categories').select('*'),
     supabase.from('judging_scores').select('id').eq('judge_id', judge.id).eq('sauce_id', sauceId).limit(1)
   ]);
@@ -91,7 +91,7 @@ export default async function ScorePage({ params }: ScorePageProps) {
         <div className="bg-white p-8 rounded-lg shadow-md">
           <div className="mb-6">
             <div className="inline-block px-4 py-2 bg-orange-100 border-2 border-orange-600 rounded-lg mb-3">
-              <p className="text-2xl font-bold text-orange-900">Code: {sauce.code || 'N/A'}</p>
+              <p className="text-2xl font-bold text-orange-900">Code: {sauce.sauce_code || 'N/A'}</p>
             </div>
             <p className="text-lg text-gray-700">by {brandName}</p>
           </div>
