@@ -201,16 +201,35 @@ Deno.serve(async (req) => {
           console.log('Supplier judge profile created/updated');
         }
 
-        // TODO: Send confirmation email
-        // await sendEmail({
-        //   to: supplier.email,
-        //   subject: 'EU Hot Sauce Awards - Payment Confirmed',
-        //   html: emailTemplates.supplierPaymentConfirmation(
-        //     supplier.brand_name,
-        //     payment.entry_count,
-        //     (payment.amount_due_cents / 100).toFixed(2)
-        //   ).html
-        // });
+        // Send confirmation email via Next.js API route
+        try {
+          const emailApiUrl = Deno.env.get('EMAIL_API_URL') || 'https://awards.heatawards.eu';
+          const emailResponse = await fetch(`${emailApiUrl}/api/send-email`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${serviceRoleKey}`,
+            },
+            body: JSON.stringify({
+              type: 'payment_confirmation',
+              data: {
+                email: supplier.email,
+                brandName: supplier.brand_name,
+                entryCount: payment.entry_count,
+                amount: (payment.amount_due_cents / 100).toFixed(2),
+              },
+            }),
+          });
+
+          if (!emailResponse.ok) {
+            console.error('Email API returned error:', await emailResponse.text());
+          } else {
+            console.log('Payment confirmation email sent to:', supplier.email);
+          }
+        } catch (emailError) {
+          console.error('Failed to send payment confirmation email:', emailError);
+          // Don't throw - payment already succeeded, email is non-critical
+        }
 
         console.log('Supplier payment confirmation complete');
       } else {

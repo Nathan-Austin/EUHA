@@ -1,5 +1,6 @@
-// Email service for sending transactional emails
-// This is a placeholder implementation - configure with your preferred email service
+import nodemailer, { Transporter } from 'nodemailer';
+
+// Email service for sending transactional emails configured via SMTP environment variables
 
 export interface EmailOptions {
   to: string;
@@ -18,39 +19,55 @@ export interface EmailOptions {
  * - SMTP_USER=your-email@gmail.com
  * - SMTP_PASS=your-app-specific-password
  */
+let transporter: Transporter | null = null;
+
+function getTransporter(): Transporter {
+  if (!transporter) {
+    const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS } = process.env;
+
+    const missing = ['SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASS'].filter(
+      key => !process.env[key]
+    );
+
+    if (missing.length > 0) {
+      throw new Error(`Missing required SMTP configuration: ${missing.join(', ')}`);
+    }
+
+    const portNumber = Number(SMTP_PORT);
+
+    if (!Number.isInteger(portNumber) || portNumber <= 0) {
+      throw new Error('SMTP_PORT must be a positive integer');
+    }
+
+    transporter = nodemailer.createTransport({
+      host: SMTP_HOST,
+      port: portNumber,
+      secure: portNumber === 465,
+      auth: {
+        user: SMTP_USER,
+        pass: SMTP_PASS,
+      },
+    });
+  }
+
+  return transporter;
+}
+
 export async function sendEmail(options: EmailOptions): Promise<void> {
-  // Placeholder implementation
-  // Replace with actual email service (nodemailer, Resend, SendGrid, etc.)
+  const transporterInstance = getTransporter();
+  const fromAddress = process.env.SMTP_FROM || process.env.SMTP_USER;
 
-  console.log('📧 Email would be sent:', {
+  if (!fromAddress) {
+    throw new Error('SMTP_FROM or SMTP_USER must be defined to send email');
+  }
+
+  await transporterInstance.sendMail({
+    from: fromAddress,
     to: options.to,
     subject: options.subject,
-    // Don't log full HTML for security
-  });
-
-  // TODO: Implement actual email sending
-  // Example with nodemailer:
-  /*
-  const nodemailer = require('nodemailer');
-
-  const transporter = nodemailer.createTransporter({
-    host: process.env.SMTP_HOST,
-    port: process.env.SMTP_PORT,
-    secure: false,
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-  });
-
-  await transporter.sendMail({
-    from: process.env.SMTP_USER,
-    to: options.to,
-    subject: options.subject,
-    text: options.text,
     html: options.html,
+    text: options.text ?? undefined,
   });
-  */
 }
 
 // Email templates

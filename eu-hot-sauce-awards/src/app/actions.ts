@@ -4,6 +4,7 @@ import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { revalidatePath } from 'next/cache'
+import { sendEmail, emailTemplates } from '@/lib/email'
 
 type SauceStatus = 'registered' | 'arrived' | 'boxed' | 'judged';
 
@@ -1021,21 +1022,28 @@ export async function submitTrackingInfo(trackingNumber: string, postalServiceNa
     return { error: `Failed to submit tracking: ${error.message}` };
   }
 
-  // TODO: Send confirmation email
-  // const { data: supplier } = await supabase
-  //   .from('suppliers')
-  //   .select('brand_name')
-  //   .eq('email', user.email)
-  //   .single();
-  //
-  // await sendEmail({
-  //   to: user.email,
-  //   ...emailTemplates.supplierTrackingConfirmation(
-  //     supplier.brand_name,
-  //     trackingNumber,
-  //     postalServiceName
-  //   )
-  // });
+  // Send confirmation email
+  try {
+    const { data: supplier } = await supabase
+      .from('suppliers')
+      .select('brand_name')
+      .eq('email', user.email)
+      .single();
+
+    if (supplier) {
+      await sendEmail({
+        to: user.email,
+        ...emailTemplates.supplierTrackingConfirmation(
+          supplier.brand_name,
+          trackingNumber,
+          postalServiceName
+        )
+      });
+    }
+  } catch (emailError) {
+    console.error('Failed to send tracking confirmation email:', emailError);
+    // Don't throw - tracking already submitted, email is non-critical
+  }
 
   revalidatePath('/dashboard');
   return { success: true };
@@ -1092,14 +1100,19 @@ export async function markPackageReceived(supplierId: string) {
 
   const sauceNames = sauces?.map(s => s.name) || [];
 
-  // TODO: Send confirmation email
-  // await sendEmail({
-  //   to: supplier.email,
-  //   ...emailTemplates.supplierPackageReceived(
-  //     supplier.brand_name,
-  //     sauceNames
-  //   )
-  // });
+  // Send confirmation email
+  try {
+    await sendEmail({
+      to: supplier.email,
+      ...emailTemplates.supplierPackageReceived(
+        supplier.brand_name,
+        sauceNames
+      )
+    });
+  } catch (emailError) {
+    console.error('Failed to send package received email:', emailError);
+    // Don't throw - package already marked as received, email is non-critical
+  }
 
   revalidatePath('/dashboard');
   return { success: true, brandName: supplier.brand_name };
