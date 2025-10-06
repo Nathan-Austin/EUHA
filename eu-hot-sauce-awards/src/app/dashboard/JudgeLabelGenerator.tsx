@@ -38,22 +38,25 @@ export default function JudgeLabelGenerator() {
 
       const { judges } = result;
 
-      // A4 page dimensions (mm)
-      const pageWidth = 210;
-      const pageHeight = 297;
+      // Avery 6605 label template (70mm × 37mm, 24 per page)
+      const Avery6605 = {
+        page: { width: 210, height: 297 },   // A4 in mm
+        label: { width: 70, height: 37 },
+        layout: { rows: 8, cols: 3 },
+        margins: { top: 0.5, bottom: 0.5, left: 0, right: 0 },
+        gap: { x: 0, y: 0 },
+        pitch: { x: 70, y: 37 }
+      };
 
-      // Label dimensions (using larger labels for judges - 99.1 × 67.7 mm, 8 per page)
-      const labelWidth = 99.1;
-      const labelHeight = 67.7;
-      const cols = 2;
-      const rows = 4;
-      const labelsPerPage = cols * rows; // 8
-
-      // Calculate margins
-      const totalLabelsWidth = cols * labelWidth;
-      const totalLabelsHeight = rows * labelHeight;
-      const marginX = (pageWidth - totalLabelsWidth) / 2;
-      const marginY = (pageHeight - totalLabelsHeight) / 2;
+      const pageWidth = Avery6605.page.width;
+      const pageHeight = Avery6605.page.height;
+      const labelWidth = Avery6605.label.width;
+      const labelHeight = Avery6605.label.height;
+      const cols = Avery6605.layout.cols;
+      const rows = Avery6605.layout.rows;
+      const labelsPerPage = cols * rows; // 24
+      const marginX = Avery6605.margins.left;
+      const marginY = Avery6605.margins.top;
 
       const pdf = new jsPDF({
         orientation: 'portrait',
@@ -63,7 +66,10 @@ export default function JudgeLabelGenerator() {
 
       let labelIndex = 0;
 
-      for (const judge of judges) {
+      // Generate 2 labels per judge
+      const labelData = judges.flatMap(judge => [judge, judge]);
+
+      for (const judge of labelData) {
         // Add new page if needed
         if (labelIndex >= labelsPerPage && labelIndex > 0) {
           pdf.addPage();
@@ -73,17 +79,17 @@ export default function JudgeLabelGenerator() {
         // Calculate position
         const col = labelIndex % cols;
         const row = Math.floor(labelIndex / cols);
-        const x = marginX + (col * labelWidth);
-        const y = marginY + (row * labelHeight);
+        const x = marginX + (col * Avery6605.pitch.x);
+        const y = marginY + (row * Avery6605.pitch.y);
 
         // Draw border (optional, for alignment checking)
         // pdf.setDrawColor(200, 200, 200);
         // pdf.rect(x, y, labelWidth, labelHeight);
 
-        // QR Code (centered at top) - generate locally with judge ID
-        const qrSize = 40;
+        // QR Code (centered at top) - smaller for compact labels
+        const qrSize = 25;
         const qrX = x + (labelWidth - qrSize) / 2;
-        const qrY = y + 8;
+        const qrY = y + 2;
 
         if (judge.judgeId) {
           try {
@@ -100,44 +106,22 @@ export default function JudgeLabelGenerator() {
           }
         }
 
-        // Text below QR code
-        const textY = qrY + qrSize + 6;
+        // Text below QR code - compact layout for smaller labels
+        const textY = qrY + qrSize + 1;
 
-        // Judge Name
-        pdf.setFontSize(14);
+        // Judge Name (smaller font for compact labels)
+        pdf.setFontSize(9);
         pdf.setFont('helvetica', 'bold');
         const nameText = judge.name || 'Judge';
-        pdf.text(nameText, x + labelWidth / 2, textY, { align: 'center', maxWidth: labelWidth - 10 });
+        pdf.text(nameText, x + labelWidth / 2, textY, { align: 'center', maxWidth: labelWidth - 4 });
 
         // Judge Type
-        pdf.setFontSize(10);
+        pdf.setFontSize(7);
         pdf.setFont('helvetica', 'normal');
         const typeText = judge.type.toUpperCase();
         const typeColor = judge.type === 'pro' ? [0, 100, 200] : judge.type === 'community' ? [100, 150, 0] : [150, 0, 150];
         pdf.setTextColor(typeColor[0], typeColor[1], typeColor[2]);
-        pdf.text(typeText, x + labelWidth / 2, textY + 6, { align: 'center' });
-
-        // Address lines
-        pdf.setFontSize(8);
-        pdf.setTextColor(60, 60, 60);
-        const addressLines = [judge.addressLine1, judge.addressLine2].filter(Boolean);
-        let addressY = textY + 11;
-        for (const line of addressLines) {
-          const splitLine = pdf.splitTextToSize(line, labelWidth - 10);
-          for (const segment of splitLine) {
-            pdf.text(segment, x + labelWidth / 2, addressY, { align: 'center' });
-            addressY += 4;
-          }
-        }
-
-        // Email (smaller)
-        pdf.setFontSize(7);
-        pdf.setTextColor(100, 100, 100);
-        const emailSplit = pdf.splitTextToSize(judge.email, labelWidth - 10);
-        for (const segment of emailSplit) {
-          pdf.text(segment, x + labelWidth / 2, addressY + 2, { align: 'center' });
-          addressY += 4;
-        }
+        pdf.text(typeText, x + labelWidth / 2, textY + 4, { align: 'center' });
 
         // Reset text color
         pdf.setTextColor(0, 0, 0);
