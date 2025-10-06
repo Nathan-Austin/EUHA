@@ -42,6 +42,24 @@ export async function POST(request: NextRequest) {
         break;
       }
 
+      case 'judge_registration': {
+        const { email, name, judgeType } = data;
+        await sendEmail({
+          to: email,
+          ...emailTemplates.judgeRegistrationConfirmation(name, judgeType)
+        });
+        break;
+      }
+
+      case 'judge_payment': {
+        const { email, name } = data;
+        await sendEmail({
+          to: email,
+          ...emailTemplates.judgePaymentConfirmation(name)
+        });
+        break;
+      }
+
       default:
         return NextResponse.json({ error: 'Invalid email type' }, { status: 400 });
     }

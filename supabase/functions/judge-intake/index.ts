@@ -60,6 +60,37 @@ Deno.serve(async (req) => {
 
     if (error) throw error;
 
+    // Send registration confirmation email
+    try {
+      const emailApiUrl = Deno.env.get('EMAIL_API_URL') || 'https://awards.heatawards.eu';
+      const serviceRoleKey = Deno.env.get('SERVICE_ROLE_KEY');
+
+      const emailResponse = await fetch(`${emailApiUrl}/api/send-email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${serviceRoleKey}`,
+        },
+        body: JSON.stringify({
+          type: 'judge_registration',
+          data: {
+            email: payload.email,
+            name: payload.name,
+            judgeType: judgeType,
+          },
+        }),
+      });
+
+      if (!emailResponse.ok) {
+        console.error('Email API returned error:', await emailResponse.text());
+      } else {
+        console.log('Judge registration email sent to:', payload.email);
+      }
+    } catch (emailError) {
+      console.error('Failed to send registration email:', emailError);
+      // Don't throw - registration already succeeded, email is non-critical
+    }
+
     return new Response(JSON.stringify({
       success: true,
       judge_id: data.id,

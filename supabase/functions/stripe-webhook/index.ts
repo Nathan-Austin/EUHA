@@ -133,6 +133,46 @@ Deno.serve(async (req) => {
         }
 
         console.log('Judge payment status updated successfully');
+
+        // Get judge details for email
+        const { data: judge, error: judgeError } = await supabaseAdmin
+          .from('judges')
+          .select('email, name')
+          .eq('id', judgeId)
+          .single();
+
+        if (judgeError) {
+          console.error('Failed to fetch judge details', judgeError);
+          // Don't throw - payment already succeeded
+        } else {
+          // Send payment confirmation email
+          try {
+            const emailApiUrl = Deno.env.get('EMAIL_API_URL') || 'https://awards.heatawards.eu';
+            const emailResponse = await fetch(`${emailApiUrl}/api/send-email`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${serviceRoleKey}`,
+              },
+              body: JSON.stringify({
+                type: 'judge_payment',
+                data: {
+                  email: judge.email,
+                  name: judge.name,
+                },
+              }),
+            });
+
+            if (!emailResponse.ok) {
+              console.error('Email API returned error:', await emailResponse.text());
+            } else {
+              console.log('Judge payment confirmation email sent to:', judge.email);
+            }
+          } catch (emailError) {
+            console.error('Failed to send judge payment confirmation email:', emailError);
+            // Don't throw - payment already succeeded, email is non-critical
+          }
+        }
       } else if (metadata.type === 'supplier') {
         const paymentId = metadata.payment_id;
         const supplierEmail = metadata.supplier_email;

@@ -89,7 +89,7 @@ export const emailTemplates = {
 
       <p>You can log in anytime at: <a href="https://awards.heatawards.eu/login">https://awards.heatawards.eu/login</a></p>
 
-      <p>Questions? Contact us at support@heatawards.eu</p>
+      <p>Questions? Contact us at heataward@gmail.com</p>
     `,
     text: `Payment Confirmed! Dear ${brandName}, thank you for your payment. Your ${entryCount} sauce ${entryCount > 1 ? 'entries have' : 'entry has'} been confirmed.`,
   }),
@@ -131,5 +131,58 @@ export const emailTemplates = {
       <p>Thank you for participating in the EU Hot Sauce Awards!</p>
     `,
     text: `Package Received! Dear ${brandName}, your sauce package has been received and is being prepared for judging.`,
+  }),
+
+  judgeRegistrationConfirmation: (name: string, judgeType: 'pro' | 'community') => ({
+    subject: 'EU Hot Sauce Awards - Judge Registration Received',
+    html: `
+      <h1>Welcome to the EU Hot Sauce Awards!</h1>
+      <p>Dear ${name},</p>
+      <p>Thank you for registering as a judge for the EU Hot Sauce Awards.</p>
+
+      <p><strong>Judge Type:</strong> ${judgeType === 'pro' ? 'Professional Judge' : 'Community Judge'}</p>
+
+      ${judgeType === 'community' ? `
+      <h2>Next Steps:</h2>
+      <ol>
+        <li>Complete payment to confirm your judging spot</li>
+        <li>Check your email for a login link</li>
+        <li>Access your dashboard to view judging details</li>
+      </ol>
+      ` : `
+      <h2>Next Steps:</h2>
+      <ol>
+        <li>We will review your registration</li>
+        <li>Check your email for a login link</li>
+        <li>Access your dashboard when judging begins</li>
+      </ol>
+      `}
+
+      <p>You can log in anytime at: <a href="https://awards.heatawards.eu/login">https://awards.heatawards.eu/login</a></p>
+
+      <p>Questions? Contact us at heataward@gmail.com</p>
+    `,
+    text: `Welcome to the EU Hot Sauce Awards! Thank you for registering as a ${judgeType === 'pro' ? 'Professional' : 'Community'} Judge.`,
+  }),
+
+  judgePaymentConfirmation: (name: string) => ({
+    subject: 'EU Hot Sauce Awards - Payment Confirmed',
+    html: `
+      <h1>Payment Confirmed!</h1>
+      <p>Dear ${name},</p>
+      <p>Thank you for your payment. Your spot as a Community Judge has been confirmed!</p>
+
+      <h2>Next Steps:</h2>
+      <ol>
+        <li>Log in to your dashboard</li>
+        <li>Review judging guidelines and categories</li>
+        <li>We'll notify you when judging begins</li>
+      </ol>
+
+      <p>You can log in anytime at: <a href="https://awards.heatawards.eu/login">https://awards.heatawards.eu/login</a></p>
+
+      <p>Questions? Contact us at heataward@gmail.com</p>
+    `,
+    text: `Payment Confirmed! Thank you for your payment. Your spot as a Community Judge has been confirmed.`,
   }),
 };
