@@ -73,10 +73,16 @@ Deno.serve(async (req) => {
       throw new Error('At least one sauce entry is required.');
     }
 
-    // Initialize Supabase client
+    // Initialize Supabase client with service role (bypasses RLS)
     const supabaseAdmin = createClient(
       Deno.env.get('PROJECT_URL') ?? '',
-      Deno.env.get('SERVICE_ROLE_KEY') ?? ''
+      Deno.env.get('SERVICE_ROLE_KEY') ?? '',
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
     );
 
     // 1. Upsert supplier
