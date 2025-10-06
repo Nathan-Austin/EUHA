@@ -17,22 +17,40 @@ export default async function DashboardPage() {
     redirect('/login')
   }
 
-  // Fetch judge details
-  const { data: judge, error } = await supabase
+  // Fetch judge details - use maybeSingle to handle cases where user might not be a judge
+  const { data: judges, error: judgeQueryError } = await supabase
     .from('judges')
     .select('id, type, stripe_payment_status')
     .eq('email', user.email)
-    .single()
 
-  if (error || !judge) {
-    // This could happen if a user exists in auth but not in the judges table
-    // Or if RLS policy fails.
+  if (judgeQueryError) {
     return (
         <div className="flex items-center justify-center min-h-screen bg-gray-100">
             <div className="w-full max-w-md p-8 space-y-6 text-center bg-white rounded-lg shadow-md">
                 <h1 className="text-xl font-bold text-red-600">Error</h1>
                 <p>Could not retrieve your user profile. Please contact support.</p>
-                <p className="font-mono text-sm">{error?.message}</p>
+                <p className="font-mono text-sm">{judgeQueryError?.message}</p>
+                <LogoutButton />
+            </div>
+      </div>
+    )
+  }
+
+  // Take the first judge record (in case of duplicates, prioritize by type)
+  const judge = judges && judges.length > 0
+    ? judges.sort((a, b) => {
+        const priority = { admin: 0, pro: 1, supplier: 2, community: 3 };
+        return (priority[a.type as keyof typeof priority] || 99) - (priority[b.type as keyof typeof priority] || 99);
+      })[0]
+    : null;
+
+  if (!judge) {
+    // User exists in auth but not in judges table
+    return (
+        <div className="flex items-center justify-center min-h-screen bg-gray-100">
+            <div className="w-full max-w-md p-8 space-y-6 text-center bg-white rounded-lg shadow-md">
+                <h1 className="text-xl font-bold text-red-600">Access Denied</h1>
+                <p>No judge or supplier profile found for this email. Please contact support.</p>
                 <LogoutButton />
             </div>
       </div>
