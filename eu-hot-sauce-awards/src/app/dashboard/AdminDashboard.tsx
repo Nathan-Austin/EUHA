@@ -8,6 +8,8 @@ import StickerGenerator from './StickerGenerator';
 import AdminBoxPacker from './AdminBoxPacker';
 import JudgeLabelGenerator from './JudgeLabelGenerator';
 import PackageTracker from './PackageTracker';
+import ResultsManager from './ResultsManager';
+import EventsManager from './EventsManager';
 
 export default async function AdminDashboard() {
   const cookieStore = cookies()
@@ -116,6 +118,10 @@ export default async function AdminDashboard() {
       <JudgeLabelGenerator />
 
       <AddAdminUser />
+
+      {/* New Website Content Management Sections */}
+      <ResultsManager />
+      <EventsManager />
 
     </div>
   );
