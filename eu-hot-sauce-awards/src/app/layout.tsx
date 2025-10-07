@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
+import Image from "next/image";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -44,7 +45,18 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.variable} antialiased bg-[#08040e] text-white`}>
-        <Navigation />
+        <div className="bg-[#08040e]/70 backdrop-blur-lg">
+          <div className="relative w-full h-32 md:h-48">
+            <Image
+              src="/cropped-banner-website.png"
+              alt="European Hot Sauce Awards Banner"
+              fill
+              className="object-cover"
+              priority
+            />
+          </div>
+          <Navigation />
+        </div>
         <main>{children}</main>
         <Footer />
       </body>

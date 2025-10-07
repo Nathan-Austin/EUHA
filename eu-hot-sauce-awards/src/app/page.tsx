@@ -50,8 +50,9 @@ const pastWinners = [
   { name: "Winner 3", photo_url: "" },
 ];
 const sponsors = [
-  { name: "Flying Goose", logo_url: "" },
-  { name: "Chilisaus.be", logo_url: "" },
+  { name: "Flying Goose", logo_url: "/sponsors/flying-goose.png" },
+  { name: "Chilisaus.be", logo_url: "/sponsors/chilisaus.png" },
+  { name: "Republic of Heat", logo_url: "/sponsors/ROH_LOGO.png" },
 ];
 
 
@@ -138,7 +139,9 @@ export default function Home() {
                     <h2 className="text-center text-sm font-semibold uppercase tracking-[0.25em] text-amber-200/80 mb-6">Sponsors</h2>
                      <div className="flex justify-center items-center space-x-8">
                         {sponsors.map(s => (
-                          <div key={s.name} className="w-32 h-32 bg-black/30 rounded-lg flex items-center justify-center text-white/70">{s.name}</div>
+                          <div key={s.name} className="w-32 h-32 bg-white rounded-lg flex items-center justify-center p-4">
+                            <Image src={s.logo_url} alt={s.name} width={128} height={128} className="object-contain" />
+                          </div>
                         ))}
                       </div>
                       <div className="text-center mt-6">
