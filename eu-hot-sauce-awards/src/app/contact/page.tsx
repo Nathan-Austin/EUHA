@@ -1,14 +1,30 @@
+'use client';
 
 import Hero from '@/components/Hero';
 import SectionContainer from '@/components/SectionContainer';
-import type { Metadata } from 'next';
-
-export const metadata: Metadata = {
-  title: 'Contact Us',
-  description: 'Get in touch with the EU Hot Sauce Awards team. Send us a message or find our contact details.',
-};
+import { sendContactEmail } from './actions';
+import { useState } from 'react';
 
 const ContactPage = () => {
+  const [status, setStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  async function handleSubmit(formData: FormData) {
+    setIsSubmitting(true);
+    setStatus(null);
+
+    const result = await sendContactEmail(formData);
+
+    if (result.success) {
+      setStatus({ type: 'success', message: 'Message sent successfully! We\'ll get back to you soon.' });
+      // Reset form
+      (document.getElementById('contact-form') as HTMLFormElement)?.reset();
+    } else {
+      setStatus({ type: 'error', message: result.error || 'Failed to send message. Please try again.' });
+    }
+
+    setIsSubmitting(false);
+  }
   return (
     <div className="bg-[#08040e] min-h-screen">
       <Hero title="Get in Touch" />
@@ -55,13 +71,21 @@ const ContactPage = () => {
 
             <div className="rounded-3xl border border-white/15 bg-white/[0.07] p-8 backdrop-blur">
               <h2 className="text-sm font-semibold uppercase tracking-[0.25em] text-amber-200/80 mb-6">Send us a Message</h2>
-              <form className="space-y-4">
+
+              {status && (
+                <div className={`mb-4 p-4 rounded-lg ${status.type === 'success' ? 'bg-green-500/20 border border-green-500/30 text-green-200' : 'bg-red-500/20 border border-red-500/30 text-red-200'}`}>
+                  {status.message}
+                </div>
+              )}
+
+              <form id="contact-form" action={handleSubmit} className="space-y-4">
                 <div>
                   <label htmlFor="name" className="block text-xs uppercase tracking-wider text-white/60 mb-2">Name</label>
                   <input
                     type="text"
                     id="name"
                     name="name"
+                    required
                     className="w-full bg-black/30 border border-white/20 rounded-lg py-3 px-4 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/50 transition"
                     placeholder="Your name"
                   />
@@ -72,6 +96,7 @@ const ContactPage = () => {
                     type="email"
                     id="email"
                     name="email"
+                    required
                     className="w-full bg-black/30 border border-white/20 rounded-lg py-3 px-4 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/50 transition"
                     placeholder="your.email@example.com"
                   />
@@ -82,6 +107,7 @@ const ContactPage = () => {
                     type="text"
                     id="subject"
                     name="subject"
+                    required
                     className="w-full bg-black/30 border border-white/20 rounded-lg py-3 px-4 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/50 transition"
                     placeholder="What's this about?"
                   />
@@ -92,15 +118,17 @@ const ContactPage = () => {
                     id="message"
                     name="message"
                     rows={5}
+                    required
                     className="w-full bg-black/30 border border-white/20 rounded-lg py-3 px-4 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/50 transition resize-none"
                     placeholder="Your message..."
                   ></textarea>
                 </div>
                 <button
                   type="submit"
-                  className="w-full rounded-full bg-gradient-to-r from-[#ff4d00] to-[#f1b12e] px-6 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-white transition hover:from-[#ff7033] hover:to-[#ffd060]"
+                  disabled={isSubmitting}
+                  className="w-full rounded-full bg-gradient-to-r from-[#ff4d00] to-[#f1b12e] px-6 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-white transition hover:from-[#ff7033] hover:to-[#ffd060] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Submit
+                  {isSubmitting ? 'Sending...' : 'Submit'}
                 </button>
               </form>
             </div>
