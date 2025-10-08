@@ -59,26 +59,8 @@ const sponsors = [
 export default function Home() {
   return (
     <main className="relative bg-[#08040e]">
-      {/* 1. Sticky Banner Image */}
-      <div className="sticky top-0 -z-10 h-screen/2 md:h-screen/2">
-        <Image 
-          src="/cropped-banner-website.jpg" 
-          alt="European Hot Sauce Awards Banner"
-          layout="fill"
-          objectFit="cover"
-          className="w-full h-full"
-          priority
-        />
-        <div className="absolute inset-0 bg-black/30"></div>
-      </div>
-
-      {/* 2. Scrolling Content */}
-      <div className="relative z-10 bg-transparent">
-        {/* This div creates space equal to the banner height before the real content starts */}
-        <div className="h-screen/2 md:h-screen/2"></div>
-
-        {/* Title and CTA Section */}
-        <div className="bg-gradient-to-b from-transparent to-[#08040e]">
+      {/* Title and CTA Section */}
+      <div className="bg-[#08040e]">
             <SectionContainer>
                 <div className="text-center">
                   <h1 className="text-4xl font-semibold leading-tight sm:text-5xl text-white">European Hot Sauce Awards 2026</h1>
@@ -93,9 +75,9 @@ export default function Home() {
                   </div>
                 </div>
             </SectionContainer>
-        </div>
+      </div>
 
-        <div className="bg-[#08040e] space-y-10 md:space-y-20 py-10 md:py-20">
+      <div className="bg-[#08040e] space-y-10 md:space-y-20 py-10 md:py-20">
             {/* Welcome Section */}
             <SectionContainer>
                 <div className="rounded-3xl border border-white/15 bg-white/[0.07] p-8 backdrop-blur">
@@ -159,7 +141,6 @@ export default function Home() {
                 </div>
             </SectionContainer>
         </div>
-      </div>
     </main>
   );
 }

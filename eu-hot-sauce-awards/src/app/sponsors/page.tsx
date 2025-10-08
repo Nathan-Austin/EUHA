@@ -2,6 +2,7 @@
 import Hero from '@/components/Hero';
 import SectionContainer from '@/components/SectionContainer';
 import Link from 'next/link';
+import Image from 'next/image';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
@@ -13,11 +14,15 @@ export const metadata: Metadata = {
 const sponsors = [
   {
     name: "Flying Goose Brand",
-    logo_url: "/sponsors/flying-goose.png", // Placeholder path
+    logo_url: "/sponsors/flying-goose.png",
   },
   {
     name: "Chilisaus.be",
-    logo_url: "/sponsors/chilisaus.png", // Placeholder path
+    logo_url: "/sponsors/chilisaus.png",
+  },
+  {
+    name: "ROH",
+    logo_url: "/sponsors/ROH_LOGO.png",
   }
 ];
 
@@ -32,10 +37,15 @@ const SponsorsPage = () => {
             <h2 className="text-center text-sm font-semibold uppercase tracking-[0.25em] text-amber-200/80 mb-8">Current Sponsors</h2>
             <div className="flex flex-wrap justify-center items-center gap-8">
               {sponsors.map(sponsor => (
-                <div key={sponsor.name} className="bg-black/30 p-8 rounded-lg">
-                  {/* Placeholder for logo - replace with actual image when available */}
-                  <div className="w-48 h-48 flex items-center justify-center">
-                    <span className="text-white/70 text-center">{sponsor.name}</span>
+                <div key={sponsor.name} className="bg-white p-6 rounded-2xl">
+                  <div className="w-48 h-48 flex items-center justify-center relative">
+                    <Image
+                      src={sponsor.logo_url}
+                      alt={sponsor.name}
+                      width={192}
+                      height={192}
+                      className="object-contain"
+                    />
                   </div>
                 </div>
               ))}

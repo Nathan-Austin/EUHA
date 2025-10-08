@@ -35,8 +35,9 @@ const PackingSheetPage = () => {
 
             <div className="text-center">
               <Link
-                href="/path/to/packing-sheet.pdf"
+                href="/shipping-form.pdf"
                 target="_blank"
+                download
                 className="inline-block rounded-full bg-gradient-to-r from-[#ff4d00] to-[#f1b12e] px-8 py-4 text-sm font-semibold uppercase tracking-[0.2em] text-white transition hover:from-[#ff7033] hover:to-[#ffd060]"
               >
                 📄 Download Packing Sheet (PDF)

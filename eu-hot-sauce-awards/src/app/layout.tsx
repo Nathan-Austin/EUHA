@@ -45,18 +45,16 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.variable} antialiased bg-[#08040e] text-white`}>
-        <div className="bg-[#08040e]/70 backdrop-blur-lg">
-          <div className="relative w-full h-32 md:h-48">
-            <Image
-              src="/cropped-banner-website.png"
-              alt="European Hot Sauce Awards Banner"
-              fill
-              className="object-cover"
-              priority
-            />
-          </div>
-          <Navigation />
+        <div className="relative w-full h-24 sm:h-32 md:h-40 lg:h-48 bg-[#fabf14] -mb-px">
+          <Image
+            src="/cropped-banner-website.png"
+            alt="European Hot Sauce Awards Banner"
+            fill
+            className="object-contain object-left"
+            priority
+          />
         </div>
+        <Navigation />
         <main>{children}</main>
         <Footer />
       </body>

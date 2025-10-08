@@ -642,6 +642,17 @@ export default function SupplierApplyPage() {
                     ))}
                   </ul>
                 )}
+                <div className="mt-4 pt-4 border-t border-emerald-300/20">
+                  <p className="mb-3 text-emerald-100">📦 Next step: Download and complete the packing sheet for your shipment</p>
+                  <Link
+                    href="/shipping-form.pdf"
+                    target="_blank"
+                    download
+                    className="inline-block rounded-lg bg-emerald-600/30 px-4 py-2 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-600/40"
+                  >
+                    📄 Download Packing Sheet (PDF)
+                  </Link>
+                </div>
               </div>
             )}
             {errorMessage && (

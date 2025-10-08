@@ -105,7 +105,7 @@ export default async function DashboardPage() {
         {/* Banner at the very top */}
         <div className="w-full">
           <img
-            src="/cropped-banner-website.jpg"
+            src="/cropped-banner-website.png"
             alt="EU Hot Sauce Awards"
             className="w-full h-auto"
           />
