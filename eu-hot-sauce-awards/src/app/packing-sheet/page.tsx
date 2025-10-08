@@ -48,10 +48,10 @@ const PackingSheetPage = () => {
               <h2 className="text-sm font-semibold uppercase tracking-[0.25em] text-amber-200/80 mb-6">Shipping Address</h2>
               <div className="bg-black/30 p-6 rounded-lg">
                 <address className="not-italic text-white/80 leading-relaxed">
-                  <span className="block font-semibold text-white mb-2">Heat Awards</span>
-                  Neil Long CO/ Saunders<br />
-                  Neißestraße 2<br />
-                  12051 Berlin<br />
+                  <span className="block font-semibold text-white mb-2">EUROPEAN HOT SAUCE AWARDS</span>
+                  CBS Foods GmbH<br />
+                  Ossastr 21A<br />
+                  12045 Berlin, Neukölln<br />
                   Germany
                 </address>
               </div>

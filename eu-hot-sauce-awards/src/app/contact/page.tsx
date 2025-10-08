@@ -56,9 +56,10 @@ const ContactPage = () => {
                 <div>
                   <p className="text-xs uppercase tracking-wider text-white/60 mb-1">Address</p>
                   <address className="not-italic text-base">
-                    Heat Awards, Neil Long CO/ Saunders<br />
-                    Neißestraße 2<br />
-                    12051 Berlin<br />
+                    EUROPEAN HOT SAUCE AWARDS<br />
+                    CBS Foods GmbH<br />
+                    Ossastr 21A<br />
+                    12045 Berlin, Neukölln<br />
                     Germany
                   </address>
                 </div>
