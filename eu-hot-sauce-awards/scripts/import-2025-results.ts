@@ -15,6 +15,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { createClient } from '@supabase/supabase-js';
+import { parse } from 'csv-parse/sync';
 
 // Types
 interface BasicResult {
@@ -92,29 +93,15 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 // Helper functions
 function parseCSV(content: string): any[] {
-  const lines = content.split('\n');
-  const headers = lines[0].split(',');
-  const results: any[] = [];
+  const records = parse(content, {
+    columns: true,
+    skip_empty_lines: true,
+    trim: true,
+    relax_quotes: true,
+  });
 
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i].trim();
-    if (!line) continue;
-
-    // Simple CSV parsing (doesn't handle quoted commas)
-    const values = line.split(',');
-    const obj: any = {};
-
-    headers.forEach((header, index) => {
-      obj[header.trim()] = values[index]?.trim() || '';
-    });
-
-    // Only add if CODE exists
-    if (obj.CODE) {
-      results.push(obj);
-    }
-  }
-
-  return results;
+  // Filter out rows without a CODE
+  return records.filter((record: any) => record.CODE && record.CODE.trim());
 }
 
 function parsePosition(award: string): number {
@@ -139,7 +126,7 @@ async function uploadImage(code: string, imageUrl: string): Promise<string | nul
 
   // If it's a local file path, upload to Supabase Storage
   try {
-    const imagePath = path.join(__dirname, '../../past_results/images', `${code}.jpg`);
+    const imagePath = path.join(__dirname, '../past_results/images', `${code}.jpg`);
 
     if (fs.existsSync(imagePath)) {
       const fileBuffer = fs.readFileSync(imagePath);
@@ -175,8 +162,8 @@ async function main() {
   console.log('🌶️  Starting 2025 results import...\n');
 
   // Read CSV files
-  const basicResultsPath = path.join(__dirname, '../../past_results/2025_results_and_placements.csv');
-  const enrichedResultsPath = path.join(__dirname, '../../past_results/Enriched_Chillifest_Results - Enriched_Chillifest_Results.csv');
+  const basicResultsPath = path.join(__dirname, '../past_results/2025_results_and_placements.csv');
+  const enrichedResultsPath = path.join(__dirname, '../past_results/Enriched_Chillifest_Results - Enriched_Chillifest_Results.csv');
 
   const basicContent = fs.readFileSync(basicResultsPath, 'utf-8');
   const enrichedContent = fs.readFileSync(enrichedResultsPath, 'utf-8');
@@ -237,28 +224,26 @@ async function main() {
 
   for (const result of mergedResults) {
     try {
-      // Upload image if needed
-      if (result.product_image_url && !result.product_image_url.startsWith('http')) {
-        const uploadedUrl = await uploadImage(result.code, result.product_image_url);
-        if (uploadedUrl) {
-          result.product_image_url = uploadedUrl;
-        }
+      // Always try to upload local image first (overrides CSV URL)
+      const uploadedUrl = await uploadImage(result.code, '');
+      if (uploadedUrl) {
+        result.product_image_url = uploadedUrl;
       }
 
-      // Insert into database
+      // Upsert into database (insert or update based on code)
       const { error } = await supabase
         .from('past_results')
-        .insert(result);
+        .upsert(result, { onConflict: 'code' });
 
       if (error) {
-        console.error(`❌ Error inserting ${result.code} (${result.entry_name}):`, error.message);
+        console.error(`❌ Error upserting ${result.code} (${result.entry_name}):`, error.message);
         errorCount++;
       } else {
         successCount++;
         if (result.global_rank) {
-          console.log(`✅ Inserted #${result.global_rank}: ${result.entry_name} (${result.code})`);
+          console.log(`✅ Upserted #${result.global_rank}: ${result.entry_name} (${result.code})`);
         } else {
-          console.log(`✅ Inserted: ${result.entry_name} (${result.code})`);
+          console.log(`✅ Upserted: ${result.entry_name} (${result.code})`);
         }
       }
     } catch (err) {

@@ -195,7 +195,6 @@ const YearResultsPage = async ({ params }: { params: { year: string } }) => {
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-xs text-amber-200 hover:text-amber-100 transition"
-                            onClick={(e) => e.stopPropagation()}
                           >
                             View Product →
                           </a>
@@ -206,7 +205,6 @@ const YearResultsPage = async ({ params }: { params: { year: string } }) => {
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-xs text-white/60 hover:text-white/80 transition"
-                            onClick={(e) => e.stopPropagation()}
                           >
                             Website
                           </a>

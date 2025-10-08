@@ -20,3 +20,6 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Past results images (stored in Supabase Storage)
+/eu-hot-sauce-awards/past_results/images/
