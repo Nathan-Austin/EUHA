@@ -23,11 +23,37 @@ interface PastResult {
 
 interface ResultsFilterProps {
   results: PastResult[];
-  getAwardIcon: (award: string) => string;
-  getCountryFlag: (country: string | null) => string;
 }
 
-export default function ResultsFilter({ results, getAwardIcon, getCountryFlag }: ResultsFilterProps) {
+export default function ResultsFilter({ results }: ResultsFilterProps) {
+  // Helper functions
+  const getAwardIcon = (award: string) => {
+    if (award.includes('GOLD')) return '🥇';
+    if (award.includes('SILVER')) return '🥈';
+    if (award.includes('BRONZE')) return '🥉';
+    return '🏆';
+  };
+
+  const getCountryFlag = (country: string | null) => {
+    if (!country) return '';
+    const countryFlags: { [key: string]: string } = {
+      'Germany': '🇩🇪',
+      'UK': '🇬🇧',
+      'Poland': '🇵🇱',
+      'Austria': '🇦🇹',
+      'Norway': '🇳🇴',
+      'Netherlands': '🇳🇱',
+      'Belgium': '🇧🇪',
+      'France': '🇫🇷',
+      'Italy': '🇮🇹',
+      'Spain': '🇪🇸',
+      'USA': '🇺🇸',
+      'Northern Ireland': '🇬🇧',
+      'Ireland': '🇮🇪',
+    };
+    return countryFlags[country] || '🌍';
+  };
+
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedAward, setSelectedAward] = useState<string>('all');

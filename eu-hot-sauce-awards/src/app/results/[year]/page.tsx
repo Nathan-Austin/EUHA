@@ -60,34 +60,6 @@ async function getResultsByYear(year: string) {
   return data as PastResult[];
 }
 
-// Helper functions passed to client component
-const getAwardIcon = (award: string) => {
-    if (award.includes('GOLD')) return '🥇';
-    if (award.includes('SILVER')) return '🥈';
-    if (award.includes('BRONZE')) return '🥉';
-    return '🏆';
-};
-
-const getCountryFlag = (country: string | null) => {
-    if (!country) return '';
-    const countryFlags: { [key: string]: string } = {
-      'Germany': '🇩🇪',
-      'UK': '🇬🇧',
-      'Poland': '🇵🇱',
-      'Austria': '🇦🇹',
-      'Norway': '🇳🇴',
-      'Netherlands': '🇳🇱',
-      'Belgium': '🇧🇪',
-      'France': '🇫🇷',
-      'Italy': '🇮🇹',
-      'Spain': '🇪🇸',
-      'USA': '🇺🇸',
-      'Northern Ireland': '🇬🇧',
-      'Ireland': '🇮🇪',
-  };
-  return countryFlags[country] || '🌍';
-};
-
 // The page component receives params from the dynamic route
 const YearResultsPage = async ({ params }: { params: { year: string } }) => {
   const { year } = params;
@@ -115,11 +87,7 @@ const YearResultsPage = async ({ params }: { params: { year: string } }) => {
 
       <div className="space-y-10 md:space-y-16 py-10 md:py-16">
         <SectionContainer>
-          <ResultsFilter
-            results={results}
-            getAwardIcon={getAwardIcon}
-            getCountryFlag={getCountryFlag}
-          />
+          <ResultsFilter results={results} />
         </SectionContainer>
       </div>
     </div>
