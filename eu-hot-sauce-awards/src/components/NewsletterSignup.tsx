@@ -41,7 +41,7 @@ const NewsletterSignup = () => {
   return (
     <div className="text-center max-w-xl mx-auto">
       <h2 className="text-3xl font-bold text-amber-400 mb-4">Stay Updated</h2>
-      <p className="mb-6">Subscribe to our newsletter for the latest on events, results, and more.</p>
+      <p className="mb-6 text-white/75">Subscribe to our newsletter for the latest on events, results, and more.</p>
       <form className="flex flex-col sm:flex-row justify-center gap-2" onSubmit={handleSubmit}>
         <input 
           type="email" 
