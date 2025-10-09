@@ -60,7 +60,17 @@ const NewsletterSignup = () => {
           {isSubmitting ? 'Subscribing...' : 'Subscribe'}
         </button>
       </form>
-      {message && <p className="mt-4 text-sm">{message}</p>}
+      {message && (
+        <p className={`mt-4 text-sm font-semibold ${
+          message.includes('Thank you') || message.includes('already subscribed')
+            ? 'text-green-400'
+            : message.includes('Subscribing')
+            ? 'text-white/70'
+            : 'text-red-400'
+        }`}>
+          {message}
+        </p>
+      )}
     </div>
   );
 };
