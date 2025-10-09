@@ -55,7 +55,7 @@ const Footer = () => {
           <p className="text-base text-gray-400">&copy; 2026 Heat Awards Europe. All rights reserved.</p>
           <div className="flex space-x-6 md:order-1">
             <FooterLink href="/terms">Terms</FooterLink>
-            <FooterLink href="#">Privacy Policy</FooterLink> { /* Add link if page is created */}
+            <FooterLink href="/privacy">Privacy Policy</FooterLink>
           </div>
         </div>
       </div>
