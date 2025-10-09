@@ -33,7 +33,7 @@ export const metadata: Metadata = {
       "The official site for the European Hot Sauce Awards. Enter your sauce, apply to be a judge, and discover the best hot sauces in Europe.",
   },
   icons: {
-    icon: "/chilifestlogo.png",
+    icon: "/favicon.ico",
   },
 };
 
