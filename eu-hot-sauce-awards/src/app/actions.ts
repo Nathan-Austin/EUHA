@@ -1199,3 +1199,451 @@ export async function getJudgeScoredSauces() {
 
   return { scoredSauces: uniqueSauces, totalAssigned: assignedCount || 0 };
 }
+
+// Email Campaign Actions for 2026 Invitations
+
+export interface PreviousParticipant {
+  email: string;
+  name: string;
+  lastParticipated: number;
+  invitedDate?: string;
+}
+
+export interface EmailTemplate {
+  id: string;
+  template_key: string;
+  name: string;
+  description?: string;
+  subject: string;
+  html_body: string;
+  text_body?: string;
+  variables?: string[];
+  is_active: boolean;
+}
+
+export async function getPreviousSuppliers() {
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+
+  // Admin check
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user?.email) return { error: 'You must be logged in.' };
+
+  const { data: adminCheck, error: adminError } = await supabase
+    .from('judges')
+    .select('type')
+    .eq('email', user.email)
+    .single();
+
+  if (adminError || adminCheck?.type !== 'admin') {
+    return { error: 'You are not authorized.' };
+  }
+
+  // Get all suppliers from participation table
+  const { data: supplierParticipations, error: suppliersError } = await supabase
+    .from('supplier_participations')
+    .select('email, company_name, year, invited_date')
+    .order('year', { ascending: false });
+
+  if (suppliersError) {
+    return { error: `Failed to fetch suppliers: ${suppliersError.message}` };
+  }
+
+  // Get all judge emails to exclude supplier-judges
+  const { data: judges, error: judgesError } = await supabase
+    .from('judges')
+    .select('email, type')
+    .eq('type', 'supplier');
+
+  if (judgesError) {
+    return { error: `Failed to fetch judges: ${judgesError.message}` };
+  }
+
+  const judgeEmails = new Set(judges?.map(j => j.email.toLowerCase()) || []);
+
+  // Deduplicate and exclude supplier-judges
+  const uniqueSuppliers = new Map<string, PreviousParticipant>();
+
+  supplierParticipations?.forEach((sp: any) => {
+    const emailLower = sp.email.toLowerCase();
+
+    // Skip if this email is a judge
+    if (judgeEmails.has(emailLower)) {
+      return;
+    }
+
+    const existing = uniqueSuppliers.get(emailLower);
+    if (!existing || sp.year > existing.lastParticipated) {
+      uniqueSuppliers.set(emailLower, {
+        email: sp.email,
+        name: sp.company_name || sp.email.split('@')[0],
+        lastParticipated: sp.year,
+        invitedDate: sp.invited_date,
+      });
+    }
+  });
+
+  const suppliers = Array.from(uniqueSuppliers.values()).sort((a, b) =>
+    b.lastParticipated - a.lastParticipated
+  );
+
+  return { suppliers };
+}
+
+export async function getPreviousJudges() {
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+
+  // Admin check
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user?.email) return { error: 'You must be logged in.' };
+
+  const { data: adminCheck, error: adminError } = await supabase
+    .from('judges')
+    .select('type')
+    .eq('email', user.email)
+    .single();
+
+  if (adminError || adminCheck?.type !== 'admin') {
+    return { error: 'You are not authorized.' };
+  }
+
+  // Get all judge participations
+  const { data: judgeParticipations, error: judgesError } = await supabase
+    .from('judge_participations')
+    .select('email, full_name, year, judge_type, invited_date')
+    .order('year', { ascending: false });
+
+  if (judgesError) {
+    return { error: `Failed to fetch judges: ${judgesError.message}` };
+  }
+
+  // Get supplier emails to exclude
+  const { data: suppliers, error: suppliersError } = await supabase
+    .from('suppliers')
+    .select('email');
+
+  if (suppliersError) {
+    return { error: `Failed to fetch suppliers: ${suppliersError.message}` };
+  }
+
+  const supplierEmails = new Set(suppliers?.map(s => s.email.toLowerCase()) || []);
+
+  // Deduplicate and exclude suppliers
+  const uniqueJudges = new Map<string, PreviousParticipant & { judgeType: string }>();
+
+  judgeParticipations?.forEach((jp: any) => {
+    const emailLower = jp.email.toLowerCase();
+
+    // Skip if this email is a supplier (non-judge supplier)
+    if (supplierEmails.has(emailLower) && jp.judge_type === 'supplier') {
+      return;
+    }
+
+    const existing = uniqueJudges.get(emailLower);
+    if (!existing || jp.year > existing.lastParticipated) {
+      uniqueJudges.set(emailLower, {
+        email: jp.email,
+        name: jp.full_name || jp.email.split('@')[0],
+        lastParticipated: jp.year,
+        invitedDate: jp.invited_date,
+        judgeType: jp.judge_type || 'community',
+      });
+    }
+  });
+
+  const judges = Array.from(uniqueJudges.values()).sort((a, b) =>
+    b.lastParticipated - a.lastParticipated
+  );
+
+  return { judges };
+}
+
+export async function sendSupplierInvitations(emails: string[]) {
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+
+  // Admin check
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user?.email) return { error: 'You must be logged in.' };
+
+  const { data: adminCheck, error: adminError } = await supabase
+    .from('judges')
+    .select('type')
+    .eq('email', user.email)
+    .single();
+
+  if (adminError || adminCheck?.type !== 'admin') {
+    return { error: 'You are not authorized.' };
+  }
+
+  if (!emails || emails.length === 0) {
+    return { error: 'No emails provided.' };
+  }
+
+  // Get supplier details for personalization
+  const { data: supplierParticipations } = await supabase
+    .from('supplier_participations')
+    .select('email, company_name')
+    .in('email', emails);
+
+  const supplierMap = new Map(
+    supplierParticipations?.map((sp: any) => [sp.email.toLowerCase(), sp.company_name]) || []
+  );
+
+  const results = {
+    sent: [] as string[],
+    failed: [] as { email: string; error: string }[],
+  };
+
+  // Get email template from database
+  const { data: template, error: templateError } = await supabase
+    .from('email_templates')
+    .select('*')
+    .eq('template_key', 'supplier_2026_invitation')
+    .eq('is_active', true)
+    .single();
+
+  if (templateError || !template) {
+    return { error: 'Email template not found. Please configure templates first.' };
+  }
+
+  // Send emails
+  for (const email of emails) {
+    try {
+      const brandName = supplierMap.get(email.toLowerCase()) || email.split('@')[0];
+
+      // Replace variables in template
+      const emailContent = {
+        subject: replaceTemplateVariables(template.subject, { brandName }),
+        html: replaceTemplateVariables(template.html_body, { brandName }),
+        text: template.text_body ? replaceTemplateVariables(template.text_body, { brandName }) : undefined,
+      };
+
+      await sendEmail({
+        to: email,
+        ...emailContent,
+      });
+      results.sent.push(email);
+
+      // Update invited_date in database
+      await supabase
+        .from('supplier_participations')
+        .update({ invited_date: new Date().toISOString(), responded: false })
+        .eq('email', email);
+    } catch (error: any) {
+      results.failed.push({ email, error: error.message });
+    }
+  }
+
+  return {
+    success: true,
+    sent: results.sent.length,
+    failed: results.failed.length,
+    failedEmails: results.failed,
+  };
+}
+
+export async function sendJudgeInvitations(emails: string[]) {
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+
+  // Admin check
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user?.email) return { error: 'You must be logged in.' };
+
+  const { data: adminCheck, error: adminError } = await supabase
+    .from('judges')
+    .select('type')
+    .eq('email', user.email)
+    .single();
+
+  if (adminError || adminCheck?.type !== 'admin') {
+    return { error: 'You are not authorized.' };
+  }
+
+  if (!emails || emails.length === 0) {
+    return { error: 'No emails provided.' };
+  }
+
+  // Get judge details for personalization
+  const { data: judgeParticipations } = await supabase
+    .from('judge_participations')
+    .select('email, full_name, judge_type')
+    .in('email', emails);
+
+  const judgeMap = new Map(
+    judgeParticipations?.map((jp: any) => [
+      jp.email.toLowerCase(),
+      { name: jp.full_name, type: jp.judge_type }
+    ]) || []
+  );
+
+  const results = {
+    sent: [] as string[],
+    failed: [] as { email: string; error: string }[],
+  };
+
+  // Get email template from database
+  const { data: template, error: templateError } = await supabase
+    .from('email_templates')
+    .select('*')
+    .eq('template_key', 'judge_2026_invitation')
+    .eq('is_active', true)
+    .single();
+
+  if (templateError || !template) {
+    return { error: 'Email template not found. Please configure templates first.' };
+  }
+
+  // Send emails
+  for (const email of emails) {
+    try {
+      const judgeInfo = judgeMap.get(email.toLowerCase());
+      const name = judgeInfo?.name || email.split('@')[0];
+      const judgeType = judgeInfo?.type || 'community';
+
+      // Replace variables in template
+      const emailContent = {
+        subject: replaceTemplateVariables(template.subject, { name, judgeType }),
+        html: replaceTemplateVariables(template.html_body, { name, judgeType }),
+        text: template.text_body ? replaceTemplateVariables(template.text_body, { name, judgeType }) : undefined,
+      };
+
+      await sendEmail({
+        to: email,
+        ...emailContent,
+      });
+      results.sent.push(email);
+
+      // Update invited_date in database
+      await supabase
+        .from('judge_participations')
+        .update({ invited_date: new Date().toISOString(), responded: false })
+        .eq('email', email);
+    } catch (error: any) {
+      results.failed.push({ email, error: error.message });
+    }
+  }
+
+  return {
+    success: true,
+    sent: results.sent.length,
+    failed: results.failed.length,
+    failedEmails: results.failed,
+  };
+}
+
+
+// Email Template Management Actions
+
+export async function getEmailTemplates() {
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+
+  // Admin check
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user?.email) return { error: 'You must be logged in.' };
+
+  const { data: adminCheck, error: adminError } = await supabase
+    .from('judges')
+    .select('type')
+    .eq('email', user.email)
+    .single();
+
+  if (adminError || adminCheck?.type !== 'admin') {
+    return { error: 'You are not authorized.' };
+  }
+
+  const { data: templates, error } = await supabase
+    .from('email_templates')
+    .select('*')
+    .order('name', { ascending: true });
+
+  if (error) {
+    return { error: `Failed to fetch templates: ${error.message}` };
+  }
+
+  return { templates: templates as EmailTemplate[] };
+}
+
+export async function getEmailTemplate(templateKey: string) {
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+
+  // Admin check
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user?.email) return { error: 'You must be logged in.' };
+
+  const { data: adminCheck, error: adminError } = await supabase
+    .from('judges')
+    .select('type')
+    .eq('email', user.email)
+    .single();
+
+  if (adminError || adminCheck?.type !== 'admin') {
+    return { error: 'You are not authorized.' };
+  }
+
+  const { data: template, error } = await supabase
+    .from('email_templates')
+    .select('*')
+    .eq('template_key', templateKey)
+    .single();
+
+  if (error) {
+    return { error: `Failed to fetch template: ${error.message}` };
+  }
+
+  return { template: template as EmailTemplate };
+}
+
+export async function updateEmailTemplate(
+  templateKey: string,
+  updates: {
+    subject?: string;
+    html_body?: string;
+    text_body?: string;
+    is_active?: boolean;
+  }
+) {
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+
+  // Admin check
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user?.email) return { error: 'You must be logged in.' };
+
+  const { data: adminCheck, error: adminError } = await supabase
+    .from('judges')
+    .select('type')
+    .eq('email', user.email)
+    .single();
+
+  if (adminError || adminCheck?.type !== 'admin') {
+    return { error: 'You are not authorized.' };
+  }
+
+  const { error } = await supabase
+    .from('email_templates')
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq('template_key', templateKey);
+
+  if (error) {
+    return { error: `Failed to update template: ${error.message}` };
+  }
+
+  revalidatePath('/dashboard');
+  return { success: true };
+}
+
+// Helper function to replace variables in template
+function replaceTemplateVariables(template: string, variables: Record<string, string>): string {
+  let result = template;
+  for (const [key, value] of Object.entries(variables)) {
+    const regex = new RegExp(`{{${key}}}`, 'g');
+    result = result.replace(regex, value);
+  }
+  return result;
+}
+

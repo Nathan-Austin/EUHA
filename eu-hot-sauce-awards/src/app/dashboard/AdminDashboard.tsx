@@ -11,6 +11,8 @@ import JudgeLabelGenerator from './JudgeLabelGenerator'
 import PackageTracker from './PackageTracker'
 import ResultsManager from './ResultsManager'
 import EventsManager from './EventsManager'
+import EmailCampaignManager from './EmailCampaignManager'
+import EmailTemplateEditor from './EmailTemplateEditor'
 
 const formatStatusLabel = (status: string) =>
   status
@@ -246,6 +248,19 @@ export default async function AdminDashboard() {
           <ResultsManager />
           <EventsManager />
         </div>
+      </section>
+
+      <section className="space-y-6">
+        <SectionHeading
+          title="Marketing & Outreach"
+          description="Manage email campaigns and customize email templates."
+        />
+        <Card>
+          <EmailTemplateEditor />
+        </Card>
+        <Card>
+          <EmailCampaignManager />
+        </Card>
       </section>
     </div>
   )
