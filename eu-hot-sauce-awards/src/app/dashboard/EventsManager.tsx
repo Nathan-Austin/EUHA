@@ -11,6 +11,7 @@ interface Event {
   event_date: string;
   event_time: string | null;
   end_date: string | null;
+  end_time: string | null;
   location: string | null;
   venue: string | null;
   url: string | null;
@@ -300,14 +301,25 @@ const EventsManager = () => {
                 </div>
               </div>
 
-              <div>
-                <label className="mb-1 block text-white/70">End Date</label>
-                <input
-                  type="date"
-                  name="end_date"
-                  defaultValue={editingEvent?.end_date || ''}
-                  className="w-full rounded-lg border border-white/20 bg-black/30 px-3 py-2 text-white"
-                />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-white/70">End Date</label>
+                  <input
+                    type="date"
+                    name="end_date"
+                    defaultValue={editingEvent?.end_date || ''}
+                    className="w-full rounded-lg border border-white/20 bg-black/30 px-3 py-2 text-white"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-white/70">End Time</label>
+                  <input
+                    type="time"
+                    name="end_time"
+                    defaultValue={editingEvent?.end_time || ''}
+                    className="w-full rounded-lg border border-white/20 bg-black/30 px-3 py-2 text-white"
+                  />
+                </div>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">

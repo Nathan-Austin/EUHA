@@ -5,6 +5,7 @@ import Hero from '@/components/Hero';
 import SectionContainer from '@/components/SectionContainer';
 import Image from 'next/image';
 import Link from 'next/link';
+import LinkifyText from '@/components/LinkifyText';
 import type { Metadata } from 'next';
 
 interface Props {
@@ -75,9 +76,9 @@ export default async function EventDetailPage({ params }: Props) {
                 <div>
                   <h2 className="text-2xl font-bold text-white mb-4">About This Event</h2>
                   {event.description ? (
-                    <p className="text-white/75 leading-relaxed text-lg whitespace-pre-wrap">
-                      {event.description}
-                    </p>
+                    <div className="text-white/75 leading-relaxed text-lg whitespace-pre-wrap">
+                      <LinkifyText text={event.description} />
+                    </div>
                   ) : (
                     <p className="text-white/50 italic">No description available.</p>
                   )}
