@@ -72,12 +72,12 @@ export default function CommunityJudgeDashboard() {
       {/* Mobile-optimized header */}
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
         <div>
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Judge Dashboard</h2>
-          <p className="text-sm text-gray-600 mt-1">
+          <h2 className="text-xl sm:text-2xl font-bold text-white">Judge Dashboard</h2>
+          <p className="text-sm text-gray-300 mt-1">
             {totalAssigned === 0 ? (
-              <span className="font-semibold text-green-600">Judging complete, thank you</span>
+              <span className="font-semibold text-green-400">Judging complete, thank you</span>
             ) : (
-              <><span className="font-semibold text-orange-600">{scoredSauces.length}/{totalAssigned}</span> sauces judged</>
+              <><span className="font-semibold text-orange-400">{scoredSauces.length}/{totalAssigned}</span> sauces judged</>
             )}
           </p>
         </div>
@@ -92,7 +92,7 @@ export default function CommunityJudgeDashboard() {
       </div>
 
       <div>
-        <h3 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4 text-gray-900">Sauces Pending Submission</h3>
+        <h3 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4 text-white">Sauces Pending Submission</h3>
         {storedScores.length > 0 ? (
           <div className="space-y-4">
             {/* Mobile: Card layout, Desktop: Table */}
@@ -129,13 +129,13 @@ export default function CommunityJudgeDashboard() {
             </div>
           </div>
         ) : (
-          <p className="text-gray-600 text-sm sm:text-base">You have no scores pending submission.</p>
+          <p className="text-gray-300 text-sm sm:text-base">You have no scores pending submission.</p>
         )}
       </div>
 
       {/* Scored Sauces Section */}
       <div className="pt-4 border-t border-gray-300">
-        <h3 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4 text-gray-900">Completed Scores</h3>
+        <h3 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4 text-white">Completed Scores</h3>
         {scoredSauces.length > 0 ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
             {scoredSauces.map((sauce) => (
@@ -148,12 +148,12 @@ export default function CommunityJudgeDashboard() {
             ))}
           </div>
         ) : (
-          <p className="text-gray-600 text-sm sm:text-base">No sauces scored yet. Scan a QR code to begin.</p>
+          <p className="text-gray-300 text-sm sm:text-base">No sauces scored yet. Scan a QR code to begin.</p>
         )}
       </div>
 
-      {error && <p className="mt-4 text-sm text-center text-red-600">{error}</p>}
-      {success && <p className="mt-4 text-sm text-center text-green-600">{success}</p>}
+      {error && <p className="mt-4 text-sm text-center text-red-400">{error}</p>}
+      {success && <p className="mt-4 text-sm text-center text-green-400">{success}</p>}
     </div>
   );
 }

@@ -25,7 +25,7 @@ export default async function DashboardPage() {
 
   if (judgeQueryError) {
     return (
-        <div className="flex items-center justify-center min-h-screen bg-gray-100">
+        <div className="flex items-center justify-center min-h-screen bg-[#08040e]">
             <div className="w-full max-w-md p-8 space-y-6 text-center bg-white rounded-lg shadow-md">
                 <h1 className="text-xl font-bold text-red-600">Error</h1>
                 <p>Could not retrieve your user profile. Please contact support.</p>
@@ -47,7 +47,7 @@ export default async function DashboardPage() {
   if (!judge) {
     // User exists in auth but not in judges table
     return (
-        <div className="flex items-center justify-center min-h-screen bg-gray-100">
+        <div className="flex items-center justify-center min-h-screen bg-[#08040e]">
             <div className="w-full max-w-md p-8 space-y-6 text-center bg-white rounded-lg shadow-md">
                 <h1 className="text-xl font-bold text-red-600">Access Denied</h1>
                 <p>No judge or supplier profile found for this email. Please contact support.</p>
@@ -103,7 +103,7 @@ export default async function DashboardPage() {
 
   if (judge.type === 'admin') {
     return (
-      <div className="min-h-screen bg-gray-100">
+      <div className="min-h-screen bg-[#08040e]">
         <header className="border-b bg-white shadow-sm">
           <div className="flex flex-col gap-4 px-4 py-6 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-10">
             <div>
@@ -123,7 +123,7 @@ export default async function DashboardPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-100">
+    <div className="flex min-h-screen items-center justify-center bg-[#08040e]">
       <div className="w-full max-w-2xl overflow-hidden rounded-lg bg-white shadow-md">
         <div className="space-y-6 p-8">
           <header className="flex items-center justify-between">

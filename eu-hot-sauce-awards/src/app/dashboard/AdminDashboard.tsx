@@ -28,8 +28,8 @@ function Card({ children, padding = 'p-6' }: { children: ReactNode; padding?: st
 function SectionHeading({ title, description }: { title: string; description?: string }) {
   return (
     <div className="space-y-1">
-      <h3 className="text-xl font-semibold text-gray-900">{title}</h3>
-      {description ? <p className="text-sm text-gray-600">{description}</p> : null}
+      <h3 className="text-xl font-semibold text-white">{title}</h3>
+      {description ? <p className="text-sm text-gray-300">{description}</p> : null}
     </div>
   )
 }
@@ -60,11 +60,11 @@ export default async function AdminDashboard() {
     .order('package_status', { ascending: true }) as { data: any[] | null; error: any }
 
   if (error) {
-    return <p className="text-red-600">Error loading sauces: {error.message}</p>
+    return <p className="text-red-400">Error loading sauces: {error.message}</p>
   }
 
   if (!sauces) {
-    return <p className="text-gray-600">No sauces found.</p>
+    return <p className="text-gray-300">No sauces found.</p>
   }
 
   const totalSauces = sauces.length
@@ -243,12 +243,8 @@ export default async function AdminDashboard() {
           <AddAdminUser />
         </Card>
         <div className="grid gap-6 lg:grid-cols-2">
-          <Card>
-            <ResultsManager />
-          </Card>
-          <Card>
-            <EventsManager />
-          </Card>
+          <ResultsManager />
+          <EventsManager />
         </div>
       </section>
     </div>

@@ -1,26 +1,7 @@
 'use client'
 
-// Mock data until backend is connected
-const mockResults = [
-  {
-    id: '1',
-    year: 2025,
-    category: 'Mild',
-    sauce_name: 'Mild Mania',
-    supplier_name: 'Sauce Co.',
-    award: 'Gold',
-  },
-  {
-    id: '2',
-    year: 2025,
-    category: 'Hot',
-    sauce_name: 'Volcano Burst',
-    supplier_name: 'Heat Inc.',
-    award: 'Silver',
-  },
-]
-
 const ResultsManager = () => {
+  const mockResults: any[] = [];
   return (
     <div className="mt-8 rounded-3xl border border-white/15 bg-white/[0.05] p-5 backdrop-blur sm:p-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

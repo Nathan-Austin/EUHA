@@ -56,10 +56,10 @@ const ContactPage = () => {
                 <div>
                   <p className="text-xs uppercase tracking-wider text-white/60 mb-1">Address</p>
                   <address className="not-italic text-base">
-                    EUROPEAN HOT SAUCE AWARDS<br />
-                    CBS Foods GmbH<br />
-                    Ossastr 21A<br />
-                    12045 Berlin, Neukölln<br />
+                    Chili Punk Berlin<br />
+                    Co/ DUTTON<br />
+                    Urbanstraße 96<br />
+                    10967 Berlin<br />
                     Germany
                   </address>
                 </div>
