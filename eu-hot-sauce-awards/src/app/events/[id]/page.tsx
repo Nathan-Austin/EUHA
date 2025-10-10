@@ -57,14 +57,16 @@ export default async function EventDetailPage({ params }: Props) {
         <SectionContainer>
           <div className="space-y-8">
             {event.image_url && (
-              <div className="relative h-64 md:h-[500px] w-full overflow-hidden rounded-3xl">
-                <Image
-                  src={event.image_url}
-                  alt={event.title}
-                  fill
-                  className="object-cover"
-                  priority
-                />
+              <div className="flex justify-center">
+                <div className="relative h-[500px] w-[500px] overflow-hidden rounded-3xl">
+                  <Image
+                    src={event.image_url}
+                    alt={event.title}
+                    fill
+                    className="object-cover"
+                    priority
+                  />
+                </div>
               </div>
             )}
 
@@ -87,22 +89,23 @@ export default async function EventDetailPage({ params }: Props) {
                   <h3 className="text-lg font-semibold text-amber-400">Event Details</h3>
 
                   <div>
-                    <p className="text-xs uppercase tracking-wider text-white/50 mb-1">Date</p>
+                    <p className="text-xs uppercase tracking-wider text-white/50 mb-1">Date & Time</p>
                     <p className="text-white font-medium">
                       {new Date(event.event_date).toLocaleDateString('en-GB', {
                         weekday: 'long',
+                        day: '2-digit',
+                        month: '2-digit',
                         year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
                       })}
+                      {event.event_time && ` • ${event.event_time.slice(0, 5)}`}
                     </p>
                     {event.end_date && (
                       <p className="text-white/60 text-sm mt-1">
                         to {new Date(event.end_date).toLocaleDateString('en-GB', {
                           weekday: 'long',
+                          day: '2-digit',
+                          month: '2-digit',
                           year: 'numeric',
-                          month: 'long',
-                          day: 'numeric',
                         })}
                       </p>
                     )}

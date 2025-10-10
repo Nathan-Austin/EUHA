@@ -25,6 +25,7 @@ export async function createEvent(formData: FormData) {
   const title = formData.get('title') as string;
   const description = formData.get('description') as string;
   const eventDate = formData.get('event_date') as string;
+  const eventTime = formData.get('event_time') as string;
   const endDate = formData.get('end_date') as string;
   const location = formData.get('location') as string;
   const venue = formData.get('venue') as string;
@@ -63,6 +64,7 @@ export async function createEvent(formData: FormData) {
     title,
     description: description || null,
     event_date: eventDate,
+    event_time: eventTime || null,
     end_date: endDate || null,
     location: location || null,
     venue: venue || null,
@@ -87,6 +89,7 @@ export async function updateEvent(id: string, formData: FormData) {
   const title = formData.get('title') as string;
   const description = formData.get('description') as string;
   const eventDate = formData.get('event_date') as string;
+  const eventTime = formData.get('event_time') as string;
   const endDate = formData.get('end_date') as string;
   const location = formData.get('location') as string;
   const venue = formData.get('venue') as string;
@@ -139,6 +142,7 @@ export async function updateEvent(id: string, formData: FormData) {
     title,
     description: description || null,
     event_date: eventDate,
+    event_time: eventTime || null,
     end_date: endDate || null,
     location: location || null,
     venue: venue || null,

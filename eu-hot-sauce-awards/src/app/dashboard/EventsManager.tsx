@@ -9,6 +9,7 @@ interface Event {
   title: string;
   description: string | null;
   event_date: string;
+  event_time: string | null;
   end_date: string | null;
   location: string | null;
   venue: string | null;
@@ -289,14 +290,24 @@ const EventsManager = () => {
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-white/70">End Date</label>
+                  <label className="mb-1 block text-white/70">Time</label>
                   <input
-                    type="date"
-                    name="end_date"
-                    defaultValue={editingEvent?.end_date || ''}
+                    type="time"
+                    name="event_time"
+                    defaultValue={editingEvent?.event_time || ''}
                     className="w-full rounded-lg border border-white/20 bg-black/30 px-3 py-2 text-white"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-white/70">End Date</label>
+                <input
+                  type="date"
+                  name="end_date"
+                  defaultValue={editingEvent?.end_date || ''}
+                  className="w-full rounded-lg border border-white/20 bg-black/30 px-3 py-2 text-white"
+                />
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
