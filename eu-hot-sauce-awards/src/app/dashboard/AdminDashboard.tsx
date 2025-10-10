@@ -12,6 +12,7 @@ import PackageTracker from './PackageTracker'
 import EventsManager from './EventsManager'
 import EmailCampaignManager from './EmailCampaignManager'
 import EmailTemplateEditor from './EmailTemplateEditor'
+import AdminTabs from './AdminTabs'
 
 const formatStatusLabel = (status: string) =>
   status
@@ -97,169 +98,208 @@ export default async function AdminDashboard() {
     { label: 'Suppliers', value: totalSuppliers },
   ]
 
-  return (
-    <div className="space-y-10">
-      <Card>
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-          <div className="space-y-2">
-            <h2 className="text-2xl font-semibold text-gray-900">Admin Control Panel</h2>
-            <p className="text-sm text-gray-600">
-              Monitor competition flow, keep logistics on track, and publish updates from one place.
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <ExportResultsButton />
-          </div>
-        </div>
-        <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {overviewStats.map((stat) => (
-            <div key={stat.label} className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
-              <p className="text-xs font-medium uppercase tracking-wide text-gray-500">{stat.label}</p>
-              <p className="mt-1 text-2xl font-semibold text-gray-900">{stat.value}</p>
+  const tabs = [
+    {
+      id: 'overview',
+      label: 'Overview',
+      icon: '📊',
+      content: (
+        <div className="space-y-6">
+          <Card>
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+              <div className="space-y-2">
+                <h2 className="text-2xl font-semibold text-gray-900">Admin Control Panel</h2>
+                <p className="text-sm text-gray-600">
+                  Monitor competition flow, keep logistics on track, and publish updates from one place.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                <ExportResultsButton />
+              </div>
             </div>
-          ))}
+            <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              {overviewStats.map((stat) => (
+                <div key={stat.label} className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
+                  <p className="text-xs font-medium uppercase tracking-wide text-gray-500">{stat.label}</p>
+                  <p className="mt-1 text-2xl font-semibold text-gray-900">{stat.value}</p>
+                </div>
+              ))}
+            </div>
+          </Card>
         </div>
-      </Card>
-
-      <section className="space-y-6">
-        <SectionHeading
-          title="Sauce Overview"
-          description="Track every entry at a glance and manage status updates as bottles move through the process."
-        />
-        {statusHighlights.length > 0 ? (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {statusHighlights.map(([status, count]) => (
-              <Card key={status} padding="p-4">
-                <p className="text-sm font-medium text-gray-600">{formatStatusLabel(status)}</p>
-                <p className="mt-2 text-3xl font-semibold text-gray-900">{count}</p>
-              </Card>
-            ))}
-          </div>
-        ) : null}
-        <Card padding="p-0">
-          <div className="overflow-x-auto rounded-2xl">
-            <table className="min-w-full text-sm">
-              <thead className="bg-gray-100 text-gray-700">
-                <tr>
-                  <th className="px-4 py-3 text-left">Code</th>
-                  <th className="px-4 py-3 text-left">Brand</th>
-                  <th className="px-4 py-3 text-left">Sauce Name</th>
-                  <th className="px-4 py-3 text-left">Category</th>
-                  <th className="px-4 py-3 text-left">Status</th>
-                  <th className="px-4 py-3 text-left">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sauces.map((sauce) => (
-                  <tr key={sauce.id} className="border-t text-sm">
-                    <td className="whitespace-nowrap px-4 py-3">
-                      {sauce.sauce_code ? (
-                        <span className="rounded bg-gray-100 px-2 py-1 font-mono text-sm font-semibold">
-                          {sauce.sauce_code}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-gray-400">—</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-gray-700">{sauce.suppliers?.brand_name || 'N/A'}</td>
-                    <td className="px-4 py-3 text-gray-900">{sauce.name}</td>
-                    <td className="px-4 py-3 text-gray-600">{sauce.category}</td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`rounded-full px-2 py-1 text-xs font-semibold ${
-                          sauce.status === 'registered'
-                            ? 'bg-blue-200 text-blue-800'
-                            : sauce.status === 'arrived'
-                            ? 'bg-yellow-200 text-yellow-800'
-                            : sauce.status === 'boxed'
-                            ? 'bg-purple-200 text-purple-800'
-                            : 'bg-green-200 text-green-800'
-                        }`}
-                      >
-                        {formatStatusLabel(sauce.status)}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <SauceStatusUpdater sauceId={sauce.id} currentStatus={sauce.status} />
-                    </td>
+      ),
+    },
+    {
+      id: 'sauces',
+      label: 'Sauce Management',
+      icon: '🌶️',
+      content: (
+        <div className="space-y-6">
+          <SectionHeading
+            title="Sauce Overview"
+            description="Track every entry at a glance and manage status updates as bottles move through the process."
+          />
+          {statusHighlights.length > 0 ? (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {statusHighlights.map(([status, count]) => (
+                <Card key={status} padding="p-4">
+                  <p className="text-sm font-medium text-gray-600">{formatStatusLabel(status)}</p>
+                  <p className="mt-2 text-3xl font-semibold text-gray-900">{count}</p>
+                </Card>
+              ))}
+            </div>
+          ) : null}
+          <Card padding="p-0">
+            <div className="overflow-x-auto rounded-2xl">
+              <table className="min-w-full text-sm">
+                <thead className="bg-gray-100 text-gray-700">
+                  <tr>
+                    <th className="px-4 py-3 text-left">Code</th>
+                    <th className="px-4 py-3 text-left">Brand</th>
+                    <th className="px-4 py-3 text-left">Sauce Name</th>
+                    <th className="px-4 py-3 text-left">Category</th>
+                    <th className="px-4 py-3 text-left">Status</th>
+                    <th className="px-4 py-3 text-left">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {sauces.map((sauce) => (
+                    <tr key={sauce.id} className="border-t text-sm">
+                      <td className="whitespace-nowrap px-4 py-3">
+                        {sauce.sauce_code ? (
+                          <span className="rounded bg-gray-100 px-2 py-1 font-mono text-sm font-semibold">
+                            {sauce.sauce_code}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-gray-400">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-gray-700">{sauce.suppliers?.brand_name || 'N/A'}</td>
+                      <td className="px-4 py-3 text-gray-900">{sauce.name}</td>
+                      <td className="px-4 py-3 text-gray-600">{sauce.category}</td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={`rounded-full px-2 py-1 text-xs font-semibold ${
+                            sauce.status === 'registered'
+                              ? 'bg-blue-200 text-blue-800'
+                              : sauce.status === 'arrived'
+                              ? 'bg-yellow-200 text-yellow-800'
+                              : sauce.status === 'boxed'
+                              ? 'bg-purple-200 text-purple-800'
+                              : 'bg-green-200 text-green-800'
+                          }`}
+                        >
+                          {formatStatusLabel(sauce.status)}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <SauceStatusUpdater sauceId={sauce.id} currentStatus={sauce.status} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        </div>
+      ),
+    },
+    {
+      id: 'logistics',
+      label: 'Logistics & Packing',
+      icon: '📦',
+      content: (
+        <div className="space-y-6">
+          <SectionHeading
+            title="Logistics & Packing"
+            description="Stay on top of supplier shipments and keep judging boxes moving."
+          />
+          {suppliers && suppliers.length > 0 ? (
+            <Card>
+              <PackageTracker
+                suppliers={suppliers.map((supplier) => ({
+                  id: supplier.id,
+                  brandName: supplier.brand_name,
+                  email: supplier.email,
+                  trackingNumber: supplier.tracking_number,
+                  postalServiceName: supplier.postal_service_name,
+                  packageStatus: supplier.package_status || 'pending',
+                  packageReceivedAt: supplier.package_received_at,
+                }))}
+              />
+            </Card>
+          ) : null}
+          <div className="grid gap-6 lg:grid-cols-2">
+            <Card>
+              <AdminBoxPacker />
+            </Card>
+            <Card>
+              <BoxManagement />
+            </Card>
           </div>
-        </Card>
-      </section>
-
-      <section className="space-y-6">
-        <SectionHeading
-          title="Logistics & Packing"
-          description="Stay on top of supplier shipments and keep judging boxes moving."
-        />
-        {suppliers && suppliers.length > 0 ? (
+        </div>
+      ),
+    },
+    {
+      id: 'assets',
+      label: 'Assets & Labels',
+      icon: '🏷️',
+      content: (
+        <div className="space-y-6">
+          <SectionHeading
+            title="Assets & Collateral"
+            description="Generate stickers and judge labels without leaving the dashboard."
+          />
+          <div className="grid gap-6 lg:grid-cols-2">
+            <Card>
+              <StickerGenerator />
+            </Card>
+            <Card>
+              <JudgeLabelGenerator />
+            </Card>
+          </div>
+        </div>
+      ),
+    },
+    {
+      id: 'admin',
+      label: 'Administration',
+      icon: '⚙️',
+      content: (
+        <div className="space-y-6">
+          <SectionHeading
+            title="Administration"
+            description="Manage access and website updates from a single place."
+          />
           <Card>
-            <PackageTracker
-              suppliers={suppliers.map((supplier) => ({
-                id: supplier.id,
-                brandName: supplier.brand_name,
-                email: supplier.email,
-                trackingNumber: supplier.tracking_number,
-                postalServiceName: supplier.postal_service_name,
-                packageStatus: supplier.package_status || 'pending',
-                packageReceivedAt: supplier.package_received_at,
-              }))}
-            />
+            <AddAdminUser />
           </Card>
-        ) : null}
-        <div className="grid gap-6 lg:grid-cols-2">
           <Card>
-            <AdminBoxPacker />
-          </Card>
-          <Card>
-            <BoxManagement />
+            <EventsManager />
           </Card>
         </div>
-      </section>
-
-      <section className="space-y-6">
-        <SectionHeading
-          title="Assets & Collateral"
-          description="Generate stickers and judge labels without leaving the dashboard."
-        />
-        <div className="grid gap-6 lg:grid-cols-2">
+      ),
+    },
+    {
+      id: 'marketing',
+      label: 'Marketing',
+      icon: '📧',
+      content: (
+        <div className="space-y-6">
+          <SectionHeading
+            title="Marketing & Outreach"
+            description="Manage email campaigns and customize email templates."
+          />
           <Card>
-            <StickerGenerator />
+            <EmailTemplateEditor />
           </Card>
           <Card>
-            <JudgeLabelGenerator />
+            <EmailCampaignManager />
           </Card>
         </div>
-      </section>
+      ),
+    },
+  ]
 
-      <section className="space-y-6">
-        <SectionHeading
-          title="Administration"
-          description="Manage access and website updates from a single place."
-        />
-        <Card>
-          <AddAdminUser />
-        </Card>
-        <Card>
-          <EventsManager />
-        </Card>
-      </section>
-
-      <section className="space-y-6">
-        <SectionHeading
-          title="Marketing & Outreach"
-          description="Manage email campaigns and customize email templates."
-        />
-        <Card>
-          <EmailTemplateEditor />
-        </Card>
-        <Card>
-          <EmailCampaignManager />
-        </Card>
-      </section>
-    </div>
-  )
+  return <AdminTabs tabs={tabs} />
 }

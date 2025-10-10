@@ -91,9 +91,9 @@ const EventsManager = () => {
   }
 
   return (
-    <div className="mt-8 rounded-3xl border border-white/15 bg-white/[0.05] p-5 backdrop-blur sm:p-8">
+    <div>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="text-2xl font-semibold text-amber-400">Manage Events</h2>
+        <h2 className="text-2xl font-semibold text-gray-900">Manage Events</h2>
         <button
           onClick={openAddModal}
           className="w-full rounded-full bg-green-500 py-3 text-sm font-semibold text-white transition hover:bg-green-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-400 sm:w-auto sm:px-6"
@@ -105,7 +105,7 @@ const EventsManager = () => {
       <div className="hidden overflow-x-auto md:block">
         <table className="mt-6 min-w-full text-left text-sm">
           <thead>
-            <tr className="text-white/70">
+            <tr className="bg-gray-100 text-gray-700">
               <th className="px-3 py-2 font-medium">Image</th>
               <th className="px-3 py-2 font-medium">Title</th>
               <th className="px-3 py-2 font-medium">Date</th>
@@ -117,14 +117,14 @@ const EventsManager = () => {
           </thead>
           <tbody>
             {events.map((event) => (
-              <tr key={event.id} className="border-t border-white/10 text-white/90">
+              <tr key={event.id} className="border-t border-gray-200 text-gray-900">
                 <td className="px-3 py-2">
                   {event.image_url ? (
-                    <div className="relative h-16 w-16 overflow-hidden rounded-lg border border-white/10">
+                    <div className="relative h-16 w-16 overflow-hidden rounded-lg border border-gray-200">
                       <Image src={event.image_url} alt={event.title} fill className="object-cover" />
                     </div>
                   ) : (
-                    <div className="flex h-16 w-16 items-center justify-center rounded-lg border border-dashed border-white/20 text-xs text-white/40">
+                    <div className="flex h-16 w-16 items-center justify-center rounded-lg border border-dashed border-gray-300 text-xs text-gray-400">
                       No image
                     </div>
                   )}
@@ -139,7 +139,7 @@ const EventsManager = () => {
                 <td className="px-3 py-2">
                   <span
                     className={`rounded-full px-3 py-1 text-xs font-medium ${
-                      event.active ? 'bg-green-500/20 text-green-300' : 'bg-gray-500/20 text-gray-300'
+                      event.active ? 'bg-green-200 text-green-800' : 'bg-gray-200 text-gray-700'
                     }`}
                   >
                     {event.active ? 'Active' : 'Inactive'}
@@ -149,19 +149,19 @@ const EventsManager = () => {
                   <div className="flex flex-wrap gap-3">
                     <button
                       onClick={() => openEditModal(event)}
-                      className="text-blue-300 transition hover:text-blue-200"
+                      className="text-blue-600 transition hover:text-blue-700"
                     >
                       Edit
                     </button>
                     <button
                       onClick={() => handleToggleActive(event.id, event.active)}
-                      className="text-yellow-300 transition hover:text-yellow-200"
+                      className="text-yellow-600 transition hover:text-yellow-700"
                     >
                       {event.active ? 'Deactivate' : 'Activate'}
                     </button>
                     <button
                       onClick={() => handleDelete(event.id)}
-                      className="text-red-300 transition hover:text-red-200"
+                      className="text-red-600 transition hover:text-red-700"
                     >
                       Delete
                     </button>
@@ -171,7 +171,7 @@ const EventsManager = () => {
             ))}
             {events.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-3 py-6 text-center text-white/50">
+                <td colSpan={7} className="px-3 py-6 text-center text-gray-500">
                   No events found. Tap "Add New Event" to create one.
                 </td>
               </tr>
@@ -182,67 +182,67 @@ const EventsManager = () => {
 
       <div className="mt-6 grid gap-4 md:hidden">
         {events.length === 0 && (
-          <div className="rounded-2xl border border-white/15 bg-white/5 p-4 text-sm text-white/70">
+          <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
             No events found. Tap "Add New Event" to create one.
           </div>
         )}
         {events.map((event) => (
           <div
             key={event.id}
-            className="space-y-3 rounded-2xl border border-white/15 bg-white/5 p-4 text-sm text-white/90"
+            className="space-y-3 rounded-2xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-900"
           >
             <div className="flex flex-col gap-3 sm:flex-row">
               {event.image_url ? (
-                <div className="relative h-32 w-full overflow-hidden rounded-xl border border-white/10 sm:h-24 sm:w-32">
+                <div className="relative h-32 w-full overflow-hidden rounded-xl border border-gray-200 sm:h-24 sm:w-32">
                   <Image src={event.image_url} alt={event.title} fill className="object-cover" />
                 </div>
               ) : (
-                <div className="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-white/20 text-xs text-white/40 sm:h-24 sm:w-32">
+                <div className="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-gray-300 text-xs text-gray-400 sm:h-24 sm:w-32">
                   No image
                 </div>
               )}
               <div className="flex flex-1 flex-col gap-2">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="rounded-full bg-amber-500/20 px-3 py-1 text-xs font-medium text-amber-200">
+                  <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-800">
                     {new Date(event.event_date).toLocaleDateString()}
                     {event.end_date ? ` – ${new Date(event.end_date).toLocaleDateString()}` : ''}
                   </span>
                   {event.featured ? (
-                    <span className="rounded-full border border-amber-400/40 px-2 py-1 text-xs text-amber-200">
+                    <span className="rounded-full border border-amber-400 px-2 py-1 text-xs text-amber-600">
                       Featured
                     </span>
                   ) : null}
                   <span
                     className={`rounded-full px-2 py-1 text-xs ${
-                      event.active ? 'bg-green-500/20 text-green-300' : 'bg-gray-500/20 text-gray-300'
+                      event.active ? 'bg-green-200 text-green-800' : 'bg-gray-200 text-gray-700'
                     }`}
                   >
                     {event.active ? 'Active' : 'Inactive'}
                   </span>
                 </div>
-                <h3 className="text-base font-semibold text-white">{event.title}</h3>
-                <p className="text-xs text-white/60">{event.location || 'Location TBC'}</p>
+                <h3 className="text-base font-semibold text-gray-900">{event.title}</h3>
+                <p className="text-xs text-gray-600">{event.location || 'Location TBC'}</p>
                 {event.description ? (
-                  <p className="text-xs text-white/60">{event.description}</p>
+                  <p className="text-xs text-gray-600">{event.description}</p>
                 ) : null}
               </div>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
               <button
                 onClick={() => openEditModal(event)}
-                className="w-full rounded-full border border-white/20 px-4 py-2 text-sm text-white transition hover:bg-white/10 sm:w-auto"
+                className="w-full rounded-full border border-gray-300 px-4 py-2 text-sm text-gray-700 transition hover:bg-gray-100 sm:w-auto"
               >
                 Edit
               </button>
               <button
                 onClick={() => handleToggleActive(event.id, event.active)}
-                className="w-full rounded-full border border-yellow-400/40 px-4 py-2 text-sm text-yellow-200 transition hover:bg-yellow-500/10 sm:w-auto"
+                className="w-full rounded-full border border-yellow-400 px-4 py-2 text-sm text-yellow-700 transition hover:bg-yellow-50 sm:w-auto"
               >
                 {event.active ? 'Deactivate' : 'Activate'}
               </button>
               <button
                 onClick={() => handleDelete(event.id)}
-                className="w-full rounded-full border border-red-400/40 px-4 py-2 text-sm text-red-200 transition hover:bg-red-500/10 sm:w-auto"
+                className="w-full rounded-full border border-red-400 px-4 py-2 text-sm text-red-700 transition hover:bg-red-50 sm:w-auto"
               >
                 Delete
               </button>
