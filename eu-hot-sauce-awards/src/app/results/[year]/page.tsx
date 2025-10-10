@@ -45,6 +45,8 @@ async function getResultsByYear(year: string) {
   const { cookies } = await import('next/headers');
   const supabase = createClient(cookies());
 
+  console.log('🔍 Fetching results for year:', year);
+
   const { data, error } = await supabase
     .from('past_results')
     .select('*')
@@ -53,8 +55,13 @@ async function getResultsByYear(year: string) {
     .order('position', { ascending: true });
 
   if (error) {
-    console.error('Error fetching results:', error);
+    console.error('❌ Error fetching results:', error);
     return [];
+  }
+
+  console.log('✅ Fetched results count:', data?.length || 0);
+  if (data && data.length > 0) {
+    console.log('📊 Sample result:', data[0]);
   }
 
   return data as PastResult[];

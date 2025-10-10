@@ -11,10 +11,21 @@ export function createClient(cookieStore: ReturnType<typeof cookies>) {
           return cookieStore.get(name)?.value
         },
         set(name: string, value: string, options: CookieOptions) {
-          cookieStore.set({ name, value, ...options })
+          // In Server Components, we can't set cookies
+          // Only read them. Setting is allowed in Server Actions and Route Handlers
+          try {
+            cookieStore.set({ name, value, ...options })
+          } catch {
+            // Ignore cookie set errors in Server Components
+          }
         },
         remove(name: string, options: CookieOptions) {
-          cookieStore.set({ name, value: '', ...options })
+          // In Server Components, we can't remove cookies
+          try {
+            cookieStore.set({ name, value: '', ...options })
+          } catch {
+            // Ignore cookie remove errors in Server Components
+          }
         },
       },
     }
