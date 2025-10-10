@@ -18,6 +18,7 @@ interface Event {
   event_date: string;
   event_time: string | null;
   end_date: string | null;
+  end_time: string | null;
   location: string | null;
   venue: string | null;
   url: string | null;
@@ -73,6 +74,7 @@ const EventsPage = async () => {
                       {new Date(event.event_date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                       {event.event_time && ` • ${event.event_time.slice(0, 5)}`}
                       {event.end_date && ` - ${new Date(event.end_date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}`}
+                      {event.end_time && event.end_date && ` • ${event.end_time.slice(0, 5)}`}
                     </p>
                     <h3 className="text-lg font-bold text-white mb-2">{event.title}</h3>
                     {event.location && <p className="text-amber-200 text-sm mb-1">📍 {event.location}</p>}
@@ -118,6 +120,7 @@ const EventsPage = async () => {
                     {new Date(event.event_date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                     {event.event_time && ` • ${event.event_time.slice(0, 5)}`}
                     {event.end_date && ` - ${new Date(event.end_date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}`}
+                    {event.end_time && event.end_date && ` • ${event.end_time.slice(0, 5)}`}
                   </p>
                   <h3 className="text-lg font-bold text-white mb-2">{event.title}</h3>
                   {event.location && <p className="text-amber-200 text-sm mb-1">📍 {event.location}</p>}

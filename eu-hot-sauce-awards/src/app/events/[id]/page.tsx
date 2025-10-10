@@ -108,6 +108,7 @@ export default async function EventDetailPage({ params }: Props) {
                           month: '2-digit',
                           year: 'numeric',
                         })}
+                        {event.end_time && ` • ${event.end_time.slice(0, 5)}`}
                       </p>
                     )}
                   </div>
