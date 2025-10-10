@@ -99,29 +99,41 @@ export default async function DashboardPage() {
     }
   }
 
-  return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100">
-      <div className="w-full max-w-2xl bg-white rounded-lg shadow-md overflow-hidden">
-        {/* Banner at the very top */}
-        <div className="w-full">
-          <img
-            src="/cropped-banner-website.png"
-            alt="EU Hot Sauce Awards"
-            className="w-full h-auto"
-          />
-        </div>
+  const dashboardContent = await renderDashboard()
 
-        <div className="p-8 space-y-6">
-          <header className="flex items-center justify-between">
-              <div>
-                  <h1 className="text-2xl font-bold">Dashboard</h1>
-                  <p className="text-sm text-gray-600">Logged in as {user.email}</p>
-              </div>
+  if (judge.type === 'admin') {
+    return (
+      <div className="min-h-screen bg-gray-100">
+        <header className="border-b bg-white shadow-sm">
+          <div className="flex flex-col gap-4 px-4 py-6 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-10">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
+              <p className="text-sm text-gray-600">Logged in as {user.email}</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
               <LogoutButton />
+            </div>
+          </div>
+        </header>
+        <main className="w-full px-4 py-8 sm:px-6 lg:px-10">
+          <div className="w-full">{dashboardContent}</div>
+        </main>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-gray-100">
+      <div className="w-full max-w-2xl overflow-hidden rounded-lg bg-white shadow-md">
+        <div className="space-y-6 p-8">
+          <header className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold">Dashboard</h1>
+              <p className="text-sm text-gray-600">Logged in as {user.email}</p>
+            </div>
+            <LogoutButton />
           </header>
-          <main className="pt-4 border-t">
-              {await renderDashboard()}
-          </main>
+          <main className="border-t pt-4">{dashboardContent}</main>
         </div>
       </div>
     </div>

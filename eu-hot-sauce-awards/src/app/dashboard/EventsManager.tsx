@@ -89,84 +89,88 @@ const EventsManager = () => {
   }
 
   return (
-    <div className="bg-white/5 p-6 rounded-2xl mt-8">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-bold text-amber-400">Manage Events</h2>
+    <div className="mt-8 rounded-3xl border border-white/15 bg-white/[0.05] p-5 backdrop-blur sm:p-8">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <h2 className="text-2xl font-semibold text-amber-400">Manage Events</h2>
         <button
           onClick={openAddModal}
-          className="bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600"
+          className="w-full rounded-full bg-green-500 py-3 text-sm font-semibold text-white transition hover:bg-green-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-400 sm:w-auto sm:px-6"
         >
           Add New Event
         </button>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="min-w-full text-left">
+      <div className="hidden overflow-x-auto md:block">
+        <table className="mt-6 min-w-full text-left text-sm">
           <thead>
-            <tr>
-              <th className="p-2">Image</th>
-              <th className="p-2">Title</th>
-              <th className="p-2">Date</th>
-              <th className="p-2">Location</th>
-              <th className="p-2">Featured</th>
-              <th className="p-2">Status</th>
-              <th className="p-2">Actions</th>
+            <tr className="text-white/70">
+              <th className="px-3 py-2 font-medium">Image</th>
+              <th className="px-3 py-2 font-medium">Title</th>
+              <th className="px-3 py-2 font-medium">Date</th>
+              <th className="px-3 py-2 font-medium">Location</th>
+              <th className="px-3 py-2 font-medium">Featured</th>
+              <th className="px-3 py-2 font-medium">Status</th>
+              <th className="px-3 py-2 font-medium">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {events.map(event => (
-              <tr key={event.id} className="border-b border-white/10">
-                <td className="p-2">
+            {events.map((event) => (
+              <tr key={event.id} className="border-t border-white/10 text-white/90">
+                <td className="px-3 py-2">
                   {event.image_url ? (
-                    <div className="relative w-16 h-16 rounded overflow-hidden">
-                      <Image
-                        src={event.image_url}
-                        alt={event.title}
-                        fill
-                        className="object-cover"
-                      />
+                    <div className="relative h-16 w-16 overflow-hidden rounded-lg border border-white/10">
+                      <Image src={event.image_url} alt={event.title} fill className="object-cover" />
                     </div>
                   ) : (
-                    <div className="w-16 h-16 bg-white/5 rounded flex items-center justify-center text-white/30 text-xs">
+                    <div className="flex h-16 w-16 items-center justify-center rounded-lg border border-dashed border-white/20 text-xs text-white/40">
                       No image
                     </div>
                   )}
                 </td>
-                <td className="p-2">{event.title}</td>
-                <td className="p-2">{new Date(event.event_date).toLocaleDateString()}</td>
-                <td className="p-2">{event.location || '-'}</td>
-                <td className="p-2">{event.featured ? '⭐' : '-'}</td>
-                <td className="p-2">
-                  <span className={`px-2 py-1 rounded text-xs ${event.active ? 'bg-green-500/20 text-green-300' : 'bg-gray-500/20 text-gray-300'}`}>
+                <td className="px-3 py-2">{event.title}</td>
+                <td className="px-3 py-2">
+                  {new Date(event.event_date).toLocaleDateString()}
+                  {event.end_date ? ` – ${new Date(event.end_date).toLocaleDateString()}` : ''}
+                </td>
+                <td className="px-3 py-2">{event.location || '—'}</td>
+                <td className="px-3 py-2">{event.featured ? '⭐' : '—'}</td>
+                <td className="px-3 py-2">
+                  <span
+                    className={`rounded-full px-3 py-1 text-xs font-medium ${
+                      event.active ? 'bg-green-500/20 text-green-300' : 'bg-gray-500/20 text-gray-300'
+                    }`}
+                  >
                     {event.active ? 'Active' : 'Inactive'}
                   </span>
                 </td>
-                <td className="p-2 space-x-2">
-                  <button
-                    onClick={() => openEditModal(event)}
-                    className="text-blue-400 hover:text-blue-300"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleToggleActive(event.id, event.active)}
-                    className="text-yellow-400 hover:text-yellow-300"
-                  >
-                    {event.active ? 'Deactivate' : 'Activate'}
-                  </button>
-                  <button
-                    onClick={() => handleDelete(event.id)}
-                    className="text-red-400 hover:text-red-300"
-                  >
-                    Delete
-                  </button>
+                <td className="px-3 py-2">
+                  <div className="flex flex-wrap gap-3">
+                    <button
+                      onClick={() => openEditModal(event)}
+                      className="text-blue-300 transition hover:text-blue-200"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleToggleActive(event.id, event.active)}
+                      className="text-yellow-300 transition hover:text-yellow-200"
+                    >
+                      {event.active ? 'Deactivate' : 'Activate'}
+                    </button>
+                    <button
+                      onClick={() => handleDelete(event.id)}
+                      className="text-red-300 transition hover:text-red-200"
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
             {events.length === 0 && (
               <tr>
-                <td colSpan={7} className="p-4 text-center text-white/50">
-                  No events found. Click "Add New Event" to create one.
+                <td colSpan={7} className="px-3 py-6 text-center text-white/50">
+                  No events found. Tap "Add New Event" to create one.
                 </td>
               </tr>
             )}
@@ -174,136 +178,203 @@ const EventsManager = () => {
         </table>
       </div>
 
-      {/* Modal */}
+      <div className="mt-6 grid gap-4 md:hidden">
+        {events.length === 0 && (
+          <div className="rounded-2xl border border-white/15 bg-white/5 p-4 text-sm text-white/70">
+            No events found. Tap "Add New Event" to create one.
+          </div>
+        )}
+        {events.map((event) => (
+          <div
+            key={event.id}
+            className="space-y-3 rounded-2xl border border-white/15 bg-white/5 p-4 text-sm text-white/90"
+          >
+            <div className="flex flex-col gap-3 sm:flex-row">
+              {event.image_url ? (
+                <div className="relative h-32 w-full overflow-hidden rounded-xl border border-white/10 sm:h-24 sm:w-32">
+                  <Image src={event.image_url} alt={event.title} fill className="object-cover" />
+                </div>
+              ) : (
+                <div className="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-white/20 text-xs text-white/40 sm:h-24 sm:w-32">
+                  No image
+                </div>
+              )}
+              <div className="flex flex-1 flex-col gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded-full bg-amber-500/20 px-3 py-1 text-xs font-medium text-amber-200">
+                    {new Date(event.event_date).toLocaleDateString()}
+                    {event.end_date ? ` – ${new Date(event.end_date).toLocaleDateString()}` : ''}
+                  </span>
+                  {event.featured ? (
+                    <span className="rounded-full border border-amber-400/40 px-2 py-1 text-xs text-amber-200">
+                      Featured
+                    </span>
+                  ) : null}
+                  <span
+                    className={`rounded-full px-2 py-1 text-xs ${
+                      event.active ? 'bg-green-500/20 text-green-300' : 'bg-gray-500/20 text-gray-300'
+                    }`}
+                  >
+                    {event.active ? 'Active' : 'Inactive'}
+                  </span>
+                </div>
+                <h3 className="text-base font-semibold text-white">{event.title}</h3>
+                <p className="text-xs text-white/60">{event.location || 'Location TBC'}</p>
+                {event.description ? (
+                  <p className="text-xs text-white/60">{event.description}</p>
+                ) : null}
+              </div>
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+              <button
+                onClick={() => openEditModal(event)}
+                className="w-full rounded-full border border-white/20 px-4 py-2 text-sm text-white transition hover:bg-white/10 sm:w-auto"
+              >
+                Edit
+              </button>
+              <button
+                onClick={() => handleToggleActive(event.id, event.active)}
+                className="w-full rounded-full border border-yellow-400/40 px-4 py-2 text-sm text-yellow-200 transition hover:bg-yellow-500/10 sm:w-auto"
+              >
+                {event.active ? 'Deactivate' : 'Activate'}
+              </button>
+              <button
+                onClick={() => handleDelete(event.id)}
+                className="w-full rounded-full border border-red-400/40 px-4 py-2 text-sm text-red-200 transition hover:bg-red-500/10 sm:w-auto"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-900 rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <h3 className="text-xl font-bold text-amber-400 mb-4">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-4 sm:items-center">
+          <div className="w-full max-w-2xl rounded-3xl border border-white/10 bg-gray-900 p-5 shadow-2xl sm:p-8">
+            <h3 className="text-xl font-semibold text-amber-400">
               {editingEvent ? 'Edit Event' : 'Add New Event'}
             </h3>
-
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="mt-6 space-y-4 text-sm">
               <div>
-                <label className="block text-sm text-white/70 mb-1">Title *</label>
+                <label className="mb-1 block text-white/70">Title *</label>
                 <input
                   type="text"
                   name="title"
                   defaultValue={editingEvent?.title}
                   required
-                  className="w-full bg-black/30 border border-white/20 rounded px-3 py-2 text-white"
+                  className="w-full rounded-lg border border-white/20 bg-black/30 px-3 py-2 text-white"
                 />
               </div>
 
               <div>
-                <label className="block text-sm text-white/70 mb-1">Description</label>
+                <label className="mb-1 block text-white/70">Description</label>
                 <textarea
                   name="description"
                   defaultValue={editingEvent?.description || ''}
                   rows={3}
-                  className="w-full bg-black/30 border border-white/20 rounded px-3 py-2 text-white"
+                  className="w-full rounded-lg border border-white/20 bg-black/30 px-3 py-2 text-white"
                 />
               </div>
 
-              <div className="grid md:grid-cols-2 gap-4">
+              <div className="grid gap-4 sm:grid-cols-2">
                 <div>
-                  <label className="block text-sm text-white/70 mb-1">Start Date *</label>
+                  <label className="mb-1 block text-white/70">Start Date *</label>
                   <input
                     type="date"
                     name="event_date"
                     defaultValue={editingEvent?.event_date}
                     required
-                    className="w-full bg-black/30 border border-white/20 rounded px-3 py-2 text-white"
+                    className="w-full rounded-lg border border-white/20 bg-black/30 px-3 py-2 text-white"
                   />
                 </div>
-
                 <div>
-                  <label className="block text-sm text-white/70 mb-1">End Date</label>
+                  <label className="mb-1 block text-white/70">End Date</label>
                   <input
                     type="date"
                     name="end_date"
                     defaultValue={editingEvent?.end_date || ''}
-                    className="w-full bg-black/30 border border-white/20 rounded px-3 py-2 text-white"
+                    className="w-full rounded-lg border border-white/20 bg-black/30 px-3 py-2 text-white"
                   />
                 </div>
               </div>
 
-              <div className="grid md:grid-cols-2 gap-4">
+              <div className="grid gap-4 sm:grid-cols-2">
                 <div>
-                  <label className="block text-sm text-white/70 mb-1">Location</label>
+                  <label className="mb-1 block text-white/70">Location</label>
                   <input
                     type="text"
                     name="location"
                     defaultValue={editingEvent?.location || ''}
                     placeholder="City, Country"
-                    className="w-full bg-black/30 border border-white/20 rounded px-3 py-2 text-white"
+                    className="w-full rounded-lg border border-white/20 bg-black/30 px-3 py-2 text-white"
                   />
                 </div>
-
                 <div>
-                  <label className="block text-sm text-white/70 mb-1">Venue</label>
+                  <label className="mb-1 block text-white/70">Venue</label>
                   <input
                     type="text"
                     name="venue"
                     defaultValue={editingEvent?.venue || ''}
                     placeholder="Venue name"
-                    className="w-full bg-black/30 border border-white/20 rounded px-3 py-2 text-white"
+                    className="w-full rounded-lg border border-white/20 bg-black/30 px-3 py-2 text-white"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm text-white/70 mb-1">URL</label>
+                <label className="mb-1 block text-white/70">URL</label>
                 <input
                   type="url"
                   name="url"
                   defaultValue={editingEvent?.url || ''}
                   placeholder="https://example.com"
-                  className="w-full bg-black/30 border border-white/20 rounded px-3 py-2 text-white"
+                  className="w-full rounded-lg border border-white/20 bg-black/30 px-3 py-2 text-white"
                 />
               </div>
 
               <div>
-                <label className="block text-sm text-white/70 mb-1">Event Image</label>
+                <label className="mb-1 block text-white/70">Event Image</label>
                 <input
                   type="file"
                   name="image"
                   accept="image/*"
-                  className="w-full bg-black/30 border border-white/20 rounded px-3 py-2 text-white file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-amber-500/20 file:text-amber-200 hover:file:bg-amber-500/30"
+                  className="w-full rounded-lg border border-white/20 bg-black/30 px-3 py-2 text-white file:me-4 file:rounded-full file:border-0 file:bg-amber-500/20 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-amber-200 hover:file:bg-amber-500/30"
                 />
-                {editingEvent?.image_url && (
-                  <p className="text-xs text-white/50 mt-1">Current image will be replaced if new file is uploaded</p>
-                )}
+                {editingEvent?.image_url ? (
+                  <p className="mt-1 text-xs text-white/50">
+                    Current image will be replaced if a new file is uploaded.
+                  </p>
+                ) : null}
               </div>
 
-              <div>
-                <label className="flex items-center text-white/70">
-                  <input
-                    type="checkbox"
-                    name="featured"
-                    defaultChecked={editingEvent?.featured}
-                    className="mr-2"
-                  />
-                  Featured Event
-                </label>
-              </div>
+              <label className="flex items-center gap-2 text-white/70">
+                <input
+                  type="checkbox"
+                  name="featured"
+                  defaultChecked={editingEvent?.featured}
+                  className="h-4 w-4 rounded border-white/30 bg-black/40"
+                />
+                Featured Event
+              </label>
 
-              <div className="flex gap-2 justify-end">
+              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                 <button
                   type="button"
                   onClick={() => {
                     setShowModal(false);
                     setEditingEvent(null);
                   }}
-                  className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
+                  className="w-full rounded-full border border-white/20 px-4 py-2 text-sm text-white transition hover:bg-white/10 sm:w-auto"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={loading}
-                  className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 disabled:opacity-50"
+                  className="w-full rounded-full bg-green-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-green-600 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
                 >
-                  {loading ? 'Saving...' : (editingEvent ? 'Update' : 'Create')}
+                  {loading ? 'Saving…' : editingEvent ? 'Update Event' : 'Create Event'}
                 </button>
               </div>
             </form>

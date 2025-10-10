@@ -131,10 +131,10 @@ export default function StickerGenerator() {
   };
 
   return (
-    <div className="space-y-4 rounded-3xl border border-white/15 bg-white/[0.05] p-8 backdrop-blur">
-      <h3 className="text-xl font-semibold mb-4">Judging Stickers</h3>
+    <div className="space-y-4 rounded-3xl border border-white/15 bg-white/[0.05] p-5 backdrop-blur sm:p-8">
+      <h3 className="text-xl font-semibold">Judging Stickers</h3>
 
-      <p className="text-sm text-gray-600 mb-4">
+      <p className="text-sm text-gray-600">
         Generate printable Avery L7781 label sheets (45.7 × 25.4 mm, 40 labels per A4 sheet) with QR codes and sauce codes for the judging process.
       </p>
 
@@ -157,11 +157,11 @@ export default function StickerGenerator() {
         </div>
       )}
 
-      <div className="flex gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row">
         <button
           onClick={handlePreview}
           disabled={isGenerating}
-          className="rounded-full border border-gray-300 bg-white px-6 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-full border border-gray-300 bg-white px-5 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 sm:px-6 sm:w-auto w-full"
         >
           Preview Sticker Count
         </button>
@@ -169,7 +169,7 @@ export default function StickerGenerator() {
         <button
           onClick={generatePDF}
           disabled={isGenerating}
-          className="rounded-full bg-gradient-to-r from-[#ff4d00] to-[#f1b12e] px-6 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-black transition hover:from-[#ff7033] hover:to-[#ffd060] disabled:cursor-not-allowed disabled:opacity-70"
+          className="rounded-full bg-gradient-to-r from-[#ff4d00] to-[#f1b12e] px-5 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-black transition hover:from-[#ff7033] hover:to-[#ffd060] disabled:cursor-not-allowed disabled:opacity-70 sm:px-6 sm:w-auto w-full"
         >
           {isGenerating ? 'Generating PDF...' : 'Generate Stickers (PDF)'}
         </button>

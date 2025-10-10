@@ -140,10 +140,10 @@ export default function JudgeLabelGenerator() {
   };
 
   return (
-    <div className="space-y-4 rounded-3xl border border-white/15 bg-white/[0.05] p-8 backdrop-blur">
-      <h3 className="text-xl font-semibold mb-4">Judge Labels</h3>
+    <div className="space-y-4 rounded-3xl border border-white/15 bg-white/[0.05] p-5 backdrop-blur sm:p-8">
+      <h3 className="text-xl font-semibold">Judge Labels</h3>
 
-      <p className="text-sm text-gray-600 mb-4">
+      <p className="text-sm text-gray-600">
         Generate printable labels with QR codes for all active judges. Use these for box assignment scanning to prevent conflicts of interest.
       </p>
 
@@ -164,11 +164,11 @@ export default function JudgeLabelGenerator() {
         </div>
       )}
 
-      <div className="flex gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row">
         <button
           onClick={handlePreview}
           disabled={isGenerating}
-          className="rounded-full border border-gray-300 bg-white px-6 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+          className="w-full rounded-full border border-gray-300 bg-white px-5 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:px-6"
         >
           Preview Judge Count
         </button>
@@ -176,7 +176,7 @@ export default function JudgeLabelGenerator() {
         <button
           onClick={generatePDF}
           disabled={isGenerating}
-          className="rounded-full bg-gradient-to-r from-[#ff4d00] to-[#f1b12e] px-6 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-black transition hover:from-[#ff7033] hover:to-[#ffd060] disabled:cursor-not-allowed disabled:opacity-70"
+          className="w-full rounded-full bg-gradient-to-r from-[#ff4d00] to-[#f1b12e] px-5 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-black transition hover:from-[#ff7033] hover:to-[#ffd060] disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto sm:px-6"
         >
           {isGenerating ? 'Generating PDF...' : 'Generate Judge Labels (PDF)'}
         </button>
