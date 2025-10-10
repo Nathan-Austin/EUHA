@@ -64,7 +64,7 @@ export default function Home() {
         <SectionContainer>
           <div className="text-center">
             <h1 className="text-4xl font-semibold leading-tight sm:text-5xl text-white">European Hot Sauce Awards 2026</h1>
-            <p className="mt-4 text-lg text-white/75 sm:text-xl">Celebrating the best of European hot sauce craft and innovation.</p>
+            <p className="mt-4 text-lg text-white/75 sm:text-xl">Honouring and acknowledging the innovative craft of Hot Sauce.</p>
             <div className="mt-8 flex flex-wrap justify-center gap-4">
               <Link href="/apply/supplier" className="rounded-full bg-gradient-to-r from-[#ff4d00] to-[#f1b12e] px-6 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-black transition hover:from-[#ff7033] hover:to-[#ffd060]">
                 Enter Competition

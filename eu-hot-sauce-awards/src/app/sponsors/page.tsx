@@ -65,12 +65,12 @@ const SponsorsPage = () => {
               <div className="space-y-2 text-white/80">
                 <p><span className="text-white/60">Contact:</span> Neil Numb</p>
                 <p><span className="text-white/60">Email:</span> heataward@gmail.com</p>
-                <p><span className="text-white/60">Phone:</span> (+49) 017682204595</p>
+                <p><span className="text-white/60">Phone:</span> (+49) 17682204595</p>
               </div>
             </div>
 
             <Link href="/contact" className="rounded-full bg-gradient-to-r from-[#ff4d00] to-[#f1b12e] px-8 py-4 text-sm font-semibold uppercase tracking-[0.2em] text-white transition hover:from-[#ff7033] hover:to-[#ffd060]">
-              Sponsorship Inquiry
+              Sponsorship Enquiry
             </Link>
           </div>
         </SectionContainer>
