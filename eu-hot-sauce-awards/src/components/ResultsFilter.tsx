@@ -8,8 +8,8 @@ interface PastResult {
   code: string;
   area: string;
   category: string;
-  award: string;
-  position: number;
+  award: string | null;
+  position: number | null;
   global_rank: number | null;
   company_name: string;
   country: string | null;
@@ -27,7 +27,8 @@ interface ResultsFilterProps {
 
 export default function ResultsFilter({ results }: ResultsFilterProps) {
   // Helper functions
-  const getAwardIcon = (award: string) => {
+  const getAwardIcon = (award: string | null) => {
+    if (!award) return '🏆';
     if (award.includes('GOLD')) return '🥇';
     if (award.includes('SILVER')) return '🥈';
     if (award.includes('BRONZE')) return '🥉';
@@ -68,7 +69,7 @@ export default function ResultsFilter({ results }: ResultsFilterProps) {
   );
 
   const awards = useMemo(() =>
-    Array.from(new Set(results.map(r => r.award))).sort(),
+    Array.from(new Set(results.map(r => r.award).filter(Boolean))).sort() as string[],
     [results]
   );
 
@@ -290,11 +291,13 @@ export default function ResultsFilter({ results }: ResultsFilterProps) {
                     </p>
 
                     {/* Award Badge */}
-                    <div className="text-center mb-3">
-                      <span className="inline-block px-3 py-1 rounded-full bg-amber-200/20 text-amber-200 text-xs font-semibold uppercase tracking-wider">
-                        {winner.award}
-                      </span>
-                    </div>
+                    {winner.award && (
+                      <div className="text-center mb-3">
+                        <span className="inline-block px-3 py-1 rounded-full bg-amber-200/20 text-amber-200 text-xs font-semibold uppercase tracking-wider">
+                          {winner.award}
+                        </span>
+                      </div>
+                    )}
 
                     {/* Description */}
                     {winner.short_description && (

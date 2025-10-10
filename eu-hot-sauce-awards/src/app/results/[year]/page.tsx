@@ -15,8 +15,8 @@ interface PastResult {
   code: string;
   area: string;
   category: string;
-  award: string;
-  position: number;
+  award: string | null;
+  position: number | null;
   global_rank: number | null;
   company_name: string;
   country: string | null;
