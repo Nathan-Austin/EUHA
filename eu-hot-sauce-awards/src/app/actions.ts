@@ -1647,3 +1647,111 @@ function replaceTemplateVariables(template: string, variables: Record<string, st
   return result;
 }
 
+
+// Test Email Functions
+
+export async function sendTestSupplierEmail(testEmail: string, brandName: string) {
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+
+  // Admin check
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user?.email) return { error: 'You must be logged in.' };
+
+  const { data: adminCheck, error: adminError } = await supabase
+    .from('judges')
+    .select('type')
+    .eq('email', user.email)
+    .single();
+
+  if (adminError || adminCheck?.type !== 'admin') {
+    return { error: 'You are not authorized.' };
+  }
+
+  if (!testEmail || !testEmail.includes('@')) {
+    return { error: 'Please provide a valid email address.' };
+  }
+
+  // Get email template from database
+  const { data: template, error: templateError } = await supabase
+    .from('email_templates')
+    .select('*')
+    .eq('template_key', 'supplier_2026_invitation')
+    .eq('is_active', true)
+    .single();
+
+  if (templateError || !template) {
+    return { error: 'Email template not found. Please configure templates first.' };
+  }
+
+  try {
+    // Replace variables in template
+    const emailContent = {
+      subject: replaceTemplateVariables(template.subject, { brandName }),
+      html: replaceTemplateVariables(template.html_body, { brandName }),
+      text: template.text_body ? replaceTemplateVariables(template.text_body, { brandName }) : undefined,
+    };
+
+    await sendEmail({
+      to: testEmail,
+      ...emailContent,
+    });
+
+    return { success: true, message: `Test email sent to ${testEmail}` };
+  } catch (error: any) {
+    return { error: `Failed to send test email: ${error.message}` };
+  }
+}
+
+export async function sendTestJudgeEmail(testEmail: string, judgeName: string, judgeType: string) {
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+
+  // Admin check
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user?.email) return { error: 'You must be logged in.' };
+
+  const { data: adminCheck, error: adminError } = await supabase
+    .from('judges')
+    .select('type')
+    .eq('email', user.email)
+    .single();
+
+  if (adminError || adminCheck?.type !== 'admin') {
+    return { error: 'You are not authorized.' };
+  }
+
+  if (!testEmail || !testEmail.includes('@')) {
+    return { error: 'Please provide a valid email address.' };
+  }
+
+  // Get email template from database
+  const { data: template, error: templateError } = await supabase
+    .from('email_templates')
+    .select('*')
+    .eq('template_key', 'judge_2026_invitation')
+    .eq('is_active', true)
+    .single();
+
+  if (templateError || !template) {
+    return { error: 'Email template not found. Please configure templates first.' };
+  }
+
+  try {
+    // Replace variables in template
+    const emailContent = {
+      subject: replaceTemplateVariables(template.subject, { name: judgeName, judgeType }),
+      html: replaceTemplateVariables(template.html_body, { name: judgeName, judgeType }),
+      text: template.text_body ? replaceTemplateVariables(template.text_body, { name: judgeName, judgeType }) : undefined,
+    };
+
+    await sendEmail({
+      to: testEmail,
+      ...emailContent,
+    });
+
+    return { success: true, message: `Test email sent to ${testEmail}` };
+  } catch (error: any) {
+    return { error: `Failed to send test email: ${error.message}` };
+  }
+}

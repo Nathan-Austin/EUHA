@@ -6,6 +6,8 @@ import {
   getPreviousJudges,
   sendSupplierInvitations,
   sendJudgeInvitations,
+  sendTestSupplierEmail,
+  sendTestJudgeEmail,
   type PreviousParticipant
 } from '@/app/actions'
 
@@ -17,6 +19,15 @@ export default function EmailCampaignManager() {
   const [showSupplierList, setShowSupplierList] = useState(false)
   const [showJudgeList, setShowJudgeList] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
+  // Test email states
+  const [showSupplierTest, setShowSupplierTest] = useState(false)
+  const [showJudgeTest, setShowJudgeTest] = useState(false)
+  const [testSupplierEmail, setTestSupplierEmail] = useState('')
+  const [testSupplierBrand, setTestSupplierBrand] = useState('Test Brand')
+  const [testJudgeEmail, setTestJudgeEmail] = useState('')
+  const [testJudgeName, setTestJudgeName] = useState('Test Judge')
+  const [testJudgeType, setTestJudgeType] = useState('pro')
 
   useEffect(() => {
     loadParticipants()
@@ -106,6 +117,60 @@ export default function EmailCampaignManager() {
     }
   }
 
+  async function handleSendTestSupplierEmail() {
+    if (!testSupplierEmail) {
+      setMessage({ type: 'error', text: 'Please enter an email address' })
+      return
+    }
+
+    setSending(true)
+    setMessage(null)
+
+    try {
+      const result = await sendTestSupplierEmail(testSupplierEmail, testSupplierBrand)
+
+      if ('error' in result) {
+        setMessage({ type: 'error', text: result.error || 'Unknown error sending test email' })
+      } else {
+        setMessage({
+          type: 'success',
+          text: result.message || 'Test email sent successfully!',
+        })
+      }
+    } catch (error: any) {
+      setMessage({ type: 'error', text: error.message })
+    } finally {
+      setSending(false)
+    }
+  }
+
+  async function handleSendTestJudgeEmail() {
+    if (!testJudgeEmail) {
+      setMessage({ type: 'error', text: 'Please enter an email address' })
+      return
+    }
+
+    setSending(true)
+    setMessage(null)
+
+    try {
+      const result = await sendTestJudgeEmail(testJudgeEmail, testJudgeName, testJudgeType)
+
+      if ('error' in result) {
+        setMessage({ type: 'error', text: result.error || 'Unknown error sending test email' })
+      } else {
+        setMessage({
+          type: 'success',
+          text: result.message || 'Test email sent successfully!',
+        })
+      }
+    } catch (error: any) {
+      setMessage({ type: 'error', text: error.message })
+    } finally {
+      setSending(false)
+    }
+  }
+
   const uninvitedSuppliers = suppliers.filter(s => !s.invitedDate)
   const invitedSuppliers = suppliers.filter(s => s.invitedDate)
   const uninvitedJudges = judges.filter(j => !j.invitedDate)
@@ -170,7 +235,46 @@ export default function EmailCampaignManager() {
           >
             {showSupplierList ? '▼ Hide' : '▶ Show'} supplier list
           </button>
+          <span className="text-gray-300">|</span>
+          <button
+            onClick={() => setShowSupplierTest(!showSupplierTest)}
+            className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+          >
+            {showSupplierTest ? '▼ Hide' : '▶ Show'} test email
+          </button>
         </div>
+
+        {showSupplierTest && (
+          <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <h5 className="text-sm font-semibold text-gray-800 mb-3">Send Test Supplier Email</h5>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <input
+                type="email"
+                placeholder="Test email address"
+                value={testSupplierEmail}
+                onChange={(e) => setTestSupplierEmail(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+              <input
+                type="text"
+                placeholder="Brand name (for template)"
+                value={testSupplierBrand}
+                onChange={(e) => setTestSupplierBrand(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+              <button
+                onClick={handleSendTestSupplierEmail}
+                disabled={sending || !testSupplierEmail}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {sending ? 'Sending...' : 'Send Test Email'}
+              </button>
+            </div>
+            <p className="text-xs text-gray-600 mt-2">
+              This will send a test email using the current template with the brand name you specify.
+            </p>
+          </div>
+        )}
 
         {showSupplierList && (
           <div className="space-y-4">
@@ -279,7 +383,54 @@ export default function EmailCampaignManager() {
           >
             {showJudgeList ? '▼ Hide' : '▶ Show'} judge list
           </button>
+          <span className="text-gray-300">|</span>
+          <button
+            onClick={() => setShowJudgeTest(!showJudgeTest)}
+            className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+          >
+            {showJudgeTest ? '▼ Hide' : '▶ Show'} test email
+          </button>
         </div>
+
+        {showJudgeTest && (
+          <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <h5 className="text-sm font-semibold text-gray-800 mb-3">Send Test Judge Email</h5>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+              <input
+                type="email"
+                placeholder="Test email address"
+                value={testJudgeEmail}
+                onChange={(e) => setTestJudgeEmail(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+              <input
+                type="text"
+                placeholder="Judge name (for template)"
+                value={testJudgeName}
+                onChange={(e) => setTestJudgeName(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+              <select
+                value={testJudgeType}
+                onChange={(e) => setTestJudgeType(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="pro">Professional</option>
+                <option value="community">Community</option>
+              </select>
+              <button
+                onClick={handleSendTestJudgeEmail}
+                disabled={sending || !testJudgeEmail}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {sending ? 'Sending...' : 'Send Test Email'}
+              </button>
+            </div>
+            <p className="text-xs text-gray-600 mt-2">
+              This will send a test email using the current template with the name and judge type you specify.
+            </p>
+          </div>
+        )}
 
         {showJudgeList && (
           <div className="space-y-4">

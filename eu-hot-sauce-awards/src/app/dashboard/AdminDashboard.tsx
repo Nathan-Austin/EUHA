@@ -9,7 +9,6 @@ import StickerGenerator from './StickerGenerator'
 import AdminBoxPacker from './AdminBoxPacker'
 import JudgeLabelGenerator from './JudgeLabelGenerator'
 import PackageTracker from './PackageTracker'
-import ResultsManager from './ResultsManager'
 import EventsManager from './EventsManager'
 import EmailCampaignManager from './EmailCampaignManager'
 import EmailTemplateEditor from './EmailTemplateEditor'
@@ -244,10 +243,9 @@ export default async function AdminDashboard() {
         <Card>
           <AddAdminUser />
         </Card>
-        <div className="grid gap-6 lg:grid-cols-2">
-          <ResultsManager />
+        <Card>
           <EventsManager />
-        </div>
+        </Card>
       </section>
 
       <section className="space-y-6">
