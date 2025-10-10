@@ -39,7 +39,9 @@ Deno.serve(async (req) => {
     );
 
     const judgeType = mapExperienceToType(payload.experience);
+    const currentYear = new Date().getFullYear(); // 2026 for current year
 
+    // Insert/update in main judges table
     const { data, error } = await supabaseAdmin
       .from('judges')
       .upsert({
@@ -59,6 +61,28 @@ Deno.serve(async (req) => {
       .single();
 
     if (error) throw error;
+
+    // Also track in judge_participations for the current year
+    const { error: participationError } = await supabaseAdmin
+      .from('judge_participations')
+      .upsert({
+        email: payload.email,
+        full_name: payload.name,
+        year: currentYear,
+        application_date: new Date().toISOString(),
+        judge_type: judgeType,
+        experience_level: payload.experience,
+        company_affiliation: payload.affiliationDetails || null,
+        accepted: false, // Not yet accepted
+        source_channel: 'wordpress'
+      }, {
+        onConflict: 'email,year'
+      });
+
+    if (participationError) {
+      console.error('Failed to track judge participation:', participationError);
+      // Don't throw - main registration succeeded
+    }
 
     // Send registration confirmation email
     try {

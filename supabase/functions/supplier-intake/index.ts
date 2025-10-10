@@ -105,12 +105,56 @@ Deno.serve(async (req) => {
       .upsert({
         email: payload.email,
         type: 'supplier',
-        active: true // Suppliers are automatically active judges
+        active: true, // Suppliers are automatically active judges
+        name: payload.contactName || payload.brand,
+        stripe_payment_status: 'succeeded' // Suppliers don't pay judge fee
       }, { onConflict: 'email' });
 
     if (judgeError) throw judgeError;
 
-    // 3. Generate sauce codes and insert new sauces
+    // 3. Track participation in current year
+    const currentYear = new Date().getFullYear();
+    const { error: participationError } = await supabaseAdmin
+      .from('judge_participations')
+      .upsert({
+        email: payload.email,
+        full_name: payload.contactName || payload.brand,
+        year: currentYear,
+        application_date: new Date().toISOString(),
+        judge_type: 'supplier',
+        company_affiliation: payload.brand,
+        accepted: true, // Suppliers are automatically accepted
+        source_channel: 'wordpress'
+      }, {
+        onConflict: 'email,year'
+      });
+
+    if (participationError) {
+      console.error('Failed to track judge participation:', participationError);
+      // Don't throw - main registration succeeded
+    }
+
+    // 4. Track supplier participation
+    const sauceCount = payload.sauces.length;
+    const { error: supplierParticipationError } = await supabaseAdmin
+      .from('supplier_participations')
+      .upsert({
+        email: payload.email,
+        company_name: payload.brand,
+        year: currentYear,
+        sauce_count: sauceCount,
+        participated: true,
+        source: 'wordpress'
+      }, {
+        onConflict: 'email,year'
+      });
+
+    if (supplierParticipationError) {
+      console.error('Failed to track supplier participation:', supplierParticipationError);
+      // Don't throw - main registration succeeded
+    }
+
+    // 5. Generate sauce codes and insert new sauces
     const saucesToCreate = [];
 
     for (const sauce of payload.sauces) {

@@ -273,16 +273,16 @@ const PrivacyPage = () => {
                 </p>
                 <div className="text-white/75 leading-relaxed mb-4">
                   <p>Chili Punk Berlin</p>
-                  <p>Hobrecht Str 78</p>
-                  <p>Berlin, Berlin 12043</p>
+                  <p>Ossastr 21A</p>
+                  <p>Berlin, Berlin 12045</p>
                   <p>Germany</p>
                 </div>
                 <p className="text-white/75 leading-relaxed">
                   If you are a resident in the European Economic Area, the 'data controller' of your personal information is Chili Punk Berlin. Chili Punk Berlin has appointed Neil Long to be its representative in the EEA. You can contact them directly regarding the processing of your information by Chili Punk Berlin, by email at heataward@gmail.com, by phone at 017621391410, or by post to:
                 </p>
                 <div className="text-white/75 leading-relaxed mt-3">
-                  <p>Hobrecht Str 78</p>
-                  <p>Berlin, Neukolin 12043</p>
+                  <p>Ossastr 21A</p>
+                  <p>Berlin, Neukolln 12045</p>
                   <p>Germany</p>
                 </div>
               </div>

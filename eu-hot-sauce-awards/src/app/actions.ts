@@ -410,11 +410,13 @@ export async function generateStickerData() {
     return { error: 'You are not authorized.' };
   }
 
-  // Count active judges
+  // Count judges participating in current year (2026)
+  const currentYear = new Date().getFullYear();
   const { count: judgeCount, error: judgeError } = await supabase
-    .from('judges')
+    .from('judge_participations')
     .select('*', { count: 'exact', head: true })
-    .eq('active', true);
+    .eq('year', currentYear)
+    .eq('accepted', true);
 
   if (judgeError) {
     return { error: `Failed to count judges: ${judgeError.message}` };
@@ -629,10 +631,10 @@ export async function recordBottleScan(judgeId: string, sauceId: string) {
 
   const adminSupabase = serviceClientResult.client;
 
-  // Validate judge
+  // Validate judge and check if participating in current year
   const { data: judge, error: judgeError } = await adminSupabase
     .from('judges')
-    .select('id, name, email, active')
+    .select('id, name, email')
     .eq('id', judgeId)
     .single();
 
@@ -640,8 +642,21 @@ export async function recordBottleScan(judgeId: string, sauceId: string) {
     return { error: `Judge not found. Error: ${judgeError?.message || 'No judge data'}` };
   }
 
-  if (judge.active === false) {
-    return { error: 'This judge is not active.' };
+  // Check if judge is participating in current year
+  const currentYear = new Date().getFullYear();
+  const { data: participation, error: participationError } = await adminSupabase
+    .from('judge_participations')
+    .select('email, accepted')
+    .eq('email', judge.email)
+    .eq('year', currentYear)
+    .single();
+
+  if (participationError || !participation) {
+    return { error: 'This judge is not registered for the current year.' };
+  }
+
+  if (!participation.accepted) {
+    return { error: 'This judge has not been accepted for the current year.' };
   }
 
   // Check sauce exists and is in 'arrived' status
@@ -840,22 +855,41 @@ export async function generateJudgeQRCodes() {
 
   const adminSupabase = serviceClientResult.client;
 
-  // Fetch all active judges
+  // Fetch judges participating in current year (2026)
+  const currentYear = new Date().getFullYear();
+  const { data: participations, error: participationError } = await adminSupabase
+    .from('judge_participations')
+    .select('email, judge_type')
+    .eq('year', currentYear)
+    .eq('accepted', true)
+    .in('judge_type', ['pro', 'community']);
+
+  if (participationError) {
+    return { error: `Failed to fetch judge participations: ${participationError.message}` };
+  }
+
+  if (!participations || participations.length === 0) {
+    return { error: 'No accepted judges found for current year.' };
+  }
+
+  // Get emails of participating judges
+  const participatingEmails = participations.map(p => p.email);
+
+  // Fetch full judge details from judges table
   const { data: judges, error: judgeError } = await adminSupabase
     .from('judges')
-    .select('id, email, name, type, active, stripe_payment_status, address, city, postal_code, country')
-    .in('type', ['admin', 'pro', 'community'])
-    .or('active.eq.true,type.eq.admin');
+    .select('id, email, name, type, stripe_payment_status, address, city, postal_code, country')
+    .in('email', participatingEmails);
 
   if (judgeError) {
-    return { error: `Failed to fetch judges: ${judgeError.message}` };
+    return { error: `Failed to fetch judge details: ${judgeError.message}` };
   }
 
   const eligibleCurrentJudges = (judges || []).filter((judge) => {
     if (judge.type === 'community') {
       return judge.stripe_payment_status === 'succeeded';
     }
-    return judge.type === 'admin' || judge.active;
+    return true; // Pro judges don't need payment
   });
 
   if (eligibleCurrentJudges.length === 0) {
@@ -884,12 +918,11 @@ export async function generateJudgeQRCodes() {
     return { error: `Failed to update some QR codes: ${errors[0].error?.message}` };
   }
 
-  // Fetch updated judge data
+  // Fetch updated judge data (re-query the same participating emails)
   const { data: updatedJudges, error: fetchError } = await adminSupabase
     .from('judges')
-    .select('id, email, name, type, qr_code_url, address, city, postal_code, country, active, stripe_payment_status')
-    .in('type', ['admin', 'pro', 'community'])
-    .or('active.eq.true,type.eq.admin');
+    .select('id, email, name, type, qr_code_url, address, city, postal_code, country, stripe_payment_status')
+    .in('email', participatingEmails);
 
   if (fetchError) {
     return { error: `Failed to fetch updated judges: ${fetchError.message}` };
@@ -899,7 +932,7 @@ export async function generateJudgeQRCodes() {
     if (judge.type === 'community') {
       return judge.stripe_payment_status === 'succeeded';
     }
-    return judge.type === 'admin' || judge.active;
+    return true; // Pro judges don't need payment
   });
 
   const judgeLabelData: JudgeLabelData[] = filteredJudges.map((judge: any) => {
