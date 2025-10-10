@@ -411,7 +411,7 @@ export async function generateStickerData() {
   }
 
   // Count judges participating in current year (2026)
-  const currentYear = new Date().getFullYear();
+  const currentYear = 2026;
   const { count: judgeCount, error: judgeError } = await supabase
     .from('judge_participations')
     .select('*', { count: 'exact', head: true })
@@ -643,7 +643,7 @@ export async function recordBottleScan(judgeId: string, sauceId: string) {
   }
 
   // Check if judge is participating in current year
-  const currentYear = new Date().getFullYear();
+  const currentYear = 2026;
   const { data: participation, error: participationError } = await adminSupabase
     .from('judge_participations')
     .select('email, accepted')
@@ -856,7 +856,7 @@ export async function generateJudgeQRCodes() {
   const adminSupabase = serviceClientResult.client;
 
   // Fetch judges participating in current year (2026)
-  const currentYear = new Date().getFullYear();
+  const currentYear = 2026;
   const { data: participations, error: participationError } = await adminSupabase
     .from('judge_participations')
     .select('email, judge_type')
