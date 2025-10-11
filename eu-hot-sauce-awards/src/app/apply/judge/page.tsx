@@ -290,7 +290,7 @@ export default function JudgeApplyPage() {
                   required={hasIndustryAffiliation}
                   rows={3}
                   className="rounded-xl border border-white/20 bg-black/30 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:border-amber-300 focus:outline-none"
-                  placeholder="Please describe your professional relationship with chili sauce companies..."
+                  placeholder="Please lisz your professional relationship with chili sauce companies aka company name..."
                 />
                 <span className="text-xs text-white/50">
                   This helps us ensure fair and unbiased judging. Disclosure does not automatically disqualify you.

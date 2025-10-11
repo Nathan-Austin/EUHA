@@ -58,6 +58,7 @@ type SauceForm = {
   category: string;
   ingredients: string;
   allergens: string;
+  webshopLink: string;
   imageFile: File | null;
   previewUrl: string | null;
 };
@@ -89,6 +90,7 @@ const createEmptySauce = (): SauceForm => ({
   category: "",
   ingredients: "",
   allergens: "",
+  webshopLink: "",
   imageFile: null,
   previewUrl: null,
 });
@@ -103,6 +105,17 @@ const formatCurrency = (cents: number) =>
 const resolveDiscountPercent = (entryCount: number) => {
   const band = discountBands.find((tier) => entryCount >= tier.min && entryCount <= tier.max);
   return band ? band.percent : discountBands[discountBands.length - 1].percent;
+};
+
+const normalizeUrl = (url: string): string => {
+  if (!url.trim()) return "";
+  const trimmed = url.trim();
+  // Check if the URL already has a protocol
+  if (/^https?:\/\//i.test(trimmed)) {
+    return trimmed;
+  }
+  // Add https:// if missing
+  return `https://${trimmed}`;
 };
 
 async function fileToWebPBlob(file: File): Promise<Blob> {
@@ -313,6 +326,7 @@ export default function SupplierApplyPage() {
             category: sauce.category,
             ingredients: sauce.ingredients.trim(),
             allergens: sauce.allergens.trim() || "None",
+            webshopLink: normalizeUrl(sauce.webshopLink),
             imagePath,
           };
         })
@@ -566,6 +580,20 @@ export default function SupplierApplyPage() {
                       className="rounded-xl border border-white/20 bg-black/30 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:border-amber-300 focus:outline-none disabled:opacity-60"
                       placeholder="Contains mustard seeds"
                     />
+                  </label>
+                  <label className="mt-4 flex flex-col gap-2">
+                    <span className="text-xs uppercase tracking-[0.2em] text-white/60">Webshop Link (optional)</span>
+                    <input
+                      type="url"
+                      value={sauce.webshopLink}
+                      onChange={handleSauceFieldChange(index, "webshopLink")}
+                      disabled={isComplete}
+                      className="rounded-xl border border-white/20 bg-black/30 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:border-amber-300 focus:outline-none disabled:opacity-60"
+                      placeholder="https://yourshop.com/sauce-name"
+                    />
+                    <span className="text-xs text-white/50">
+                      Link to your product page - will be displayed on the results page
+                    </span>
                   </label>
                   <label className="mt-4 flex flex-col gap-2">
                     <span className="text-xs uppercase tracking-[0.2em] text-white/60">Upload Bottle Image</span>

@@ -7,6 +7,7 @@ interface SaucePayload {
   ingredients: string;
   allergens: string;
   category: string;
+  webshopLink?: string;
   imagePath?: string;
 }
 
@@ -190,6 +191,7 @@ Deno.serve(async (req) => {
         category: sauce.category,
         sauce_code: sauceCode,
         status: 'registered',
+        webshop_link: sauce.webshopLink || null,
       });
     }
 
