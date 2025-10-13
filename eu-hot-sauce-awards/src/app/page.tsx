@@ -50,9 +50,9 @@ const pastWinners = [
   { name: "Winner 3", photo_url: "" },
 ];
 const sponsors = [
-  { name: "Flying Goose", logo_url: "/sponsors/flying-goose.png" },
-  { name: "Chilisaus.be", logo_url: "/sponsors/chilisaus.png" },
-  { name: "Republic of Heat", logo_url: "/sponsors/ROH_LOGO.png" },
+  { name: "Flying Goose", logo_url: "/sponsors/flying-goose.png", url: "https://flyinggoosesriracha.com/?utm_source=heatawards&utm_medium=referral&utm_campaign=2026_awards" },
+  { name: "Chilisaus.be", logo_url: "/sponsors/chilisaus.png", url: "https://chilisaus.be/?utm_source=heatawards&utm_medium=referral&utm_campaign=2026_awards" },
+  { name: "Republic of Heat", logo_url: "/sponsors/ROH_LOGO.png", url: "https://republicofheat.com/?utm_source=heatawards&utm_medium=referral&utm_campaign=2026_awards" },
 ];
 
 
@@ -121,9 +121,15 @@ export default function Home() {
             <h2 className="text-center text-sm font-semibold uppercase tracking-[0.25em] text-amber-200/80 mb-6">Sponsors</h2>
             <div className="flex justify-center items-center space-x-8">
               {sponsors.map(s => (
-                <div key={s.name} className="w-32 h-32 bg-white rounded-lg flex items-center justify-center p-4">
+                <a
+                  key={s.name}
+                  href={s.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-32 h-32 bg-white rounded-lg flex items-center justify-center p-4 transition hover:shadow-lg hover:scale-105"
+                >
                   <Image src={s.logo_url} alt={s.name} width={128} height={128} className="object-contain" />
-                </div>
+                </a>
               ))}
             </div>
             <div className="text-center mt-6">
