@@ -71,7 +71,7 @@ export async function sendEmail(options: EmailOptions): Promise<void> {
 }
 
 // Email templates
-const emailBanner = '<div style="background-color: #fabf14; padding: 20px 0; text-align: center;"><img src="https://awards.heatawards.eu/cropped-banner-website.png" alt="European Hot Sauce Awards" style="max-width: 600px; width: 100%; height: auto;" /></div>';
+const emailBanner = '<div style="background-color: #fabf14; padding: 20px 0; text-align: center;"><img src="https://heatawards.eu/cropped-banner-website.png" alt="European Hot Sauce Awards" style="max-width: 600px; width: 100%; height: auto;" /></div>';
 
 export const emailTemplates = {
   supplierPaymentConfirmation: (brandName: string, entryCount: number, amount: string) => ({
@@ -104,7 +104,7 @@ export const emailTemplates = {
 
         <h2 style="color: #ff4d00;">Next Steps:</h2>
         <ol>
-          <li><strong>Download the packing sheet:</strong> <a href="https://awards.heatawards.eu/shipping-form.pdf" style="color: #ff4d00;">Download PDF</a></li>
+          <li><strong>Download the packing sheet:</strong> <a href="https://heatawards.eu/shipping-form.pdf" style="color: #ff4d00;">Download PDF</a></li>
           <li>Complete the packing sheet and include it with your shipment</li>
           <li>Ship 2 bottles of each sauce to the address above</li>
           <li>Log in to your dashboard to submit tracking information</li>
@@ -113,12 +113,12 @@ export const emailTemplates = {
 
         <p><strong>Important:</strong> Samples must arrive by 28 February 2026</p>
 
-        <p>You can log in anytime at: <a href="https://awards.heatawards.eu/login" style="color: #ff4d00;">https://awards.heatawards.eu/login</a></p>
+        <p>You can log in anytime at: <a href="https://heatawards.eu/login" style="color: #ff4d00;">https://heatawards.eu/login</a></p>
 
         <p>Questions? Contact us at heataward@gmail.com</p>
       </div>
     `,
-    text: `Payment Confirmed! Dear ${brandName}, thank you for your payment. Your ${entryCount} sauce ${entryCount > 1 ? 'entries have' : 'entry has'} been confirmed. IMPORTANT: Ship 2 bottles of each sauce to: EUROPEAN HOT SAUCE AWARDS, CBS Foods GmbH, Ossastr 21A, 12045 Berlin, Neukölln, Germany. Download packing sheet at https://awards.heatawards.eu/shipping-form.pdf`,
+    text: `Payment Confirmed! Dear ${brandName}, thank you for your payment. Your ${entryCount} sauce ${entryCount > 1 ? 'entries have' : 'entry has'} been confirmed. IMPORTANT: Ship 2 bottles of each sauce to: EUROPEAN HOT SAUCE AWARDS, CBS Foods GmbH, Ossastr 21A, 12045 Berlin, Neukölln, Germany. Download packing sheet at https://heatawards.eu/shipping-form.pdf`,
   }),
 
   supplierTrackingConfirmation: (brandName: string, trackingNumber: string, postalService: string) => ({
@@ -136,7 +136,7 @@ export const emailTemplates = {
 
         <p>We'll send you a confirmation email once your package arrives.</p>
 
-        <p>Track your shipment status anytime at: <a href="https://awards.heatawards.eu/dashboard" style="color: #ff4d00;">https://awards.heatawards.eu/dashboard</a></p>
+        <p>Track your shipment status anytime at: <a href="https://heatawards.eu/dashboard" style="color: #ff4d00;">https://heatawards.eu/dashboard</a></p>
       </div>
     `,
     text: `Tracking Information Received. Dear ${brandName}, we've received your tracking: ${trackingNumber} via ${postalService}.`,
@@ -193,7 +193,7 @@ export const emailTemplates = {
         </ol>
         `}
 
-        <p>You can log in anytime at: <a href="https://awards.heatawards.eu/login" style="color: #ff4d00;">https://awards.heatawards.eu/login</a></p>
+        <p>You can log in anytime at: <a href="https://heatawards.eu/login" style="color: #ff4d00;">https://heatawards.eu/login</a></p>
 
         <p>Questions? Contact us at heataward@gmail.com</p>
       </div>
@@ -217,7 +217,7 @@ export const emailTemplates = {
           <li>We'll notify you when judging begins</li>
         </ol>
 
-        <p>You can log in anytime at: <a href="https://awards.heatawards.eu/login" style="color: #ff4d00;">https://awards.heatawards.eu/login</a></p>
+        <p>You can log in anytime at: <a href="https://heatawards.eu/login" style="color: #ff4d00;">https://heatawards.eu/login</a></p>
 
         <p>Questions? Contact us at heataward@gmail.com</p>
       </div>
@@ -251,7 +251,7 @@ export const emailTemplates = {
         </ul>
 
         <p style="text-align: center; margin: 30px 0;">
-          <a href="https://awards.heatawards.eu/apply/supplier" style="background-color: #ff4d00; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">Enter Your Sauces Now</a>
+          <a href="https://heatawards.eu/apply/supplier" style="background-color: #ff4d00; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">Enter Your Sauces Now</a>
         </p>
 
         <p>Have questions? We're here to help at heataward@gmail.com</p>
@@ -261,7 +261,7 @@ export const emailTemplates = {
         </p>
       </div>
     `,
-    text: `Dear ${brandName}, entries for the EU Hot Sauce Awards 2026 are now open! Enter your sauces at https://awards.heatawards.eu/apply/supplier. Registration deadline: January 31, 2026. Samples deadline: February 28, 2026.`,
+    text: `Dear ${brandName}, entries for the EU Hot Sauce Awards 2026 are now open! Enter your sauces at https://heatawards.eu/apply/supplier. Registration deadline: January 31, 2026. Samples deadline: February 28, 2026.`,
   }),
 
   judge2026Invitation: (name: string, judgeType: string) => ({
@@ -290,7 +290,7 @@ export const emailTemplates = {
         </ul>
 
         <p style="text-align: center; margin: 30px 0;">
-          <a href="https://awards.heatawards.eu/apply/judge" style="background-color: #ff4d00; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">Register to Judge in 2026</a>
+          <a href="https://heatawards.eu/apply/judge" style="background-color: #ff4d00; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">Register to Judge in 2026</a>
         </p>
 
         <p><strong>Application Deadline:</strong> February 15, 2026</p>
@@ -302,6 +302,6 @@ export const emailTemplates = {
         </p>
       </div>
     `,
-    text: `Dear ${name}, we'd love to have you back as a ${judgeType === 'pro' ? 'Professional' : 'Community'} Judge for the EU Hot Sauce Awards 2026! Register at https://awards.heatawards.eu/apply/judge. Application deadline: February 15, 2026.`,
+    text: `Dear ${name}, we'd love to have you back as a ${judgeType === 'pro' ? 'Professional' : 'Community'} Judge for the EU Hot Sauce Awards 2026! Register at https://heatawards.eu/apply/judge. Application deadline: February 15, 2026.`,
   }),
 };

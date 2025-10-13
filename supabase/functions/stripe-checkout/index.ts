@@ -15,7 +15,7 @@ Deno.serve(async (req) => {
   try {
     const { email, judge_id } = await req.json();
 
-    const BASE_URL = Deno.env.get('JUDGE_PAYMENT_BASE_URL') ?? 'https://awards.heatawards.eu';
+    const BASE_URL = Deno.env.get('JUDGE_PAYMENT_BASE_URL') ?? 'https://heatawards.eu';
     const success_url = `${BASE_URL}/payment-success`;
     const cancel_url = `${BASE_URL}/payment-cancelled`;
 

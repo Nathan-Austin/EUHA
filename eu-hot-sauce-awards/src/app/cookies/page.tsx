@@ -26,7 +26,7 @@ const CookiesPage = () => {
               <div>
                 <h2 className="text-2xl font-semibold text-amber-200 mb-4">1. Introduction</h2>
                 <p className="text-white/75 leading-relaxed">
-                  Our website, https://heatawards.eu (hereinafter: "the website") uses cookies and other related technologies (for convenience all technologies are referred to as "cookies"). Cookies are also placed by third parties we have engaged. In the document below we inform you about the use of cookies on our website.
+                  Our website, <a href="https://heatawards.eu" className="text-amber-300 hover:text-amber-200 underline">https://heatawards.eu</a> (hereinafter: "the website") uses cookies and other related technologies (for convenience all technologies are referred to as "cookies"). Cookies are also placed by third parties we have engaged. In the document below we inform you about the use of cookies on our website.
                 </p>
               </div>
 

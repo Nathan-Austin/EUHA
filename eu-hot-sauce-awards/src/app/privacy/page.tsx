@@ -26,7 +26,7 @@ const PrivacyPage = () => {
                   This privacy notice for Chili Punk Berlin ('Company', 'we', 'us', or 'our'), describes how and why we might collect, store, use, and/or share ('process') your information when you use our services ('Services'), such as when you:
                 </p>
                 <ul className="list-disc list-inside text-white/75 leading-relaxed mb-4 space-y-2">
-                  <li>Visit our website at https://heatawards.eu, or any website of ours that links to this privacy notice</li>
+                  <li>Visit our website at <a href="https://heatawards.eu" className="text-amber-300 hover:text-amber-200 underline">https://heatawards.eu</a>, or any website of ours that links to this privacy notice</li>
                   <li>Engage with us in other related ways, including any sales, marketing, or events</li>
                 </ul>
                 <p className="text-white/75 leading-relaxed">

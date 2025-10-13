@@ -21,8 +21,8 @@ const supabaseAdmin = createClient(
   }
 );
 
-const successUrl = Deno.env.get('SUPPLIER_PAYMENT_SUCCESS_URL') ?? 'https://awards.heatawards.eu/payment-success';
-const cancelUrl = Deno.env.get('SUPPLIER_PAYMENT_CANCEL_URL') ?? 'https://awards.heatawards.eu/payment-cancelled';
+const successUrl = Deno.env.get('SUPPLIER_PAYMENT_SUCCESS_URL') ?? 'https://heatawards.eu/payment-success';
+const cancelUrl = Deno.env.get('SUPPLIER_PAYMENT_CANCEL_URL') ?? 'https://heatawards.eu/payment-cancelled';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
