@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import SectionContainer from "@/components/SectionContainer";
 import NewsletterSignup from "@/components/NewsletterSignup";
+import SponsorLink from "@/components/SponsorLink";
 
 // Data (can be moved later)
 const categories = [
@@ -121,15 +122,14 @@ export default function Home() {
             <h2 className="text-center text-sm font-semibold uppercase tracking-[0.25em] text-amber-200/80 mb-6">Sponsors</h2>
             <div className="flex justify-center items-center space-x-8">
               {sponsors.map(s => (
-                <a
+                <SponsorLink
                   key={s.name}
                   href={s.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  sponsorName={s.name}
                   className="w-32 h-32 bg-white rounded-lg flex items-center justify-center p-4 transition hover:shadow-lg hover:scale-105"
                 >
                   <Image src={s.logo_url} alt={s.name} width={128} height={128} className="object-contain" />
-                </a>
+                </SponsorLink>
               ))}
             </div>
             <div className="text-center mt-6">

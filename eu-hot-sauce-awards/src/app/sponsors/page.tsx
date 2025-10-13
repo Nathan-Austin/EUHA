@@ -3,6 +3,7 @@ import Hero from '@/components/Hero';
 import SectionContainer from '@/components/SectionContainer';
 import Link from 'next/link';
 import Image from 'next/image';
+import SponsorLink from '@/components/SponsorLink';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
@@ -40,11 +41,10 @@ const SponsorsPage = () => {
             <h2 className="text-center text-sm font-semibold uppercase tracking-[0.25em] text-amber-200/80 mb-8">Current Sponsors</h2>
             <div className="flex flex-wrap justify-center items-center gap-8">
               {sponsors.map(sponsor => (
-                <a
+                <SponsorLink
                   key={sponsor.name}
                   href={sponsor.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  sponsorName={sponsor.name}
                   className="bg-white p-6 rounded-2xl transition hover:shadow-lg hover:scale-105"
                 >
                   <div className="w-48 h-48 flex items-center justify-center relative">
@@ -56,7 +56,7 @@ const SponsorsPage = () => {
                       className="object-contain"
                     />
                   </div>
-                </a>
+                </SponsorLink>
               ))}
             </div>
           </div>
