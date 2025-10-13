@@ -85,7 +85,7 @@ const Navigation = () => {
             <NavLink href="/">Home</NavLink>
             <Dropdown title="About">
               <DropdownLink href="/prizes">Prizes</DropdownLink>
-              <DropdownLink href="/judges">The Judges</DropdownLink>
+              <DropdownLink href="/judges">Judging</DropdownLink>
               <DropdownLink href="/terms">Terms & Conditions</DropdownLink>
             </Dropdown>
             <Dropdown title="Enter Competition">
@@ -138,7 +138,7 @@ const Navigation = () => {
             <NavLink href="/" onClick={closeMobileMenu}>Home</NavLink>
             <MobileDropdown title="About">
               <DropdownLink href="/prizes" onClick={closeMobileMenu}>Prizes</DropdownLink>
-              <DropdownLink href="/judges" onClick={closeMobileMenu}>The Judges</DropdownLink>
+              <DropdownLink href="/judges" onClick={closeMobileMenu}>Judging</DropdownLink>
               <DropdownLink href="/terms" onClick={closeMobileMenu}>Terms & Conditions</DropdownLink>
             </MobileDropdown>
             <MobileDropdown title="Enter Competition">
