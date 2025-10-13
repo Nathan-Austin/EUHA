@@ -9,6 +9,21 @@ const nextConfig = {
       },
     ],
   },
+  async redirects() {
+    return [
+      {
+        source: '/:path*',
+        has: [
+          {
+            type: 'host',
+            value: 'awards.heatawards.eu',
+          },
+        ],
+        destination: 'https://heatawards.eu/:path*',
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default nextConfig;
