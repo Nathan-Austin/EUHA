@@ -229,35 +229,67 @@ export const emailTemplates = {
     subject: 'Join Us Again - EU Hot Sauce Awards 2026 Now Open!',
     html: `
       ${emailBanner}
-      <div style="padding: 20px; font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h1 style="color: #ff4d00;">We'd Love to See You Back in 2026!</h1>
-        <p>Dear ${brandName},</p>
-        <p>Thank you for being part of the European Hot Sauce Awards community. We're excited to announce that entries for the 2026 competition are now open!</p>
+      <div style="padding: 30px 20px; font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+        <h1 style="color: #ff4d00; margin-bottom: 20px;">We'd Love to See You Back in 2026!</h1>
 
-        <h2 style="color: #ff4d00;">Why Enter Again?</h2>
-        <ul>
-          <li>Showcase your latest creations to Europe's spice-loving community</li>
-          <li>Gain valuable feedback from professional and community judges</li>
-          <li>Increase brand visibility and credibility in the European market</li>
+        <p style="font-size: 16px; line-height: 1.6;">Dear ${brandName},</p>
+
+        <p style="font-size: 16px; line-height: 1.6;">Thank you for being part of the European Hot Sauce Awards community. Your participation helps showcase the incredible diversity and quality of European hot sauce craftsmanship. We're thrilled to announce that entries for the 2026 competition are now open!</p>
+
+        <h2 style="color: #ff4d00; margin-top: 30px; margin-bottom: 15px;">Why Enter Again?</h2>
+        <ul style="font-size: 16px; line-height: 1.8; color: #333;">
+          <li>Showcase your latest creations to Europe's passionate spice-loving community</li>
+          <li>Gain valuable feedback from expert professional and community judges</li>
+          <li>Boost brand visibility and credibility in the competitive European market</li>
+          <li>Award-winning sauces receive promotional support and media coverage</li>
           <li>Network with fellow hot sauce makers and industry professionals</li>
         </ul>
 
-        <h2 style="color: #ff4d00;">Important Dates:</h2>
-        <ul>
-          <li><strong>Registration Deadline:</strong> January 31, 2026</li>
-          <li><strong>Samples Deadline:</strong> February 28, 2026</li>
-          <li><strong>Judging Period:</strong> March 2026</li>
-          <li><strong>Results Announcement:</strong> April 2026</li>
+        <h2 style="color: #ff4d00; margin-top: 30px; margin-bottom: 15px;">What's New in 2026:</h2>
+        <ul style="font-size: 16px; line-height: 1.8; color: #333;">
+          <li>Expanded judging panel with diverse flavor expertise</li>
+          <li>Enhanced winner promotion across social media and partner channels</li>
+          <li>New category options to better showcase your unique products</li>
         </ul>
 
-        <p style="text-align: center; margin: 30px 0;">
-          <a href="https://heatawards.eu/apply/supplier" style="background-color: #ff4d00; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">Enter Your Sauces Now</a>
+        <div style="background-color: #fff3e0; padding: 20px; border-left: 4px solid #ff4d00; margin: 30px 0;">
+          <p style="margin: 0; font-weight: bold; color: #ff4d00; font-size: 16px;">Important Dates:</p>
+          <ul style="margin: 10px 0 0 0; padding-left: 20px;">
+            <li><strong>Registration Deadline:</strong> January 31, 2026</li>
+            <li><strong>Samples Deadline:</strong> February 28, 2026</li>
+            <li><strong>Judging Period:</strong> March 2026</li>
+            <li><strong>Results Announcement:</strong> April 2026</li>
+          </ul>
+        </div>
+
+        <p style="text-align: center; margin: 40px 0;">
+          <a href="https://heatawards.eu/apply/supplier" style="background-color: #ff4d00; color: white; padding: 15px 40px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block; font-size: 16px;">Enter Your Sauces Now</a>
         </p>
 
-        <p>Have questions? We're here to help at heataward@gmail.com</p>
+        <h2 style="color: #ff4d00; margin-top: 30px; margin-bottom: 15px;">Need Help?</h2>
+        <p style="font-size: 16px; line-height: 1.6;">Whether you have questions about categories, submission requirements, or shipping details, our team is ready to assist.</p>
 
-        <p style="color: #666; font-size: 12px; margin-top: 30px; border-top: 1px solid #ddd; padding-top: 15px;">
-          You're receiving this email because you participated in a previous EU Hot Sauce Awards competition. If you'd prefer not to receive these invitations, please reply and let us know.
+        <p style="font-size: 16px; line-height: 1.6;">📧 <a href="mailto:heataward@gmail.com" style="color: #ff4d00;">heataward@gmail.com</a></p>
+
+        <p style="font-size: 16px; line-height: 1.6; margin-top: 30px;">We can't wait to taste what you've been creating!</p>
+
+        <p style="font-size: 16px; line-height: 1.6;">Best regards,<br>
+        <strong>The EU Hot Sauce Awards Team</strong></p>
+
+        <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
+
+        <div style="text-align: center; padding: 20px 0;">
+          <p style="color: #666; font-size: 13px; margin-bottom: 12px;">Proudly sponsored by</p>
+          <a href="https://republicofheat.com/?utm_source=heatawards&utm_medium=email&utm_campaign=2026_supplier_invitation" target="_blank">
+            <img src="https://heatawards.eu/sponsors/ROH_LOGO.png" alt="Republic of Heat" style="max-width: 180px; height: auto;" />
+          </a>
+          <p style="color: #666; font-size: 13px; margin-top: 8px; line-height: 1.4;">Discover Europe's best hot sauces delivered monthly</p>
+        </div>
+
+        <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
+
+        <p style="color: #666; font-size: 12px; line-height: 1.5;">
+          You're receiving this email because you participated in a previous EU Hot Sauce Awards competition. If you'd prefer not to receive future competition invitations, please <a href="mailto:heataward@gmail.com?subject=Unsubscribe from Supplier Invitations" style="color: #666;">let us know</a>.
         </p>
       </div>
     `,
@@ -268,37 +300,63 @@ export const emailTemplates = {
     subject: 'Be a Judge Again - EU Hot Sauce Awards 2026!',
     html: `
       ${emailBanner}
-      <div style="padding: 20px; font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h1 style="color: #ff4d00;">Your Expertise is Needed in 2026!</h1>
-        <p>Dear ${name},</p>
-        <p>Thank you for your valuable contribution as a ${judgeType === 'pro' ? 'Professional' : 'Community'} Judge in past EU Hot Sauce Awards competitions. We'd be honored to have you back for the 2026 awards!</p>
+      <div style="padding: 30px 20px; font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+        <h1 style="color: #ff4d00; margin-bottom: 20px;">Your Expertise is Needed in 2026!</h1>
 
-        <h2 style="color: #ff4d00;">Why Judge Again?</h2>
-        <ul>
-          <li>Taste and evaluate Europe's finest hot sauces before anyone else</li>
+        <p style="font-size: 16px; line-height: 1.6;">Dear ${name},</p>
+
+        <p style="font-size: 16px; line-height: 1.6;">Thank you for your exceptional work as a ${judgeType === 'pro' ? 'Professional' : 'Community'} Judge in past EU Hot Sauce Awards competitions. Your expertise and palate helped make our event a success, and we'd be honored to have you return for 2026!</p>
+
+        <h2 style="color: #ff4d00; margin-top: 30px; margin-bottom: 15px;">Why Judge Again?</h2>
+        <ul style="font-size: 16px; line-height: 1.8; color: #333;">
+          <li>Be the first to taste and evaluate Europe's finest hot sauces</li>
           <li>Help shape the future of the European hot sauce industry</li>
           <li>Connect with fellow spice enthusiasts and industry professionals</li>
-          <li>Be part of the most prestigious hot sauce competition in Europe</li>
+          <li>Gain recognition as part of Europe's most prestigious hot sauce competition</li>
+          <li>Receive a complimentary judging kit and exclusive awards merchandise</li>
         </ul>
 
-        <h2 style="color: #ff4d00;">What to Expect:</h2>
-        <ul>
+        <h2 style="color: #ff4d00; margin-top: 30px; margin-bottom: 15px;">What to Expect:</h2>
+        <ul style="font-size: 16px; line-height: 1.8; color: #333;">
           <li><strong>Judging Period:</strong> March 2026</li>
           <li><strong>Format:</strong> Blind tasting with standardized scoring criteria</li>
-          <li><strong>Commitment:</strong> Approximately 2-4 hours of your time</li>
-          ${judgeType === 'community' ? '<li><strong>Entry Fee:</strong> Small contribution to cover logistics and samples</li>' : '<li><strong>No fees</strong> for professional judges</li>'}
+          <li><strong>Time Commitment:</strong> Approximately 2-4 hours</li>
+          <li><strong>Location:</strong> Judge from the comfort of your own home</li>
         </ul>
 
-        <p style="text-align: center; margin: 30px 0;">
-          <a href="https://heatawards.eu/apply/judge" style="background-color: #ff4d00; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">Register to Judge in 2026</a>
+        <p style="text-align: center; margin: 40px 0;">
+          <a href="https://heatawards.eu/apply/judge" style="background-color: #ff4d00; color: white; padding: 15px 40px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block; font-size: 16px;">Register to Judge in 2026</a>
         </p>
 
-        <p><strong>Application Deadline:</strong> February 15, 2026</p>
+        <div style="background-color: #fff3e0; padding: 20px; border-left: 4px solid #ff4d00; margin: 30px 0;">
+          <p style="margin: 0; font-weight: bold; color: #ff4d00;">Important Dates:</p>
+          <p style="margin: 10px 0 0 0;"><strong>Application Deadline:</strong> February 15, 2026<br>
+          <strong>Judging Takes Place:</strong> March 2026</p>
+        </div>
 
-        <p>Questions? Contact us at heataward@gmail.com</p>
+        <p style="font-size: 16px; line-height: 1.6;">Have questions or need more information? We're here to help!</p>
 
-        <p style="color: #666; font-size: 12px; margin-top: 30px; border-top: 1px solid #ddd; padding-top: 15px;">
-          You're receiving this email because you judged in a previous EU Hot Sauce Awards competition. If you'd prefer not to receive these invitations, please reply and let us know.
+        <p style="font-size: 16px; line-height: 1.6;">📧 <a href="mailto:heataward@gmail.com" style="color: #ff4d00;">heataward@gmail.com</a></p>
+
+        <p style="font-size: 16px; line-height: 1.6; margin-top: 30px;">We look forward to welcoming you back to the judges' panel!</p>
+
+        <p style="font-size: 16px; line-height: 1.6;">Best regards,<br>
+        <strong>The EU Hot Sauce Awards Team</strong></p>
+
+        <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
+
+        <div style="text-align: center; padding: 20px 0;">
+          <p style="color: #666; font-size: 13px; margin-bottom: 12px;">Proudly sponsored by</p>
+          <a href="https://republicofheat.com/?utm_source=heatawards&utm_medium=email&utm_campaign=2026_judge_invitation" target="_blank">
+            <img src="https://heatawards.eu/sponsors/ROH_LOGO.png" alt="Republic of Heat" style="max-width: 180px; height: auto;" />
+          </a>
+          <p style="color: #666; font-size: 13px; margin-top: 8px; line-height: 1.4;">Discover Europe's best hot sauces delivered monthly</p>
+        </div>
+
+        <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
+
+        <p style="color: #666; font-size: 12px; line-height: 1.5;">
+          You're receiving this email because you served as a judge in a previous EU Hot Sauce Awards competition. If you'd prefer not to receive future judging invitations, please <a href="mailto:heataward@gmail.com?subject=Unsubscribe from Judge Invitations" style="color: #666;">let us know</a>.
         </p>
       </div>
     `,
