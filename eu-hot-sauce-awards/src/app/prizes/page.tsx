@@ -35,13 +35,13 @@ const PrizesPage = () => {
                 <div className="text-2xl mb-2">🥈</div>
                 <h3 className="font-bold text-lg text-amber-200 mb-2">Silver Medal</h3>
                 <p className="text-white/70 text-sm mb-1">⭐⭐⭐</p>
-                <p className="text-white/80">5 winners per category</p>
+                <p className="text-white/80">3 winners per category</p>
               </div>
               <div className="bg-black/30 p-6 rounded-lg text-center">
                 <div className="text-2xl mb-2">🥉</div>
                 <h3 className="font-bold text-lg text-amber-200 mb-2">Bronze Medal</h3>
                 <p className="text-white/70 text-sm mb-1">⭐⭐</p>
-                <p className="text-white/80">10 winners per category</p>
+                <p className="text-white/80">6 winners per category</p>
               </div>
             </div>
           </div>

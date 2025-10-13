@@ -36,22 +36,46 @@ export default function PaymentSuccessPage() {
             </p>
           </div>
 
-          <div className="space-y-3 rounded-2xl border border-emerald-200/20 bg-black/30 p-6 text-left text-sm text-white/70">
-            <h2 className="font-semibold text-emerald-200">What happens next?</h2>
-            <ul className="space-y-2">
-              <li className="flex gap-3">
-                <span className="text-emerald-300">•</span>
-                <span>You&apos;ll receive a confirmation email shortly with your registration details.</span>
-              </li>
-              <li className="flex gap-3">
-                <span className="text-emerald-300">•</span>
-                <span>Access your dashboard to view judging schedules and scorecards.</span>
-              </li>
-              <li className="flex gap-3">
-                <span className="text-emerald-300">•</span>
-                <span>Check your email regularly for updates about the judging event.</span>
-              </li>
-            </ul>
+          <div className="space-y-6">
+            <div className="rounded-2xl border border-amber-200/20 bg-black/30 p-6 text-left text-sm text-white/70">
+              <h2 className="font-semibold text-amber-200 mb-3">📦 Shipping Requirements</h2>
+              <ul className="space-y-2">
+                <li className="flex gap-3">
+                  <span className="text-amber-300">•</span>
+                  <span><strong className="text-white">Required:</strong> 2 bottles of each sauce for judging</span>
+                </li>
+                <li className="flex gap-3">
+                  <span className="text-amber-300">•</span>
+                  <span><strong className="text-white">Optional:</strong> Include promotional stickers - we&apos;ll hand them out at Chili Fest</span>
+                </li>
+                <li className="flex gap-3">
+                  <span className="text-amber-300">•</span>
+                  <span><strong className="text-white">Optional:</strong> Include a 3rd bottle - we&apos;ll sell it at Chili Fest for charity</span>
+                </li>
+              </ul>
+            </div>
+
+            <div className="rounded-2xl border border-emerald-200/20 bg-black/30 p-6 text-left text-sm text-white/70">
+              <h2 className="font-semibold text-emerald-200 mb-3">What happens next?</h2>
+              <ul className="space-y-2">
+                <li className="flex gap-3">
+                  <span className="text-emerald-300">•</span>
+                  <span>You&apos;ll receive a confirmation email shortly with your registration details.</span>
+                </li>
+                <li className="flex gap-3">
+                  <span className="text-emerald-300">•</span>
+                  <span>Download the packing sheet from your dashboard and include it with your shipment.</span>
+                </li>
+                <li className="flex gap-3">
+                  <span className="text-emerald-300">•</span>
+                  <span>Ship your bottles to: EUROPEAN HOT SAUCE AWARDS, CBS Foods GmbH, Ossastr 21A, 12045 Berlin, Neukölln, Germany.</span>
+                </li>
+                <li className="flex gap-3">
+                  <span className="text-emerald-300">•</span>
+                  <span>Check your email regularly for updates about the judging event.</span>
+                </li>
+              </ul>
+            </div>
           </div>
 
           <Link

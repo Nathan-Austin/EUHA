@@ -50,7 +50,7 @@ export default function RootLayout({
             src="/cropped-banner-website.png"
             alt="European Hot Sauce Awards Banner"
             fill
-            className="object-contain object-left"
+            className="object-contain object-center"
             priority
           />
         </div>

@@ -84,11 +84,29 @@ export const emailTemplates = {
         <p>Thank you for your payment. Your ${entryCount} sauce ${entryCount > 1 ? 'entries have' : 'entry has'} been confirmed.</p>
         <p><strong>Amount paid:</strong> €${amount}</p>
 
+        <div style="background-color: #fff3cd; border: 2px solid #ff4d00; padding: 15px; margin: 20px 0; border-radius: 5px;">
+          <h3 style="color: #ff4d00; margin-top: 0;">📦 Shipping Requirements</h3>
+          <ul style="margin: 10px 0;">
+            <li><strong>Required:</strong> 2 bottles of each sauce for judging</li>
+            <li><strong>Optional:</strong> Promotional stickers (we'll hand them out at Chili Fest)</li>
+            <li><strong>Optional:</strong> 3rd bottle (we'll sell it at Chili Fest for charity)</li>
+          </ul>
+        </div>
+
+        <div style="background-color: #f8f9fa; border-left: 4px solid #ff4d00; padding: 15px; margin: 20px 0;">
+          <h3 style="color: #ff4d00; margin-top: 0;">📍 Shipping Address</h3>
+          <p style="margin: 5px 0; font-weight: bold;">EUROPEAN HOT SAUCE AWARDS</p>
+          <p style="margin: 5px 0;">CBS Foods GmbH</p>
+          <p style="margin: 5px 0;">Ossastr 21A</p>
+          <p style="margin: 5px 0;">12045 Berlin, Neukölln</p>
+          <p style="margin: 5px 0;">Germany</p>
+        </div>
+
         <h2 style="color: #ff4d00;">Next Steps:</h2>
         <ol>
           <li><strong>Download the packing sheet:</strong> <a href="https://awards.heatawards.eu/shipping-form.pdf" style="color: #ff4d00;">Download PDF</a></li>
           <li>Complete the packing sheet and include it with your shipment</li>
-          <li>Ship your sauce(s) to the judging location (address on packing sheet)</li>
+          <li>Ship 2 bottles of each sauce to the address above</li>
           <li>Log in to your dashboard to submit tracking information</li>
           <li>We'll notify you when your package is received</li>
         </ol>
@@ -100,7 +118,7 @@ export const emailTemplates = {
         <p>Questions? Contact us at heataward@gmail.com</p>
       </div>
     `,
-    text: `Payment Confirmed! Dear ${brandName}, thank you for your payment. Your ${entryCount} sauce ${entryCount > 1 ? 'entries have' : 'entry has'} been confirmed. Download packing sheet at https://awards.heatawards.eu/shipping-form.pdf`,
+    text: `Payment Confirmed! Dear ${brandName}, thank you for your payment. Your ${entryCount} sauce ${entryCount > 1 ? 'entries have' : 'entry has'} been confirmed. IMPORTANT: Ship 2 bottles of each sauce to: EUROPEAN HOT SAUCE AWARDS, CBS Foods GmbH, Ossastr 21A, 12045 Berlin, Neukölln, Germany. Download packing sheet at https://awards.heatawards.eu/shipping-form.pdf`,
   }),
 
   supplierTrackingConfirmation: (brandName: string, trackingNumber: string, postalService: string) => ({

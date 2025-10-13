@@ -79,7 +79,7 @@ const TermsPage = () => {
                 <ul className="list-disc list-inside text-white/75 leading-relaxed space-y-2">
                   <li>Judges' decisions are final</li>
                   <li>Gold, Silver, and Bronze awards will be presented in each category</li>
-                  <li>Top 50 highest-scoring sauces will be added to global rankings</li>
+                  <li>Top 20 highest-scoring sauces will be added to global rankings</li>
                 </ul>
               </div>
 

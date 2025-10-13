@@ -47,7 +47,7 @@ const discountBands = [
   { min: 21, max: 100, percent: 16 },
 ];
 
-const ENTRY_PRICE_CENTS = 100; // 1.00 EUR (testing price, change to 50_00 for production)
+const ENTRY_PRICE_CENTS = 5000; // 50.00 EUR
 const IMAGE_BUCKET = process.env.NEXT_PUBLIC_SAUCE_IMAGE_BUCKET ?? "sauce-media";
 const MAX_IMAGE_DIMENSION = 1600;
 const WEBP_QUALITY = 0.85;
@@ -631,7 +631,7 @@ export default function SupplierApplyPage() {
 
             <div className="space-y-3 rounded-2xl border border-amber-200/20 bg-black/20 p-4 text-xs text-white/70">
               <p>
-                By submitting this form you confirm that each sauce complies with EU food safety regulations and that you can ship samples to our judging hub in Dublin, Ireland.
+                By submitting this form you confirm that each sauce complies with EU food safety regulations and that you can ship samples to: EUROPEAN HOT SAUCE AWARDS, CBS Foods GmbH, Ossastr 21A, 12045 Berlin, Neukölln, Germany.
               </p>
               <p>
                 We will send a confirmation email with logistics and a magic link to the supplier dashboard. Please check your spam folder if you don&apos;t receive it within a few minutes.

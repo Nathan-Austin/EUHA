@@ -46,7 +46,7 @@ const Footer = () => {
           <div>
             <h3 className="text-sm font-semibold text-gray-200 tracking-wider uppercase">Social</h3>
             <ul className="mt-4 space-y-4">
-              <li><a href="#" className="text-base text-gray-400 hover:text-white">Instagram</a></li>
+              <li><a href="https://www.instagram.com/europeanhotsauceawards/" target="_blank" rel="noopener noreferrer" className="text-base text-gray-400 hover:text-white">Instagram</a></li>
               <li><a href="mailto:heataward@gmail.com" className="text-base text-gray-400 hover:text-white">Email</a></li>
             </ul>
           </div>
