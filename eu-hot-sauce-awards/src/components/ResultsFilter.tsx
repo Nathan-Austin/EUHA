@@ -115,16 +115,36 @@ export default function ResultsFilter({ results }: ResultsFilterProps) {
     });
   }, [results, searchTerm, selectedCategory, selectedAward, selectedCountry, selectedArea, showTopTwentyOnly]);
 
-  // Group by category
+  // Group by category and area (combining them for display)
   const categorizedResults = useMemo(() => {
     const map = new Map<string, PastResult[]>();
     filteredResults.forEach(result => {
-      if (!map.has(result.category)) {
-        map.set(result.category, []);
+      // Create a combined key with category and area
+      const displayCategory = `${result.category} - ${result.area === 'EURO' ? 'European' : 'International'}`;
+      if (!map.has(displayCategory)) {
+        map.set(displayCategory, []);
       }
-      map.get(result.category)!.push(result);
+      map.get(displayCategory)!.push(result);
     });
-    return Array.from(map.entries()).map(([category, winners]) => ({ category, winners }));
+
+    // Sort categories: European before International
+    const sortedEntries = Array.from(map.entries()).sort(([catA], [catB]) => {
+      // Extract base category and area
+      const [baseCatA, areaA] = catA.split(' - ');
+      const [baseCatB, areaB] = catB.split(' - ');
+
+      // First sort by base category
+      if (baseCatA !== baseCatB) {
+        return baseCatA.localeCompare(baseCatB);
+      }
+
+      // Then prioritize European over International
+      if (areaA === 'European' && areaB === 'International') return -1;
+      if (areaA === 'International' && areaB === 'European') return 1;
+      return 0;
+    });
+
+    return sortedEntries.map(([category, winners]) => ({ category, winners }));
   }, [filteredResults]);
 
   const resetFilters = () => {
