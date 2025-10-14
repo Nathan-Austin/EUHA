@@ -25,6 +25,7 @@ const EventsManager = () => {
   const [showModal, setShowModal] = useState(false);
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
   const [loading, setLoading] = useState(false);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   useEffect(() => {
     loadEvents();
@@ -82,12 +83,25 @@ const EventsManager = () => {
 
   function openAddModal() {
     setEditingEvent(null);
+    setImagePreview(null);
     setShowModal(true);
   }
 
   function openEditModal(event: Event) {
     setEditingEvent(event);
+    setImagePreview(event.image_url);
     setShowModal(true);
+  }
+
+  function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
   }
 
   return (
@@ -362,11 +376,23 @@ const EventsManager = () => {
                   type="file"
                   name="image"
                   accept="image/*"
+                  onChange={handleImageChange}
                   className="w-full rounded-lg border border-white/20 bg-black/30 px-3 py-2 text-white file:me-4 file:rounded-full file:border-0 file:bg-amber-500/20 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-amber-200 hover:file:bg-amber-500/30"
                 />
-                {editingEvent?.image_url ? (
+                {imagePreview && (
+                  <div className="mt-3 relative h-40 w-full overflow-hidden rounded-lg border border-white/20">
+                    <Image
+                      src={imagePreview}
+                      alt="Preview"
+                      fill
+                      className="object-cover"
+                      unoptimized={imagePreview.startsWith('data:')}
+                    />
+                  </div>
+                )}
+                {editingEvent?.image_url && !imagePreview?.startsWith('data:') ? (
                   <p className="mt-1 text-xs text-white/50">
-                    Current image will be replaced if a new file is uploaded.
+                    Current image shown above. Upload a new file to replace it.
                   </p>
                 ) : null}
               </div>

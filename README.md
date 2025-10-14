@@ -115,9 +115,9 @@ Each sauce receives a unique code: `[Category Letter][3-digit number]`
 
 **Category Codes:**
 - D = Mild | M = Medium | H = Hot | X = Extra Hot
-- E = Extract Based | B = BBQ | K = Ketchup | J = Jam
-- R = Honey | Z = Maple Syrup | G = Garlic | L = Pickle
-- C = Chutney | T = Oil | F = Freestyle | S = Sweet/Sour
+- E = Extract Based | B = BBQ | K = Ketchup | W = Sweet
+- R = Honey | G = Garlic | C = Chutney & Pickle
+- T = Oil | F = Freestyle | S = Asian Style
 - P = Paste | A = Salt & Condiments
 
 ### Weighted Scoring System

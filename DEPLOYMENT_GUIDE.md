@@ -268,17 +268,15 @@ Sauces are automatically assigned unique codes during registration:
   - E = Extract Based Chili Sauce
   - B = BBQ Chili Sauce
   - K = Chili Ketchup
-  - J = Chili Jam
+  - W = Sweet
   - R = Chili Honey
   - G = Garlic Chili Sauce
-  - L = Chili Pickle
-  - C = Chili Chutney
+  - C = Chili Chutney & Pickle
   - T = Chili Oil
   - F = Freestyle
-  - S = Sweet/Sour Chili Sauce
+  - S = Asian Style Chili Sauce
   - P = Chili Paste
   - A = Salt & Condiments
-  - Z = Maple Syrup Chili Sauce
 
 Numbers are sequential per category (D001, D002, D003...).
 

@@ -31,17 +31,15 @@ const CATEGORY_CODES: Record<string, string> = {
   'Extract Based Chili Sauce': 'E',
   'BBQ Chili Sauce': 'B',
   'Chili Ketchup': 'K',
-  'Chili Jam': 'J',
+  'Sweet': 'W',
   'Chili Honey': 'R',
   'Garlic Chili Sauce': 'G',
-  'Chili Pickle': 'L',
-  'Chili Chutney': 'C',
+  'Chili Chutney & Pickle': 'C',
   'Chili Oil': 'T',
   'Freestyle': 'F',
-  'Sweet/Sour Chili Sauce': 'S',
+  'Asian Style Chili Sauce': 'S',
   'Chili Paste': 'P',
   'Salt & Condiments': 'A',
-  'Maple Syrup Chili Sauce': 'Z',
 };
 
 const DISCOUNT_BANDS: { min: number; max: number; discount: number }[] = [
