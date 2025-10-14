@@ -24,7 +24,7 @@ This document provides complete setup instructions for deploying the EU Hot Sauc
 ```bash
 cd /path/to/EUHA
 supabase login
-supabase link --project-ref csweurtdldauwrthqafo
+supabase link --project-ref YOUR_PROJECT_REF
 ```
 
 ### 1.2 Configure Supabase Secrets
@@ -33,7 +33,7 @@ All edge functions require these environment variables:
 
 ```bash
 # Core Supabase credentials
-supabase secrets set PROJECT_URL="https://csweurtdldauwrthqafo.supabase.co"
+supabase secrets set PROJECT_URL="https://YOUR_PROJECT_REF.supabase.co"
 supabase secrets set SERVICE_ROLE_KEY="your-service-role-key"
 
 # Stripe credentials
@@ -89,7 +89,7 @@ This deploys:
 
 1. Go to Stripe Dashboard → Developers → Webhooks
 2. Click "+ Add endpoint"
-3. Set Endpoint URL: `https://csweurtdldauwrthqafo.supabase.co/functions/v1/stripe-webhook`
+3. Set Endpoint URL: `https://YOUR_PROJECT_REF.supabase.co/functions/v1/stripe-webhook`
 4. Select event: `checkout.session.completed`
 5. Click "Add endpoint"
 6. Reveal the signing secret and add it to Supabase secrets (see step 1.2)
@@ -119,7 +119,7 @@ If the `sauce-media` bucket wasn't created by the migration:
 Set these in Vercel project settings:
 
 ```env
-NEXT_PUBLIC_SUPABASE_URL=https://csweurtdldauwrthqafo.supabase.co
+NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 NEXT_PUBLIC_SAUCE_IMAGE_BUCKET=sauce-media
 ```

@@ -182,7 +182,7 @@ importResults();
 
 **Step 2**: Run the import script
 ```bash
-export PROJECT_URL="https://csweurtdldauwrthqafo.supabase.co"
+export PROJECT_URL="https://YOUR_PROJECT_REF.supabase.co"
 export SERVICE_ROLE_KEY="your-key"
 npx tsx eu-hot-sauce-awards/scripts/import-2025-results.ts
 ```
