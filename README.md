@@ -43,7 +43,7 @@ The migration to a custom-built platform provided:
 - **Category-Based Scoring:** Multiple scoring categories with weighted calculations
 - **Local Storage Backup:** Auto-saves scores to prevent data loss
 - **Bulk Submission:** Submit all pending scores at once
-- **Judge Types:** Pro, Community, Supplier, and Admin roles with different weights
+- **Judge Types:** Pro, Community, and Supplier judges with weighted scoring
 
 ### Admin Features
 - **Sauce Status Management:** Track sauces through registration → arrived → boxed → judged
@@ -147,7 +147,7 @@ Results use weighted averages based on judge type:
 2. Submit → creates judge record with conflict of interest data
 3. Receive magic link email
 4. Log in → role-based dashboard
-5. **Pro/Admin judges:** Full access immediately
+5. **Pro judges:** Full access immediately
 6. **Community judges:** Prompted to pay €15
 7. Complete payment → access unlocked
 8. Scan sauce QR codes → score sauces
@@ -237,7 +237,6 @@ See [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md) for complete deployment instruc
 - Community judges: €15 (required before judging access)
 - Pro judges: Free (industry professionals)
 - Supplier judges: Free (included with entry)
-- Admin judges: Free
 
 ## Project Structure
 
@@ -270,7 +269,7 @@ Proprietary - All rights reserved
 ## Contact
 
 - Website: [heatawards.eu](https://heatawards.eu)
-- Email: heataward@gmail.com
+- Contact form available on the website
 
 ---
 
