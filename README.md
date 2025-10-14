@@ -1,74 +1,278 @@
-# EU Hot Sauce Awards - Platform
+# EU Hot Sauce Awards Platform
 
-This repository contains the frontend application and backend infrastructure for the EU Hot Sauce Awards judging platform.
+A comprehensive Next.js application for managing the European Hot Sauce Awards competition, handling registration, payments, judging, and results.
+
+## Overview
+
+The EU Hot Sauce Awards platform is a full-stack judging system built with Next.js 14, Supabase, and Stripe. The platform manages the entire competition lifecycle from supplier/judge registration through to results export with weighted scoring.
+
+**Live Site:** [heatawards.eu](https://heatawards.eu)
+
+## Migration History
+
+This platform was completely rebuilt from a WordPress-based system to a modern Next.js application:
+
+- **Previous System (2024-2025):** 100% WordPress - handled all registrations, payments, judging, and data management internally
+- **Current System (2026):** Purpose-built Next.js application with Supabase backend, replacing WordPress entirely
+
+The migration to a custom-built platform provided:
+- Improved user experience with a modern, responsive interface
+- Better control over registration and judging workflows
+- Real-time data synchronization and auto-save features
+- Advanced admin tools (QR scanning, PDF generation, conflict checking)
+- Scalable architecture for future competitions
+
+## Tech Stack
+
+- **Frontend:** Next.js 14 (App Router), React, TypeScript, Tailwind CSS
+- **Backend:** Supabase (PostgreSQL, Edge Functions, Storage, Auth)
+- **Payments:** Stripe Checkout & Webhooks
+- **Hosting:** Vercel (frontend), Supabase (backend)
+- **QR Generation:** Built-in QR code system for sauce tracking and judging
+
+## Key Features
+
+### Registration & Payment
+- **Supplier Registration:** Multi-sauce entry forms with image uploads, automatic pricing with volume discounts
+- **Judge Registration:** Application forms with conflict of interest declarations
+- **Payment Processing:** Stripe integration for community judges (€15) and supplier entries (€50/sauce with discounts)
+- **Magic Link Authentication:** Email-based passwordless login via Supabase Auth
+
+### Judging System
+- **QR Code Scanning:** Mobile-optimized scanner for sauce identification
+- **Category-Based Scoring:** Multiple scoring categories with weighted calculations
+- **Local Storage Backup:** Auto-saves scores to prevent data loss
+- **Bulk Submission:** Submit all pending scores at once
+- **Judge Types:** Pro, Community, Supplier, and Admin roles with different weights
+
+### Admin Features
+- **Sauce Status Management:** Track sauces through registration → arrived → boxed → judged
+- **Box Assignment Scanner:** Physical box packing with QR scanning and conflict of interest checking
+- **Label Generation:** PDF generation for sauce stickers (Avery 4780) and judge labels
+- **Results Export:** CSV export with weighted scoring algorithms
+- **User Management:** Add/manage admin users
+
+### Competition Management
+- **18 Categories:** From Mild to Extract-Based, BBQ, Ketchup, Jam, Honey, and more
+- **Unique Sauce Codes:** Auto-generated codes (e.g., D001, H042) based on category
+- **Box Tracking:** Track which sauces are packed in which judge boxes
+- **Bottle Scan Tracking:** Monitor individual bottle scans during packing (7 per sauce type)
+- **Historical Results:** Display past competition winners with filtering
+
+## Architecture
+
+### Application Structure
+
+```
+eu-hot-sauce-awards/
+├── src/
+│   ├── app/
+│   │   ├── actions.ts              # Server actions
+│   │   ├── page.tsx                # Landing page
+│   │   ├── login/                  # Auth pages
+│   │   ├── dashboard/              # Role-based dashboard
+│   │   ├── judge/
+│   │   │   ├── scan/               # QR scanner
+│   │   │   └── score/[sauceId]/    # Scoring interface
+│   │   ├── apply/
+│   │   │   ├── supplier/           # Supplier registration
+│   │   │   └── judge/              # Judge registration
+│   │   └── results/                # Past winners
+│   ├── components/                 # Reusable components
+│   ├── lib/
+│   │   └── supabase/               # Supabase client config
+│   └── hooks/                      # Custom React hooks
+└── public/                         # Static assets
+
+supabase/
+├── functions/                      # Edge functions
+│   ├── judge-intake/              # Judge registration handler
+│   ├── supplier-intake/           # Supplier registration handler
+│   ├── stripe-checkout/           # Judge payment sessions
+│   ├── supplier-checkout/         # Supplier payment sessions
+│   └── stripe-webhook/            # Payment confirmations
+└── migrations/                     # Database schema
+```
+
+### Database Schema
+
+**Key Tables:**
+- `suppliers` - Brand information and contact details
+- `sauces` - Sauce entries with status, codes, QR codes, images
+- `judges` - Judge profiles with type, payment status, QR codes
+- `judging_categories` - Scoring categories with weights
+- `judging_scores` - Individual category scores (judge × sauce × category)
+- `box_assignments` - Maps sauces to physical judging boxes
+- `supplier_payments` - Payment tracking with discounts
+- `bottle_scans` - Individual bottle scan tracking during packing
+- `past_results` - Historical competition winners
+
+### Sauce Code System
+
+Each sauce receives a unique code: `[Category Letter][3-digit number]`
+
+**Examples:** `D001` (Mild), `H042` (Hot), `X015` (Extra Hot)
+
+**Category Codes:**
+- D = Mild | M = Medium | H = Hot | X = Extra Hot
+- E = Extract Based | B = BBQ | K = Ketchup | J = Jam
+- R = Honey | Z = Maple Syrup | G = Garlic | L = Pickle
+- C = Chutney | T = Oil | F = Freestyle | S = Sweet/Sour
+- P = Paste | A = Salt & Condiments
+
+### Weighted Scoring System
+
+Results use weighted averages based on judge type:
+- **Pro Judges:** 0.8 weight
+- **Community Judges:** 1.5 weight (highest weight as they represent consumer perspective)
+- **Supplier Judges:** 0.8 weight
+
+**Formula:** `(Σ(avg_score × count × weight)) / (Σ(count × weight))`
+
+## User Flows
+
+### Supplier Flow
+1. Visit `/apply/supplier` and fill out registration form
+2. Add multiple sauces with details and images
+3. Submit → creates supplier, sauces, and payment record
+4. Images uploaded to Supabase Storage
+5. Receive magic link email
+6. Log in and see payment summary with discounts
+7. Complete Stripe checkout
+8. Webhook updates payment status
+9. Sauces officially registered
+
+### Judge Flow
+1. Visit `/apply/judge` and fill out application
+2. Submit → creates judge record with conflict of interest data
+3. Receive magic link email
+4. Log in → role-based dashboard
+5. **Pro/Admin judges:** Full access immediately
+6. **Community judges:** Prompted to pay €15
+7. Complete payment → access unlocked
+8. Scan sauce QR codes → score sauces
+9. Scores auto-save to local storage
+10. Submit all scores when complete
+
+### Admin Flow
+1. Log in with admin credentials
+2. View all sauces and update statuses
+3. Generate sauce stickers and judge labels (PDF)
+4. Use box packing scanner:
+   - Scan judge QR code
+   - Scan 12 sauce bottles for their box
+   - System checks conflicts and tracks bottles
+5. Export weighted results to CSV
+6. Manage admin users
+
+## Getting Started
+
+### Prerequisites
+- Node.js 18+
+- Supabase CLI
+- Stripe account
+- Vercel account (for deployment)
+
+### Local Development
+
+```bash
+# Clone the repository
+git clone <repository-url>
+cd EUHA/eu-hot-sauce-awards
+
+# Install dependencies
+npm install
+
+# Set up environment variables
+cp .env.example .env.local
+# Edit .env.local with your Supabase and Stripe credentials
+
+# Run development server
+npm run dev
+
+# Open http://localhost:3000
+```
+
+### Environment Variables
+
+**Frontend (.env.local):**
+```env
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+NEXT_PUBLIC_SAUCE_IMAGE_BUCKET=sauce-media
+NEXT_PUBLIC_GA_MEASUREMENT_ID=your_ga_id
+```
+
+**Supabase Secrets:**
+```bash
+supabase secrets set PROJECT_URL="your_supabase_url"
+supabase secrets set SERVICE_ROLE_KEY="your_service_role_key"
+supabase secrets set STRIPE_SECRET_KEY="your_stripe_secret"
+supabase secrets set STRIPE_WEBHOOK_SIGNING_SECRET="whsec_..."
+supabase secrets set JUDGE_PAYMENT_BASE_URL="https://your-domain.com"
+supabase secrets set SUPPLIER_PAYMENT_SUCCESS_URL="https://your-domain.com/payment-success"
+supabase secrets set SUPPLIER_PAYMENT_CANCEL_URL="https://your-domain.com/payment-cancelled"
+supabase secrets set SAUCE_IMAGE_BUCKET="sauce-media"
+```
+
+### Deployment
+
+See [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md) for complete deployment instructions including:
+- Supabase project setup
+- Database migrations
+- Edge function deployment
+- Stripe webhook configuration
+- Vercel deployment
+- Creating admin users
+
+## Payment Configuration
+
+### Volume Discounts for Suppliers
+- 1-5 sauces: €50 each (0% discount)
+- 6-10 sauces: €47.50 each (5% discount)
+- 11-15 sauces: €45 each (10% discount)
+- 16+ sauces: €42.50 each (15% discount)
+
+### Judge Fees
+- Community judges: €15 (required before judging access)
+- Pro judges: Free (industry professionals)
+- Supplier judges: Free (included with entry)
+- Admin judges: Free
+
+## Project Structure
+
+The main application is located in the `eu-hot-sauce-awards/` subdirectory. Always run commands from that directory:
+
+```bash
+cd eu-hot-sauce-awards
+npm run dev          # Start dev server
+npm run build        # Production build
+npm run lint         # Run ESLint
+```
+
+Supabase commands run from the project root:
+
+```bash
+cd /path/to/EUHA
+supabase functions deploy              # Deploy all edge functions
+supabase functions deploy <name>       # Deploy specific function
+supabase db push                       # Push migrations
+```
+
+## Contributing
+
+This is a private project for the EU Hot Sauce Awards. For questions or issues, please contact the development team.
+
+## License
+
+Proprietary - All rights reserved
+
+## Contact
+
+- Website: [heatawards.eu](https://heatawards.eu)
+- Email: heataward@gmail.com
 
 ---
 
-## Application Flow
-
-This document outlines the end-to-end user and data flow for the awards platform, from initial registration on WordPress to final results export.
-
-### Part 1: Supplier & Judge Onboarding (via WordPress)
-
-This phase covers how sauce suppliers and judges are registered in the system.
-
-*   **Step 1: Registration on WordPress**
-    *   A new supplier or judge signs up and pays through a form on an external WordPress website.
-
-*   **Step 2: WordPress Webhook Trigger**
-    *   Upon successful submission, WordPress sends a webhook containing the registration data (brand name, contact info, sauce details for suppliers; name and type for judges).
-
-*   **Step 3: Supabase Edge Function Intake**
-    *   The webhook is received by a dedicated Supabase Edge Function:
-        *   `supplier-intake`: For new sauce/supplier registrations.
-        *   `judge-intake`: For new judge registrations.
-
-*   **Step 4: Database Population**
-    *   The Edge Function processes the data and creates new entries in the Supabase database, specifically in the `suppliers`, `sauces`, and `judges` tables. This officially brings the user into the awards platform ecosystem.
-
-### Part 2: Application Login & Payment
-
-This phase covers how registered users access the platform.
-
-*   **Step 1: Login**
-    *   A registered user navigates to the Next.js application and logs in using Supabase Authentication, presumably with the same email used on WordPress.
-
-*   **Step 2: Role-Based Dashboard**
-    *   The application checks the user's role (`admin`, `pro`, `community`) from the `judges` table.
-    *   It then dynamically renders the correct dashboard for the user.
-
-*   **Step 3: Community Judge Payment (Conditional)**
-    *   If the user is a `community` judge and has not yet paid, they are shown a payment prompt.
-    *   They complete the payment using a Stripe Checkout session managed by the `stripe-checkout` Edge Function.
-    *   A `stripe-webhook` function listens for the successful payment event from Stripe and updates the judge's `stripe_payment_status` in the database, granting them access to the judging features.
-
-### Part 3: The Judging Process
-
-This phase details how judges score sauces.
-
-*   **Step 1: Scan QR Code**
-    *   A judge navigates to the "Scan" page from their dashboard and uses their device's camera to scan a QR code on a sauce bottle.
-
-*   **Step 2: Score Sauce**
-    *   The QR code redirects them to the unique scoring page for that specific sauce.
-    *   The judge enters scores and comments for various categories. As they do, the data is automatically saved to their browser's local storage to prevent data loss.
-
-*   **Step 3: Review Pending Scores**
-    *   After scoring, the judge can see a list of all their "Pending" scores on their dashboard. They can go back and edit these scores if needed.
-
-*   **Step 4: Final Submission**
-    *   Once they are satisfied with all their scores, the judge clicks "Submit All Final Scores".
-    *   This triggers a server action (`submitAllScores`) that takes all the data from local storage and saves it permanently to the `judging_scores` table in the database.
-
-### Part 4: Admin & Logistics
-
-This phase covers the administrative backend functionality.
-
-*   **Step 1: Sauce Status Management**
-    *   An admin can view a list of all registered sauces and update their physical status (e.g., from `registered` to `arrived`).
-
-*   **Step 2: Box Assignment**
-    *   Once sauces have arrived, the admin uses the "Box Management" interface to digitally group sauces into judging boxes.
-
-*   **Step 3: Export Results**
-    *   At any point, the admin can export a complete CSV file of all judging scores, which includes weighted calculations based on judge type (`pro`, `community`).
+**Last Updated:** October 2025
+**Platform Version:** 2026 Competition System
