@@ -123,9 +123,9 @@ Each sauce receives a unique code: `[Category Letter][3-digit number]`
 ### Weighted Scoring System
 
 Results use weighted averages based on judge type:
-- **Pro Judges:** 0.8 weight
-- **Community Judges:** 1.5 weight (highest weight as they represent consumer perspective)
-- **Supplier Judges:** 0.8 weight
+- **Pro Judges:** 2.0 weight (2:1 ratio - industry experts carry double weight)
+- **Community Judges:** 1.0 weight (consumer perspective)
+- **Supplier Judges:** 1.0 weight (industry peers)
 
 **Formula:** `(Σ(avg_score × count × weight)) / (Σ(count × weight))`
 
