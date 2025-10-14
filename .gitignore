@@ -24,3 +24,18 @@ yarn-error.log*
 # Past results images (stored in Supabase Storage)
 /eu-hot-sauce-awards/past_results/images/
 supabase/.temp/
+
+# Internal planning and workflow documentation
+2026_DATA_FLOW_ANALYSIS.md
+DHL_SHIPPING_INTEGRATION.md
+HANDOVER_NOTES.md
+HISTORICAL_DATA_IMPORT_TODO.md
+IMPLEMENTATION.md
+IMPLEMENTATION_SUMMARY.md
+IMPORT_SUCCESS_SUMMARY.md
+PAST_RESULTS_STATUS.md
+QUICKSTART_IMPORT.md
+SESSION_SUMMARY.md
+TRACKING_WORKFLOW.md
+eu-hot-sauce-awards/scripts/README.md
+eu-hot-sauce-awards/scripts/import-historical-data-README.md
