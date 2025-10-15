@@ -2,6 +2,17 @@
 
 import { useState, useTransition } from 'react';
 import { submitTrackingInfo } from '@/app/actions';
+import SupplierPaymentButton from './SupplierPaymentButton';
+
+interface PaymentQuote {
+  id: string;
+  entry_count: number;
+  discount_percent: number;
+  subtotal_cents: number;
+  discount_cents: number;
+  amount_due_cents: number;
+  stripe_payment_status: string;
+}
 
 interface SupplierDashboardProps {
   supplierData: {
@@ -11,9 +22,11 @@ interface SupplierDashboardProps {
     packageStatus: string;
     packageReceivedAt: string | null;
   };
+  pendingPayment?: PaymentQuote | null;
+  userEmail: string;
 }
 
-export default function SupplierDashboard({ supplierData }: SupplierDashboardProps) {
+export default function SupplierDashboard({ supplierData, pendingPayment, userEmail }: SupplierDashboardProps) {
   const [trackingNumber, setTrackingNumber] = useState(supplierData.trackingNumber || '');
   const [postalService, setPostalService] = useState(supplierData.postalServiceName || '');
   const [isPending, startTransition] = useTransition();
@@ -58,24 +71,43 @@ export default function SupplierDashboard({ supplierData }: SupplierDashboardPro
         <p className="text-gray-300">Welcome, {supplierData.brandName}!</p>
       </div>
 
-      <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="font-semibold text-blue-900">Package Status</h3>
-            <p className="text-sm text-blue-700 mt-1">
-              {supplierData.packageStatus === 'received'
-                ? `Received on ${new Date(supplierData.packageReceivedAt!).toLocaleDateString()}`
-                : supplierData.packageStatus === 'shipped'
-                ? 'Your package is on its way'
-                : 'Please submit your tracking information below'}
-            </p>
+      {pendingPayment ? (
+        <>
+          <SupplierPaymentButton paymentQuote={pendingPayment} userEmail={userEmail} />
+          <div className="p-4 bg-gray-100 border border-gray-300 rounded-lg">
+            <div className="flex items-center gap-3">
+              <svg className="h-5 w-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+              <div>
+                <h3 className="font-semibold text-gray-900">Tracking & Shipment</h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  Complete your payment to unlock shipping and tracking features
+                </p>
+              </div>
+            </div>
           </div>
-          <div>{getStatusBadge()}</div>
-        </div>
-      </div>
+        </>
+      ) : (
+        <>
+          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-semibold text-blue-900">Package Status</h3>
+                <p className="text-sm text-blue-700 mt-1">
+                  {supplierData.packageStatus === 'received'
+                    ? `Received on ${new Date(supplierData.packageReceivedAt!).toLocaleDateString()}`
+                    : supplierData.packageStatus === 'shipped'
+                    ? 'Your package is on its way'
+                    : 'Please submit your tracking information below'}
+                </p>
+              </div>
+              <div>{getStatusBadge()}</div>
+            </div>
+          </div>
 
-      {supplierData.packageStatus !== 'received' && (
-        <div className="border border-gray-300 rounded-lg p-6 bg-white">
+          {supplierData.packageStatus !== 'received' && (
+            <div className="border border-gray-300 rounded-lg p-6 bg-white">
           <h3 className="text-lg font-semibold mb-4 text-gray-900">
             {supplierData.trackingNumber ? 'Update Tracking Information' : 'Submit Tracking Information'}
           </h3>
@@ -136,20 +168,22 @@ export default function SupplierDashboard({ supplierData }: SupplierDashboardPro
         </div>
       )}
 
-      {supplierData.trackingNumber && (
-        <div className="border border-gray-300 rounded-lg p-6 bg-white">
-          <h3 className="text-lg font-semibold mb-3 text-gray-900">Submitted Tracking Information</h3>
-          <dl className="space-y-2">
-            <div>
-              <dt className="text-sm font-medium text-gray-600">Tracking Number:</dt>
-              <dd className="text-sm text-gray-900 font-mono">{supplierData.trackingNumber}</dd>
+          {supplierData.trackingNumber && (
+            <div className="border border-gray-300 rounded-lg p-6 bg-white">
+              <h3 className="text-lg font-semibold mb-3 text-gray-900">Submitted Tracking Information</h3>
+              <dl className="space-y-2">
+                <div>
+                  <dt className="text-sm font-medium text-gray-600">Tracking Number:</dt>
+                  <dd className="text-sm text-gray-900 font-mono">{supplierData.trackingNumber}</dd>
+                </div>
+                <div>
+                  <dt className="text-sm font-medium text-gray-600">Postal Service:</dt>
+                  <dd className="text-sm text-gray-900">{supplierData.postalServiceName}</dd>
+                </div>
+              </dl>
             </div>
-            <div>
-              <dt className="text-sm font-medium text-gray-600">Postal Service:</dt>
-              <dd className="text-sm text-gray-900">{supplierData.postalServiceName}</dd>
-            </div>
-          </dl>
-        </div>
+          )}
+        </>
       )}
     </div>
   );

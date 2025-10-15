@@ -67,7 +67,7 @@ export default async function DashboardPage() {
         // Fetch supplier data for dashboard
         const { data: supplier } = await supabase
           .from('suppliers')
-          .select('brand_name, tracking_number, postal_service_name, package_status, package_received_at')
+          .select('id, brand_name, tracking_number, postal_service_name, package_status, package_received_at')
           .eq('email', user.email!)
           .single();
 
@@ -75,13 +75,28 @@ export default async function DashboardPage() {
           return <p>Supplier profile not found. Please contact support.</p>;
         }
 
-        return <SupplierDashboard supplierData={{
-          brandName: supplier.brand_name,
-          trackingNumber: supplier.tracking_number,
-          postalServiceName: supplier.postal_service_name,
-          packageStatus: supplier.package_status || 'pending',
-          packageReceivedAt: supplier.package_received_at,
-        }} />;
+        // Check for pending payments
+        const { data: pendingPayments } = await supabase
+          .from('supplier_payments')
+          .select('id, entry_count, discount_percent, subtotal_cents, discount_cents, amount_due_cents, stripe_payment_status')
+          .eq('supplier_id', supplier.id)
+          .neq('stripe_payment_status', 'succeeded')
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        const pendingPayment = pendingPayments && pendingPayments.length > 0 ? pendingPayments[0] : null;
+
+        return <SupplierDashboard
+          supplierData={{
+            brandName: supplier.brand_name,
+            trackingNumber: supplier.tracking_number,
+            postalServiceName: supplier.postal_service_name,
+            packageStatus: supplier.package_status || 'pending',
+            packageReceivedAt: supplier.package_received_at,
+          }}
+          pendingPayment={pendingPayment}
+          userEmail={user.email!}
+        />;
       }
       case 'community':
         if (judge.stripe_payment_status === 'succeeded') {
