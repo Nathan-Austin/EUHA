@@ -159,7 +159,7 @@ Deno.serve(async (req) => {
               console.error('Failed to generate magic link for judge:', linkError);
             } else {
               // Send magic link via email API
-              const emailApiUrl = Deno.env.get('EMAIL_API_URL') || 'https://awards.heatawards.eu';
+              const emailApiUrl = Deno.env.get('EMAIL_API_URL') || 'https://heatawards.eu';
               const magicLinkResponse = await fetch(`${emailApiUrl}/api/send-email`, {
                 method: 'POST',
                 headers: {
@@ -189,7 +189,7 @@ Deno.serve(async (req) => {
 
           // Send payment confirmation email
           try {
-            const emailApiUrl = Deno.env.get('EMAIL_API_URL') || 'https://awards.heatawards.eu';
+            const emailApiUrl = Deno.env.get('EMAIL_API_URL') || 'https://heatawards.eu';
             const emailResponse = await fetch(`${emailApiUrl}/api/send-email`, {
               method: 'POST',
               headers: {
@@ -297,7 +297,7 @@ Deno.serve(async (req) => {
             console.error('Failed to generate magic link:', linkError);
           } else {
             // Send magic link via email API
-            const emailApiUrl = Deno.env.get('EMAIL_API_URL') || 'https://awards.heatawards.eu';
+            const emailApiUrl = Deno.env.get('EMAIL_API_URL') || 'https://heatawards.eu';
             const magicLinkResponse = await fetch(`${emailApiUrl}/api/send-email`, {
               method: 'POST',
               headers: {
@@ -327,7 +327,7 @@ Deno.serve(async (req) => {
 
         // Send confirmation email via Next.js API route
         try {
-          const emailApiUrl = Deno.env.get('EMAIL_API_URL') || 'https://awards.heatawards.eu';
+          const emailApiUrl = Deno.env.get('EMAIL_API_URL') || 'https://heatawards.eu';
           const emailResponse = await fetch(`${emailApiUrl}/api/send-email`, {
             method: 'POST',
             headers: {

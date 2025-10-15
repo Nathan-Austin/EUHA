@@ -86,7 +86,7 @@ Deno.serve(async (req) => {
 
     // Send registration confirmation email
     try {
-      const emailApiUrl = Deno.env.get('EMAIL_API_URL') || 'https://awards.heatawards.eu';
+      const emailApiUrl = Deno.env.get('EMAIL_API_URL') || 'https://heatawards.eu';
       const serviceRoleKey = Deno.env.get('SERVICE_ROLE_KEY');
 
       const emailResponse = await fetch(`${emailApiUrl}/api/send-email`, {

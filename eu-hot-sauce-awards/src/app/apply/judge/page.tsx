@@ -113,7 +113,7 @@ export default function JudgeApplyPage() {
         );
       } else {
         setSuccessMessage(
-          `Application received! As a community judge, you'll need to complete payment (€15) to confirm your spot. Check your email for payment instructions and your dashboard access link.`
+          `Application received! As a community judge, please check your email for next steps. You'll need to log in and complete payment (€15) to confirm your spot. After payment, you'll receive dashboard access.`
         );
       }
     } catch (submissionError) {

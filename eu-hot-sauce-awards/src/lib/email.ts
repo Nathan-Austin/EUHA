@@ -180,25 +180,32 @@ export const emailTemplates = {
         ${judgeType === 'community' ? `
         <h2 style="color: #ff4d00;">Next Steps:</h2>
         <ol>
-          <li>Complete payment to confirm your judging spot</li>
-          <li>Check your email for a login link</li>
-          <li>Access your dashboard to view judging details</li>
+          <li>Log in at <a href="https://heatawards.eu/login" style="color: #ff4d00;">heatawards.eu/login</a> using your email</li>
+          <li>Complete the €15 payment to confirm your judging spot</li>
+          <li>After payment, you'll receive a dashboard access link via email</li>
+          <li>Access your dashboard to view judging details and schedule</li>
         </ol>
+
+        <div style="background-color: #fff3cd; border: 2px solid #ff4d00; padding: 15px; margin: 20px 0; border-radius: 5px;">
+          <p style="margin: 0;"><strong>Important:</strong> You'll need to complete payment before accessing your judge dashboard. Once payment is confirmed, we'll send you a secure login link.</p>
+        </div>
         ` : `
         <h2 style="color: #ff4d00;">Next Steps:</h2>
         <ol>
-          <li>We will review your registration</li>
-          <li>Check your email for a login link</li>
-          <li>Access your dashboard when judging begins</li>
+          <li>We will review your professional credentials</li>
+          <li>Once approved, you'll receive a login link via email</li>
+          <li>Access your dashboard when judging begins in March 2026</li>
         </ol>
-        `}
 
-        <p>You can log in anytime at: <a href="https://heatawards.eu/login" style="color: #ff4d00;">https://heatawards.eu/login</a></p>
+        <div style="background-color: #fff3cd; border: 2px solid #ff4d00; padding: 15px; margin: 20px 0; border-radius: 5px;">
+          <p style="margin: 0;"><strong>Note:</strong> Professional judge applications are reviewed on a rolling basis. We'll notify you of your approval status within 1-2 weeks.</p>
+        </div>
+        `}
 
         <p>Questions? Contact us at heataward@gmail.com</p>
       </div>
     `,
-    text: `Welcome to the EU Hot Sauce Awards! Thank you for registering as a ${judgeType === 'pro' ? 'Professional' : 'Community'} Judge.`,
+    text: `Welcome to the EU Hot Sauce Awards! Thank you for registering as a ${judgeType === 'pro' ? 'Professional' : 'Community'} Judge. ${judgeType === 'community' ? 'Log in at heatawards.eu/login to complete your €15 payment and confirm your spot.' : 'We will review your application and send you a login link once approved.'}`,
   }),
 
   judgePaymentConfirmation: (name: string) => ({
