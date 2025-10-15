@@ -225,6 +225,76 @@ export const emailTemplates = {
     text: `Payment Confirmed! Thank you for your payment. Your spot as a Community Judge has been confirmed.`,
   }),
 
+  supplierMagicLink: (brandName: string, magicLink: string) => ({
+    subject: 'EU Hot Sauce Awards - Access Your Dashboard',
+    html: `
+      ${emailBanner}
+      <div style="padding: 20px; font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h1 style="color: #ff4d00;">Welcome to Your Dashboard!</h1>
+        <p>Dear ${brandName},</p>
+        <p>Thank you for your payment! Your sauce entries have been confirmed and you can now access your supplier dashboard.</p>
+
+        <div style="background-color: #fff3cd; border: 2px solid #ff4d00; padding: 15px; margin: 20px 0; border-radius: 5px;">
+          <p style="margin: 0; font-weight: bold;">Click the button below to securely access your dashboard:</p>
+        </div>
+
+        <p style="text-align: center; margin: 30px 0;">
+          <a href="${magicLink}" style="background-color: #ff4d00; color: white; padding: 15px 40px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">Access Dashboard</a>
+        </p>
+
+        <p style="color: #666; font-size: 14px;"><em>This link will expire in 1 hour for security purposes.</em></p>
+
+        <h2 style="color: #ff4d00;">What You Can Do:</h2>
+        <ul>
+          <li>View your submitted sauces and their status</li>
+          <li>Submit shipping tracking information</li>
+          <li>Track when your package is received</li>
+          <li>View judging results when available</li>
+        </ul>
+
+        <p><strong>Important:</strong> Don't forget to ship 2 bottles of each sauce to our Berlin address by February 28, 2026.</p>
+
+        <p>Questions? Contact us at heataward@gmail.com</p>
+      </div>
+    `,
+    text: `Welcome to your dashboard! Click this link to access: ${magicLink}. This link expires in 1 hour.`,
+  }),
+
+  judgeMagicLink: (name: string, magicLink: string) => ({
+    subject: 'EU Hot Sauce Awards - Access Your Judge Dashboard',
+    html: `
+      ${emailBanner}
+      <div style="padding: 20px; font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h1 style="color: #ff4d00;">Welcome to the Judge Panel!</h1>
+        <p>Dear ${name},</p>
+        <p>Thank you for your payment! Your community judge seat has been confirmed and you can now access your judge dashboard.</p>
+
+        <div style="background-color: #fff3cd; border: 2px solid #ff4d00; padding: 15px; margin: 20px 0; border-radius: 5px;">
+          <p style="margin: 0; font-weight: bold;">Click the button below to securely access your dashboard:</p>
+        </div>
+
+        <p style="text-align: center; margin: 30px 0;">
+          <a href="${magicLink}" style="background-color: #ff4d00; color: white; padding: 15px 40px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">Access Judge Dashboard</a>
+        </p>
+
+        <p style="color: #666; font-size: 14px;"><em>This link will expire in 1 hour for security purposes.</em></p>
+
+        <h2 style="color: #ff4d00;">What's Next:</h2>
+        <ul>
+          <li>Review judging guidelines and scoring criteria</li>
+          <li>Check your dashboard for judging schedule updates</li>
+          <li>We'll notify you when judging begins in March 2026</li>
+          <li>You'll receive your judging kit by mail before the event</li>
+        </ul>
+
+        <p><strong>Important:</strong> Judging will take place in March 2026. Keep an eye on your dashboard for exact dates and instructions.</p>
+
+        <p>Questions? Contact us at heataward@gmail.com</p>
+      </div>
+    `,
+    text: `Welcome to the judge panel! Click this link to access: ${magicLink}. This link expires in 1 hour.`,
+  }),
+
   supplier2026Invitation: (brandName: string) => ({
     subject: 'Join Us Again - EU Hot Sauce Awards 2026 Now Open!',
     html: `

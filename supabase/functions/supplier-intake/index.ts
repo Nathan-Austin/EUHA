@@ -156,30 +156,39 @@ Deno.serve(async (req) => {
     // 5. Generate sauce codes and insert new sauces
     const saucesToCreate = [];
 
+    // Track next number per category within this submission to avoid duplicates
+    const categoryCounters: Record<string, number> = {};
+
     for (const sauce of payload.sauces) {
       const categoryCode = CATEGORY_CODES[sauce.category];
       if (!categoryCode) {
         throw new Error(`Unknown category: ${sauce.category}`);
       }
 
-      // Get the highest existing code number for this category
-      const { data: existingSauces, error: countError } = await supabaseAdmin
-        .from('sauces')
-        .select('sauce_code')
-        .like('sauce_code', `${categoryCode}%`)
-        .order('sauce_code', { ascending: false })
-        .limit(1);
+      // Only query database once per category
+      if (!(categoryCode in categoryCounters)) {
+        // Get the highest existing code number for this category
+        const { data: existingSauces, error: countError } = await supabaseAdmin
+          .from('sauces')
+          .select('sauce_code')
+          .like('sauce_code', `${categoryCode}%`)
+          .order('sauce_code', { ascending: false })
+          .limit(1);
 
-      if (countError) throw countError;
+        if (countError) throw countError;
 
-      let nextNumber = 1;
-      if (existingSauces && existingSauces.length > 0) {
-        const lastCode = existingSauces[0].sauce_code;
-        const lastNumber = parseInt(lastCode.substring(1), 10);
-        nextNumber = lastNumber + 1;
+        let nextNumber = 1;
+        if (existingSauces && existingSauces.length > 0) {
+          const lastCode = existingSauces[0].sauce_code;
+          const lastNumber = parseInt(lastCode.substring(1), 10);
+          nextNumber = lastNumber + 1;
+        }
+
+        categoryCounters[categoryCode] = nextNumber;
       }
 
-      const sauceCode = `${categoryCode}${String(nextNumber).padStart(3, '0')}`;
+      const sauceCode = `${categoryCode}${String(categoryCounters[categoryCode]).padStart(3, '0')}`;
+      categoryCounters[categoryCode]++;
 
       saucesToCreate.push({
         supplier_id: supplier.id,

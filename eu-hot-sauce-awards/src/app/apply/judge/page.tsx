@@ -97,27 +97,23 @@ export default function JudgeApplyPage() {
         throw new Error(`Registration failed: ${error.message}`);
       }
 
-      // Try to send magic link, but don't fail the whole process if it errors
-      const { error: otpError } = await supabase.auth.signInWithOtp({
-        email: payload.email,
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-        },
-      });
+      // Note: Magic link will be sent after payment for community judges
+      // Pro judges will receive their magic link via admin approval process
 
       form.reset();
       setHasIndustryAffiliation(false);
 
-      if (otpError) {
-        // Show partial success - registered but email failed
+      // Determine judge type from experience level
+      const isPro = payload.experience === 'Professional Chili Person' ||
+                    payload.experience === 'Experienced Food / Chili Person';
+
+      if (isPro) {
         setSuccessMessage(
-          `Application received! Your judge profile has been created. However, we couldn't send the login email automatically. Please use the "Forgot Password" option on the login page with ${payload.email}.`
+          `Application received! As a professional judge, your application will be reviewed by our team. You'll receive a login link once approved.`
         );
       } else {
         setSuccessMessage(
-          data?.judge_id
-            ? `Application received! Your judge profile (${data.judge_id}) has been created. Check your inbox for a magic link and payment instructions if required.`
-            : "Application received! Check your inbox for a magic link and payment instructions."
+          `Application received! As a community judge, you'll need to complete payment (€15) to confirm your spot. Check your email for payment instructions and your dashboard access link.`
         );
       }
     } catch (submissionError) {

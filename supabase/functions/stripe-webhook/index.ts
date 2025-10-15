@@ -134,7 +134,7 @@ Deno.serve(async (req) => {
 
         console.log('Judge payment status updated successfully');
 
-        // Get judge details for email
+        // Get judge details for email and magic link
         const { data: judge, error: judgeError } = await supabaseAdmin
           .from('judges')
           .select('email, name')
@@ -145,6 +145,48 @@ Deno.serve(async (req) => {
           console.error('Failed to fetch judge details', judgeError);
           // Don't throw - payment already succeeded
         } else {
+          // Send magic link to community judge after successful payment
+          try {
+            const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+              type: 'magiclink',
+              email: judge.email,
+              options: {
+                redirectTo: `${Deno.env.get('JUDGE_PAYMENT_BASE_URL') || 'https://heatawards.eu'}/auth/callback`,
+              },
+            });
+
+            if (linkError || !linkData) {
+              console.error('Failed to generate magic link for judge:', linkError);
+            } else {
+              // Send magic link via email API
+              const emailApiUrl = Deno.env.get('EMAIL_API_URL') || 'https://awards.heatawards.eu';
+              const magicLinkResponse = await fetch(`${emailApiUrl}/api/send-email`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${serviceRoleKey}`,
+                },
+                body: JSON.stringify({
+                  type: 'judge_magic_link',
+                  data: {
+                    email: judge.email,
+                    name: judge.name,
+                    magicLink: linkData.properties.action_link,
+                  },
+                }),
+              });
+
+              if (!magicLinkResponse.ok) {
+                console.error('Failed to send judge magic link email:', await magicLinkResponse.text());
+              } else {
+                console.log('Magic link email sent to judge:', judge.email);
+              }
+            }
+          } catch (otpError) {
+            console.error('Error sending magic link to judge:', otpError);
+            // Don't throw - payment already succeeded, magic link is secondary
+          }
+
           // Send payment confirmation email
           try {
             const emailApiUrl = Deno.env.get('EMAIL_API_URL') || 'https://awards.heatawards.eu';
@@ -239,6 +281,48 @@ Deno.serve(async (req) => {
           // Don't throw - payment already succeeded, this is a secondary operation
         } else {
           console.log('Supplier judge profile created/updated');
+        }
+
+        // Send magic link to supplier after successful payment
+        try {
+          const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+            type: 'magiclink',
+            email: supplier.email,
+            options: {
+              redirectTo: `${Deno.env.get('SUPPLIER_PAYMENT_SUCCESS_URL')?.replace('/success', '')}/auth/callback`,
+            },
+          });
+
+          if (linkError || !linkData) {
+            console.error('Failed to generate magic link:', linkError);
+          } else {
+            // Send magic link via email API
+            const emailApiUrl = Deno.env.get('EMAIL_API_URL') || 'https://awards.heatawards.eu';
+            const magicLinkResponse = await fetch(`${emailApiUrl}/api/send-email`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${serviceRoleKey}`,
+              },
+              body: JSON.stringify({
+                type: 'supplier_magic_link',
+                data: {
+                  email: supplier.email,
+                  brandName: supplier.brand_name,
+                  magicLink: linkData.properties.action_link,
+                },
+              }),
+            });
+
+            if (!magicLinkResponse.ok) {
+              console.error('Failed to send magic link email:', await magicLinkResponse.text());
+            } else {
+              console.log('Magic link email sent to supplier:', supplier.email);
+            }
+          }
+        } catch (otpError) {
+          console.error('Error sending magic link to supplier:', otpError);
+          // Don't throw - payment already succeeded, magic link is secondary
         }
 
         // Send confirmation email via Next.js API route

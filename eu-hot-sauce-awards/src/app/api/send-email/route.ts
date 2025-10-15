@@ -60,6 +60,24 @@ export async function POST(request: NextRequest) {
         break;
       }
 
+      case 'supplier_magic_link': {
+        const { email, brandName, magicLink } = data;
+        await sendEmail({
+          to: email,
+          ...emailTemplates.supplierMagicLink(brandName, magicLink)
+        });
+        break;
+      }
+
+      case 'judge_magic_link': {
+        const { email, name, magicLink } = data;
+        await sendEmail({
+          to: email,
+          ...emailTemplates.judgeMagicLink(name, magicLink)
+        });
+        break;
+      }
+
       default:
         return NextResponse.json({ error: 'Invalid email type' }, { status: 400 });
     }

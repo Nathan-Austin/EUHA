@@ -118,12 +118,22 @@ export async function submitAllScores(scoresJSON: string) {
 
   const { data: judge, error: judgeError } = await supabase
     .from('judges')
-    .select('id')
+    .select('id, type, active, stripe_payment_status')
     .eq('email', user.email)
     .single();
 
   if (judgeError || !judge) {
     return { error: 'Unable to identify your judge profile. Please contact support.' };
+  }
+
+  // Verify judge is active and authorized
+  if (!judge.active) {
+    return { error: 'Your judge account is not yet active. Please contact support.' };
+  }
+
+  // Community judges must have completed payment
+  if (judge.type === 'community' && judge.stripe_payment_status !== 'succeeded') {
+    return { error: 'Payment is required before you can submit scores. Please complete payment first.' };
   }
 
   const scoresToInsert = storedScores.flatMap(sauceScore => {
@@ -1754,4 +1764,197 @@ export async function sendTestJudgeEmail(testEmail: string, judgeName: string, j
   } catch (error: any) {
     return { error: `Failed to send test email: ${error.message}` };
   }
+}
+
+// Pro Judge Approval Actions
+
+export interface PendingProJudge {
+  id: string;
+  email: string;
+  name: string;
+  experience_level: string;
+  industry_affiliation: boolean;
+  affiliation_details: string | null;
+  address: string;
+  city: string;
+  postal_code: string;
+  country: string;
+  created_at: string;
+}
+
+export async function getPendingProJudges() {
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+
+  // Admin check
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user?.email) return { error: 'You must be logged in.' };
+
+  const { data: adminCheck, error: adminError } = await supabase
+    .from('judges')
+    .select('type')
+    .eq('email', user.email)
+    .single();
+
+  if (adminError || adminCheck?.type !== 'admin') {
+    return { error: 'You are not authorized.' };
+  }
+
+  // Get pro judges who are not yet active
+  const { data: pendingJudges, error: fetchError } = await supabase
+    .from('judges')
+    .select('id, email, name, experience_level, industry_affiliation, affiliation_details, address, city, postal_code, country, created_at')
+    .eq('type', 'pro')
+    .eq('active', false)
+    .order('created_at', { ascending: false });
+
+  if (fetchError) {
+    return { error: `Failed to fetch pending judges: ${fetchError.message}` };
+  }
+
+  return { judges: (pendingJudges || []) as PendingProJudge[] };
+}
+
+export async function approveProJudge(judgeId: string) {
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+
+  // Admin check
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user?.email) return { error: 'You must be logged in.' };
+
+  const { data: adminCheck, error: adminError } = await supabase
+    .from('judges')
+    .select('type')
+    .eq('email', user.email)
+    .single();
+
+  if (adminError || adminCheck?.type !== 'admin') {
+    return { error: 'You are not authorized.' };
+  }
+
+  // Get judge details
+  const { data: judge, error: judgeError } = await supabase
+    .from('judges')
+    .select('id, email, name, type')
+    .eq('id', judgeId)
+    .single();
+
+  if (judgeError || !judge) {
+    return { error: 'Judge not found.' };
+  }
+
+  if (judge.type !== 'pro') {
+    return { error: 'Only pro judges can be approved through this interface.' };
+  }
+
+  // Use service client to generate magic link
+  const serviceClientResult = getServiceSupabase();
+  if ('error' in serviceClientResult) {
+    return { error: serviceClientResult.error };
+  }
+
+  const adminSupabase = serviceClientResult.client;
+
+  // Activate the judge
+  const { error: updateError } = await adminSupabase
+    .from('judges')
+    .update({ active: true })
+    .eq('id', judgeId);
+
+  if (updateError) {
+    return { error: `Failed to activate judge: ${updateError.message}` };
+  }
+
+  // Generate and send magic link
+  try {
+    const { data: linkData, error: linkError } = await adminSupabase.auth.admin.generateLink({
+      type: 'magiclink',
+      email: judge.email,
+      options: {
+        redirectTo: `${process.env.NEXT_PUBLIC_SUPABASE_URL?.replace('/auth/v1', '')}/auth/callback` || 'https://heatawards.eu/auth/callback',
+      },
+    });
+
+    if (linkError || !linkData) {
+      return { error: `Judge activated but failed to generate magic link: ${linkError?.message}` };
+    }
+
+    // Send magic link via email
+    await sendEmail({
+      to: judge.email,
+      ...emailTemplates.judgeMagicLink(judge.name || judge.email, linkData.properties.action_link),
+    });
+
+    revalidatePath('/dashboard');
+    return { success: true, message: `Pro judge ${judge.name || judge.email} has been approved and notified.` };
+  } catch (error: any) {
+    return { error: `Judge activated but failed to send email: ${error.message}` };
+  }
+}
+
+export async function rejectProJudge(judgeId: string, reason?: string) {
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+
+  // Admin check
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user?.email) return { error: 'You must be logged in.' };
+
+  const { data: adminCheck, error: adminError } = await supabase
+    .from('judges')
+    .select('type')
+    .eq('email', user.email)
+    .single();
+
+  if (adminError || adminCheck?.type !== 'admin') {
+    return { error: 'You are not authorized.' };
+  }
+
+  // Get judge details
+  const { data: judge, error: judgeError } = await supabase
+    .from('judges')
+    .select('id, email, name')
+    .eq('id', judgeId)
+    .single();
+
+  if (judgeError || !judge) {
+    return { error: 'Judge not found.' };
+  }
+
+  // Delete the judge record (soft delete by setting active to false and type to 'rejected' could be alternative)
+  const { error: deleteError } = await supabase
+    .from('judges')
+    .delete()
+    .eq('id', judgeId);
+
+  if (deleteError) {
+    return { error: `Failed to reject judge: ${deleteError.message}` };
+  }
+
+  // Optionally send rejection email
+  if (reason) {
+    try {
+      await sendEmail({
+        to: judge.email,
+        subject: 'EU Hot Sauce Awards - Judge Application Update',
+        html: `
+          <div style="padding: 20px; font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h1 style="color: #ff4d00;">Judge Application Update</h1>
+            <p>Dear ${judge.name || judge.email},</p>
+            <p>Thank you for your interest in judging the EU Hot Sauce Awards.</p>
+            <p>${reason}</p>
+            <p>If you have any questions, please contact us at heataward@gmail.com</p>
+            <p>Best regards,<br>The EU Hot Sauce Awards Team</p>
+          </div>
+        `,
+        text: `Dear ${judge.name || judge.email}, ${reason}`,
+      });
+    } catch (emailError) {
+      console.error('Failed to send rejection email:', emailError);
+    }
+  }
+
+  revalidatePath('/dashboard');
+  return { success: true, message: `Judge application rejected.` };
 }

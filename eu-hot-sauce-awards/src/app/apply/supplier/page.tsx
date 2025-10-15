@@ -346,16 +346,8 @@ export default function SupplierApplyPage() {
         throw new Error(error.message);
       }
 
-      const { error: otpError } = await supabase.auth.signInWithOtp({
-        email: payload.email,
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-        },
-      });
-
-      if (otpError) {
-        throw new Error(otpError.message);
-      }
+      // Note: Magic link will be sent after payment is completed via Stripe webhook
+      // This prevents users from accessing the dashboard without paying
 
       setPaymentQuote(data?.payment ?? null);
       setSubmittedSauces(data?.sauces ?? []);
