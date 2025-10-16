@@ -16,7 +16,7 @@ const categories = [
   { title: "Sweet" },
   { title: "Chili Honey" },
   { title: "Garlic Chili Sauce" },
-  { title: "Chili Chutney & Pickle" },
+  { title: "Sambal, Chutney & Pickles" },
   { title: "Chili Oil" },
   { title: "Freestyle" },
   { title: "Asian Style Chili Sauce" },

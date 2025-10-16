@@ -34,7 +34,7 @@ const CATEGORY_CODES: Record<string, string> = {
   'Sweet': 'W',
   'Chili Honey': 'R',
   'Garlic Chili Sauce': 'G',
-  'Chili Chutney & Pickle': 'C',
+  'Sambal, Chutney & Pickles': 'C',
   'Chili Oil': 'T',
   'Freestyle': 'F',
   'Asian Style Chili Sauce': 'S',

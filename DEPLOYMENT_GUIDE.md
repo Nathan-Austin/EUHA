@@ -271,7 +271,7 @@ Sauces are automatically assigned unique codes during registration:
   - W = Sweet
   - R = Chili Honey
   - G = Garlic Chili Sauce
-  - C = Chili Chutney & Pickle
+  - C = Sambal, Chutney & Pickles
   - T = Chili Oil
   - F = Freestyle
   - S = Asian Style Chili Sauce

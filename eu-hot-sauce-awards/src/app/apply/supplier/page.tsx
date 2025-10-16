@@ -23,7 +23,7 @@ const categoryGroups = [
       "Sweet",
       "Chili Honey",
       "Garlic Chili Sauce",
-      "Chili Chutney & Pickle",
+      "Sambal, Chutney & Pickles",
       "Chili Oil",
       "Freestyle",
       "Asian Style Chili Sauce",
