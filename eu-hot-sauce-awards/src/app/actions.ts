@@ -1807,8 +1807,15 @@ export async function getPendingProJudges() {
     return { error: 'You are not authorized.' };
   }
 
+  const serviceClientResult = getServiceSupabase();
+  if ('error' in serviceClientResult) {
+    return { error: serviceClientResult.error };
+  }
+
+  const adminSupabase = serviceClientResult.client;
+
   // Get pro judges who are not yet active
-  const { data: pendingJudges, error: fetchError } = await supabase
+  const { data: pendingJudges, error: fetchError } = await adminSupabase
     .from('judges')
     .select('id, email, name, experience_level, industry_affiliation, affiliation_details, address, city, postal_code, country, created_at')
     .eq('type', 'pro')
@@ -1840,8 +1847,15 @@ export async function approveProJudge(judgeId: string) {
     return { error: 'You are not authorized.' };
   }
 
+  const serviceClientResult = getServiceSupabase();
+  if ('error' in serviceClientResult) {
+    return { error: serviceClientResult.error };
+  }
+
+  const adminSupabase = serviceClientResult.client;
+
   // Get judge details
-  const { data: judge, error: judgeError } = await supabase
+  const { data: judge, error: judgeError } = await adminSupabase
     .from('judges')
     .select('id, email, name, type')
     .eq('id', judgeId)
@@ -1854,14 +1868,6 @@ export async function approveProJudge(judgeId: string) {
   if (judge.type !== 'pro') {
     return { error: 'Only pro judges can be approved through this interface.' };
   }
-
-  // Use service client to generate magic link
-  const serviceClientResult = getServiceSupabase();
-  if ('error' in serviceClientResult) {
-    return { error: serviceClientResult.error };
-  }
-
-  const adminSupabase = serviceClientResult.client;
 
   // Activate the judge
   const { error: updateError } = await adminSupabase
@@ -1918,8 +1924,15 @@ export async function rejectProJudge(judgeId: string, reason?: string) {
     return { error: 'You are not authorized.' };
   }
 
+  const serviceClientResult = getServiceSupabase();
+  if ('error' in serviceClientResult) {
+    return { error: serviceClientResult.error };
+  }
+
+  const adminSupabase = serviceClientResult.client;
+
   // Get judge details
-  const { data: judge, error: judgeError } = await supabase
+  const { data: judge, error: judgeError } = await adminSupabase
     .from('judges')
     .select('id, email, name')
     .eq('id', judgeId)
@@ -1930,7 +1943,7 @@ export async function rejectProJudge(judgeId: string, reason?: string) {
   }
 
   // Delete the judge record (soft delete by setting active to false and type to 'rejected' could be alternative)
-  const { error: deleteError } = await supabase
+  const { error: deleteError } = await adminSupabase
     .from('judges')
     .delete()
     .eq('id', judgeId);
