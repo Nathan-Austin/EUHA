@@ -28,6 +28,28 @@ const supabaseAdmin = createClient(
   }
 );
 
+function resolveSiteOrigin(...envKeys: string[]) {
+  for (const key of envKeys) {
+    const raw = Deno.env.get(key);
+    if (!raw) continue;
+
+    const candidates = raw.startsWith('http')
+      ? [raw]
+      : [`https://${raw}`, raw];
+
+    for (const candidate of candidates) {
+      try {
+        const url = new URL(candidate);
+        return url.origin;
+      } catch {
+        continue;
+      }
+    }
+  }
+
+  return 'https://heatawards.eu';
+}
+
 Deno.serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -147,11 +169,12 @@ Deno.serve(async (req) => {
         } else {
           // Send magic link to community judge after successful payment
           try {
+            const judgeRedirectBase = resolveSiteOrigin('JUDGE_PAYMENT_BASE_URL', 'EMAIL_API_URL');
             const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
               type: 'magiclink',
               email: judge.email,
               options: {
-                redirectTo: `${Deno.env.get('JUDGE_PAYMENT_BASE_URL') || 'https://heatawards.eu'}/auth/callback`,
+                redirectTo: `${judgeRedirectBase}/auth/callback`,
               },
             });
 
@@ -285,11 +308,12 @@ Deno.serve(async (req) => {
 
         // Send magic link to supplier after successful payment
         try {
+          const supplierRedirectBase = resolveSiteOrigin('SUPPLIER_PAYMENT_SUCCESS_URL', 'JUDGE_PAYMENT_BASE_URL', 'EMAIL_API_URL');
           const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
             type: 'magiclink',
             email: supplier.email,
             options: {
-              redirectTo: `${Deno.env.get('SUPPLIER_PAYMENT_SUCCESS_URL')?.replace('/success', '')}/auth/callback`,
+              redirectTo: `${supplierRedirectBase}/auth/callback`,
             },
           });
 

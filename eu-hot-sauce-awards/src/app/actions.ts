@@ -388,6 +388,13 @@ export interface JudgeLabelData {
 }
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const SITE_URL = (() => {
+  const raw =
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    'https://heatawards.eu';
+  return raw.endsWith('/') ? raw.slice(0, -1) : raw;
+})();
 
 function getServiceSupabase() {
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -1872,7 +1879,7 @@ export async function approveProJudge(judgeId: string) {
       type: 'magiclink',
       email: judge.email,
       options: {
-        redirectTo: `${process.env.NEXT_PUBLIC_SUPABASE_URL?.replace('/auth/v1', '')}/auth/callback` || 'https://heatawards.eu/auth/callback',
+        redirectTo: `${SITE_URL}/auth/callback`,
       },
     });
 
