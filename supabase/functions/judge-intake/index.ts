@@ -39,7 +39,7 @@ Deno.serve(async (req) => {
     );
 
     const judgeType = mapExperienceToType(payload.experience);
-    const currentYear = new Date().getFullYear(); // 2026 for current year
+    const currentYear = 2026; // Competition year
 
     // Insert/update in main judges table
     const { data, error } = await supabaseAdmin
