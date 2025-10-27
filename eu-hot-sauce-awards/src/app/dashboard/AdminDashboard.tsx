@@ -13,6 +13,7 @@ import EventsManager from './EventsManager'
 import EmailCampaignManager from './EmailCampaignManager'
 import EmailTemplateEditor from './EmailTemplateEditor'
 import ProJudgeApproval from './ProJudgeApproval'
+import JudgeAnalysis from './JudgeAnalysis'
 import AdminTabs from './AdminTabs'
 
 const formatStatusLabel = (status: string) =>
@@ -272,6 +273,9 @@ export default async function AdminDashboard() {
             title="Administration"
             description="Manage access and website updates from a single place."
           />
+          <Card>
+            <JudgeAnalysis />
+          </Card>
           <Card>
             <ProJudgeApproval />
           </Card>

@@ -167,6 +167,19 @@ Deno.serve(async (req) => {
           console.error('Failed to fetch judge details', judgeError);
           // Don't throw - payment already succeeded
         } else {
+          // Update judge_participations to mark as accepted for current year (community judges)
+          const currentYear = 2026;
+          const { error: participationError } = await supabaseAdmin
+            .from('judge_participations')
+            .update({ accepted: true })
+            .eq('email', judge.email)
+            .eq('year', currentYear);
+
+          if (participationError) {
+            console.error('Failed to update judge_participations:', participationError);
+            // Don't throw - payment already succeeded, this is a secondary operation
+          }
+
           // Send magic link to community judge after successful payment
           try {
             const judgeRedirectBase = resolveSiteOrigin('JUDGE_PAYMENT_BASE_URL', 'EMAIL_API_URL');

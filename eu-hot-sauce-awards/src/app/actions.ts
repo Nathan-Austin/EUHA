@@ -1879,6 +1879,19 @@ export async function approveProJudge(judgeId: string) {
     return { error: `Failed to activate judge: ${updateError.message}` };
   }
 
+  // Update judge_participations to mark as accepted for current year
+  const currentYear = 2026;
+  const { error: participationError } = await adminSupabase
+    .from('judge_participations')
+    .update({ accepted: true })
+    .eq('email', judge.email)
+    .eq('year', currentYear);
+
+  if (participationError) {
+    console.error('Failed to update judge_participations:', participationError);
+    // Don't fail the whole approval if this fails - judge is already active
+  }
+
   // Generate and send magic link
   try {
     const { data: linkData, error: linkError } = await adminSupabase.auth.admin.generateLink({

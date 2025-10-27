@@ -112,7 +112,7 @@ Deno.serve(async (req) => {
     if (judgeError) throw judgeError;
 
     // 3. Track participation in current year
-    const currentYear = new Date().getFullYear();
+    const currentYear = 2026; // Competition year
     const { error: participationError } = await supabaseAdmin
       .from('judge_participations')
       .upsert({
