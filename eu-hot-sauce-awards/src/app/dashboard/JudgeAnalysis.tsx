@@ -1,7 +1,5 @@
-'use client'
-
-import { useEffect, useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { cookies } from 'next/headers'
+import { createClient } from '@/lib/supabase/server'
 
 interface Judge {
   email: string
@@ -56,12 +54,12 @@ function JudgeCard({
         )}
         <span
           className={`rounded-full px-3 py-1 text-xs font-semibold ${
-            judge.active
+            judge.participation_accepted
               ? 'bg-green-100 text-green-800'
               : 'bg-gray-200 text-gray-700'
           }`}
         >
-          {judge.active ? 'Active' : 'Inactive'}
+          {judge.participation_accepted ? 'Active' : 'Inactive'}
         </span>
       </div>
     </div>
@@ -145,121 +143,104 @@ function JudgeSection({
   )
 }
 
-export default function JudgeAnalysis() {
-  const [judges, setJudges] = useState<JudgeStats>({
+export default async function JudgeAnalysis() {
+  const cookieStore = cookies()
+  const supabase = createClient(cookieStore)
+
+  let judges: JudgeStats = {
     supplier: { active: [], inactive: [] },
     pro: { active: [], inactive: [] },
     community: { active: [], activePaid: [], activeGrandfathered: [], inactive: [] },
-  })
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  }
 
-  useEffect(() => {
-    async function fetchJudges() {
-      setLoading(true)
-      setError(null)
-      const supabase = createClient()
+  let error: string | null = null
 
-      try {
-        // Fetch judge participations for 2026
-        const { data: participations, error: participationsError } = await supabase
-          .from('judge_participations')
-          .select('email, accepted')
-          .eq('year', 2026)
+  try {
+    // Fetch judge participations for 2026
+    const { data: participations, error: participationsError } = await supabase
+      .from('judge_participations')
+      .select('email, accepted')
+      .eq('year', 2026)
 
-        if (participationsError) {
-          throw participationsError
-        }
-
-        // Create a map of email -> accepted status
-        const participationMap = new Map(
-          participations?.map((p) => [p.email, p.accepted]) || []
-        )
-
-        // Fetch all judges who have participation records for 2026
-        const { data: judgesData, error: judgesError } = await supabase
-          .from('judges')
-          .select('email, name, type, active, stripe_payment_status, created_at')
-          .in('email', Array.from(participationMap.keys()))
-          .order('name', { ascending: true })
-
-        if (judgesError) {
-          throw judgesError
-        }
-
-        if (!judgesData) {
-          throw new Error('No judges found')
-        }
-
-        // Transform data to include participation status
-        const transformedJudges: Judge[] = judgesData.map((judge: any) => ({
-          email: judge.email,
-          name: judge.name,
-          type: judge.type,
-          active: judge.active,
-          stripe_payment_status: judge.stripe_payment_status,
-          created_at: judge.created_at,
-          participation_accepted: participationMap.get(judge.email) || false,
-        }))
-
-        // Group judges by type and active status
-        const grouped: JudgeStats = {
-          supplier: { active: [], inactive: [] },
-          pro: { active: [], inactive: [] },
-          community: { active: [], activePaid: [], activeGrandfathered: [], inactive: [] },
-        }
-
-        // Payment system migration date - set to Oct 11 to include full day of Oct 10
-        const PAYMENT_MIGRATION_DATE = new Date('2025-10-11T00:00:00Z')
-
-        transformedJudges.forEach((judge) => {
-          // Use participation_accepted as the primary indicator for 2026 participation
-          if (judge.type === 'supplier') {
-            if (judge.participation_accepted) {
-              grouped.supplier.active.push(judge)
-            } else {
-              grouped.supplier.inactive.push(judge)
-            }
-          } else if (judge.type === 'pro') {
-            if (judge.participation_accepted) {
-              grouped.pro.active.push(judge)
-            } else {
-              grouped.pro.inactive.push(judge)
-            }
-          } else if (judge.type === 'community') {
-            if (judge.participation_accepted) {
-              grouped.community.active.push(judge)
-              // Check if grandfathered (created before payment system was implemented)
-              const judgeCreatedDate = new Date(judge.created_at)
-              if (judgeCreatedDate < PAYMENT_MIGRATION_DATE) {
-                grouped.community.activeGrandfathered.push(judge)
-              } else {
-                grouped.community.activePaid.push(judge)
-              }
-            } else {
-              grouped.community.inactive.push(judge)
-            }
-          }
-        })
-
-        setJudges(grouped)
-      } catch (err: any) {
-        console.error('Error fetching judges:', err)
-        setError(err.message || 'Failed to load judges')
-      } finally {
-        setLoading(false)
-      }
+    if (participationsError) {
+      throw participationsError
     }
 
-    fetchJudges()
-  }, [])
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-300 border-t-gray-900"></div>
-      </div>
+    // Create a map of email -> accepted status
+    const participationMap = new Map(
+      participations?.map((p) => [p.email, p.accepted]) || []
     )
+
+    // Fetch all judges who have participation records for 2026
+    const { data: judgesData, error: judgesError } = await supabase
+      .from('judges')
+      .select('email, name, type, active, stripe_payment_status, created_at')
+      .in('email', Array.from(participationMap.keys()))
+      .order('name', { ascending: true })
+
+    if (judgesError) {
+      throw judgesError
+    }
+
+    if (!judgesData) {
+      throw new Error('No judges found')
+    }
+
+    // Transform data to include participation status
+    const transformedJudges: Judge[] = judgesData.map((judge: any) => ({
+      email: judge.email,
+      name: judge.name,
+      type: judge.type,
+      active: judge.active,
+      stripe_payment_status: judge.stripe_payment_status,
+      created_at: judge.created_at,
+      participation_accepted: participationMap.get(judge.email) || false,
+    }))
+
+    // Group judges by type and active status
+    const grouped: JudgeStats = {
+      supplier: { active: [], inactive: [] },
+      pro: { active: [], inactive: [] },
+      community: { active: [], activePaid: [], activeGrandfathered: [], inactive: [] },
+    }
+
+    // Payment system migration date - set to Oct 11 to include full day of Oct 10
+    const PAYMENT_MIGRATION_DATE = new Date('2025-10-11T00:00:00Z')
+
+    transformedJudges.forEach((judge) => {
+      // Use participation_accepted as the primary indicator for 2026 participation
+      if (judge.type === 'supplier') {
+        if (judge.participation_accepted) {
+          grouped.supplier.active.push(judge)
+        } else {
+          grouped.supplier.inactive.push(judge)
+        }
+      } else if (judge.type === 'pro') {
+        if (judge.participation_accepted) {
+          grouped.pro.active.push(judge)
+        } else {
+          grouped.pro.inactive.push(judge)
+        }
+      } else if (judge.type === 'community') {
+        if (judge.participation_accepted) {
+          grouped.community.active.push(judge)
+          // Check if grandfathered (created before payment system was implemented)
+          const judgeCreatedDate = new Date(judge.created_at)
+          if (judgeCreatedDate < PAYMENT_MIGRATION_DATE) {
+            grouped.community.activeGrandfathered.push(judge)
+          } else {
+            grouped.community.activePaid.push(judge)
+          }
+        } else {
+          grouped.community.inactive.push(judge)
+        }
+      }
+    })
+
+    judges = grouped
+  } catch (err: any) {
+    console.error('Error fetching judges:', err)
+    error = err.message || 'Failed to load judges'
   }
 
   if (error) {
