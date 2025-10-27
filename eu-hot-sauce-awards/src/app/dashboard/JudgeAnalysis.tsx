@@ -161,42 +161,45 @@ export default function JudgeAnalysis() {
       const supabase = createClient()
 
       try {
-        // Fetch all judges with their participation data for 2026
-        const { data, error: fetchError } = await supabase
-          .from('judges')
-          .select(
-            `
-            email,
-            name,
-            type,
-            active,
-            stripe_payment_status,
-            created_at,
-            judge_participations!inner (
-              accepted
-            )
-          `
-          )
-          .eq('judge_participations.year', 2026)
-          .order('name', { ascending: true })
+        // Fetch judge participations for 2026
+        const { data: participations, error: participationsError } = await supabase
+          .from('judge_participations')
+          .select('email, accepted')
+          .eq('year', 2026)
 
-        if (fetchError) {
-          throw fetchError
+        if (participationsError) {
+          throw participationsError
         }
 
-        if (!data) {
+        // Create a map of email -> accepted status
+        const participationMap = new Map(
+          participations?.map((p) => [p.email, p.accepted]) || []
+        )
+
+        // Fetch all judges who have participation records for 2026
+        const { data: judgesData, error: judgesError } = await supabase
+          .from('judges')
+          .select('email, name, type, active, stripe_payment_status, created_at')
+          .in('email', Array.from(participationMap.keys()))
+          .order('name', { ascending: true })
+
+        if (judgesError) {
+          throw judgesError
+        }
+
+        if (!judgesData) {
           throw new Error('No judges found')
         }
 
         // Transform data to include participation status
-        const transformedJudges: Judge[] = data.map((judge: any) => ({
+        const transformedJudges: Judge[] = judgesData.map((judge: any) => ({
           email: judge.email,
           name: judge.name,
           type: judge.type,
           active: judge.active,
           stripe_payment_status: judge.stripe_payment_status,
           created_at: judge.created_at,
-          participation_accepted: judge.judge_participations[0]?.accepted || false,
+          participation_accepted: participationMap.get(judge.email) || false,
         }))
 
         // Group judges by type and active status
