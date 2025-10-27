@@ -1814,12 +1814,33 @@ export async function getPendingProJudges() {
 
   const adminSupabase = serviceClientResult.client;
 
-  // Get pro judges who are not yet active
+  // Get pro judges who have not been accepted for 2026
+  const currentYear = 2026;
+
+  // First get emails of pro judges who are not accepted for current year
+  const { data: pendingParticipations, error: participationError } = await adminSupabase
+    .from('judge_participations')
+    .select('email')
+    .eq('year', currentYear)
+    .eq('judge_type', 'pro')
+    .eq('accepted', false);
+
+  if (participationError) {
+    return { error: `Failed to fetch pending judges: ${participationError.message}` };
+  }
+
+  if (!pendingParticipations || pendingParticipations.length === 0) {
+    return { judges: [] };
+  }
+
+  const pendingEmails = pendingParticipations.map(p => p.email);
+
+  // Now get full judge details for those emails
   const { data: pendingJudges, error: fetchError } = await adminSupabase
     .from('judges')
     .select('id, email, name, experience_level, industry_affiliation, affiliation_details, address, city, postal_code, country, created_at')
     .eq('type', 'pro')
-    .eq('active', false)
+    .in('email', pendingEmails)
     .order('created_at', { ascending: false });
 
   if (fetchError) {
