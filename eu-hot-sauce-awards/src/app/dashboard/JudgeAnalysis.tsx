@@ -162,6 +162,12 @@ export default async function JudgeAnalysis() {
       .select('email, accepted')
       .eq('year', 2026)
 
+    console.log('[JudgeAnalysis] Participations query result:', {
+      count: participations?.length,
+      error: participationsError,
+      sample: participations?.slice(0, 2),
+    })
+
     if (participationsError) {
       throw participationsError
     }
@@ -171,73 +177,97 @@ export default async function JudgeAnalysis() {
       participations?.map((p) => [p.email, p.accepted]) || []
     )
 
-    // Fetch all judges who have participation records for 2026
-    const { data: judgesData, error: judgesError } = await supabase
-      .from('judges')
-      .select('email, name, type, active, stripe_payment_status, created_at')
-      .in('email', Array.from(participationMap.keys()))
-      .order('name', { ascending: true })
+    console.log('[JudgeAnalysis] Participation map size:', participationMap.size)
 
-    if (judgesError) {
-      throw judgesError
-    }
-
-    if (!judgesData) {
-      throw new Error('No judges found')
-    }
-
-    // Transform data to include participation status
-    const transformedJudges: Judge[] = judgesData.map((judge: any) => ({
-      email: judge.email,
-      name: judge.name,
-      type: judge.type,
-      active: judge.active,
-      stripe_payment_status: judge.stripe_payment_status,
-      created_at: judge.created_at,
-      participation_accepted: participationMap.get(judge.email) || false,
-    }))
-
-    // Group judges by type and active status
-    const grouped: JudgeStats = {
-      supplier: { active: [], inactive: [] },
-      pro: { active: [], inactive: [] },
-      community: { active: [], activePaid: [], activeGrandfathered: [], inactive: [] },
-    }
-
-    // Payment system migration date - set to Oct 11 to include full day of Oct 10
-    const PAYMENT_MIGRATION_DATE = new Date('2025-10-11T00:00:00Z')
-
-    transformedJudges.forEach((judge) => {
-      // Use participation_accepted as the primary indicator for 2026 participation
-      if (judge.type === 'supplier') {
-        if (judge.participation_accepted) {
-          grouped.supplier.active.push(judge)
-        } else {
-          grouped.supplier.inactive.push(judge)
-        }
-      } else if (judge.type === 'pro') {
-        if (judge.participation_accepted) {
-          grouped.pro.active.push(judge)
-        } else {
-          grouped.pro.inactive.push(judge)
-        }
-      } else if (judge.type === 'community') {
-        if (judge.participation_accepted) {
-          grouped.community.active.push(judge)
-          // Check if grandfathered (created before payment system was implemented)
-          const judgeCreatedDate = new Date(judge.created_at)
-          if (judgeCreatedDate < PAYMENT_MIGRATION_DATE) {
-            grouped.community.activeGrandfathered.push(judge)
-          } else {
-            grouped.community.activePaid.push(judge)
-          }
-        } else {
-          grouped.community.inactive.push(judge)
-        }
+    // If no participations found, return empty judges object
+    if (participationMap.size === 0) {
+      judges = {
+        supplier: { active: [], inactive: [] },
+        pro: { active: [], inactive: [] },
+        community: { active: [], activePaid: [], activeGrandfathered: [], inactive: [] },
       }
-    })
+      // Don't throw error, just show empty state
+    } else {
+      // Fetch all judges who have participation records for 2026
+      const { data: judgesData, error: judgesError } = await supabase
+        .from('judges')
+        .select('email, name, type, active, stripe_payment_status, created_at')
+        .in('email', Array.from(participationMap.keys()))
+        .order('name', { ascending: true })
 
-    judges = grouped
+      console.log('[JudgeAnalysis] Judges query result:', {
+        count: judgesData?.length,
+        error: judgesError,
+        emailsQueried: Array.from(participationMap.keys()).length,
+      })
+
+      if (judgesError) {
+        throw judgesError
+      }
+
+      if (!judgesData || judgesData.length === 0) {
+        // No judge records found for the participations
+        judges = {
+          supplier: { active: [], inactive: [] },
+          pro: { active: [], inactive: [] },
+          community: { active: [], activePaid: [], activeGrandfathered: [], inactive: [] },
+        }
+      } else {
+
+        // Transform data to include participation status
+        const transformedJudges: Judge[] = judgesData.map((judge: any) => ({
+          email: judge.email,
+          name: judge.name,
+          type: judge.type,
+          active: judge.active,
+          stripe_payment_status: judge.stripe_payment_status,
+          created_at: judge.created_at,
+          participation_accepted: participationMap.get(judge.email) || false,
+        }))
+
+        // Group judges by type and active status
+        const grouped: JudgeStats = {
+          supplier: { active: [], inactive: [] },
+          pro: { active: [], inactive: [] },
+          community: { active: [], activePaid: [], activeGrandfathered: [], inactive: [] },
+        }
+
+        // Payment system migration date - set to Oct 11 to include full day of Oct 10
+        const PAYMENT_MIGRATION_DATE = new Date('2025-10-11T00:00:00Z')
+
+        transformedJudges.forEach((judge) => {
+          // Use participation_accepted as the primary indicator for 2026 participation
+          if (judge.type === 'supplier') {
+            if (judge.participation_accepted) {
+              grouped.supplier.active.push(judge)
+            } else {
+              grouped.supplier.inactive.push(judge)
+            }
+          } else if (judge.type === 'pro') {
+            if (judge.participation_accepted) {
+              grouped.pro.active.push(judge)
+            } else {
+              grouped.pro.inactive.push(judge)
+            }
+          } else if (judge.type === 'community') {
+            if (judge.participation_accepted) {
+              grouped.community.active.push(judge)
+              // Check if grandfathered (created before payment system was implemented)
+              const judgeCreatedDate = new Date(judge.created_at)
+              if (judgeCreatedDate < PAYMENT_MIGRATION_DATE) {
+                grouped.community.activeGrandfathered.push(judge)
+              } else {
+                grouped.community.activePaid.push(judge)
+              }
+            } else {
+              grouped.community.inactive.push(judge)
+            }
+          }
+        })
+
+        judges = grouped
+      }
+    }
   } catch (err: any) {
     console.error('Error fetching judges:', err)
     error = err.message || 'Failed to load judges'
