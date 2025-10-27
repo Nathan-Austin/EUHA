@@ -879,7 +879,7 @@ export async function generateJudgeQRCodes() {
     .select('email, judge_type')
     .eq('year', currentYear)
     .eq('accepted', true)
-    .in('judge_type', ['pro', 'community']);
+    .in('judge_type', ['pro', 'community', 'supplier']);
 
   if (participationError) {
     return { error: `Failed to fetch judge participations: ${participationError.message}` };
@@ -906,7 +906,8 @@ export async function generateJudgeQRCodes() {
     if (judge.type === 'community') {
       return judge.stripe_payment_status === 'succeeded';
     }
-    return true; // Pro judges don't need payment
+    // Pro and supplier judges don't need payment for judging
+    return true;
   });
 
   if (eligibleCurrentJudges.length === 0) {

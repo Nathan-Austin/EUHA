@@ -1,5 +1,5 @@
-import { cookies } from 'next/headers'
-import { createClient } from '@/lib/supabase/server'
+import { createClient as createServiceClient } from '@supabase/supabase-js'
+import CollapsibleSection from './CollapsibleSection'
 
 interface Judge {
   email: string
@@ -30,10 +30,12 @@ interface JudgeStats {
 
 function JudgeCard({
   judge,
-  showGrandfatheredTag = false,
+  showEarlyEntryTag = false,
+  showPaymentStatus = false,
 }: {
   judge: Judge
-  showGrandfatheredTag?: boolean
+  showEarlyEntryTag?: boolean
+  showPaymentStatus?: boolean
 }) {
   return (
     <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
@@ -42,14 +44,14 @@ function JudgeCard({
         <p className="text-sm text-gray-600">{judge.email}</p>
       </div>
       <div className="flex items-center gap-2">
-        {showGrandfatheredTag && (
+        {showEarlyEntryTag && (
           <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-800">
-            Grandfathered
+            Early Entry
           </span>
         )}
-        {judge.stripe_payment_status === 'succeeded' && (
-          <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-800">
-            Paid
+        {showPaymentStatus && judge.stripe_payment_status !== 'succeeded' && (
+          <span className="rounded-full bg-yellow-100 px-3 py-1 text-xs font-semibold text-yellow-800">
+            Payment Pending
           </span>
         )}
         <span
@@ -70,18 +72,20 @@ function JudgeSection({
   title,
   activeJudges,
   inactiveJudges,
-  showGrandfathered = false,
-  grandfatheredJudges = [],
+  showEarlyEntry = false,
+  earlyEntryJudges = [],
+  showPaymentStatus = false,
 }: {
   title: string
   activeJudges: Judge[]
   inactiveJudges: Judge[]
-  showGrandfathered?: boolean
-  grandfatheredJudges?: Judge[]
+  showEarlyEntry?: boolean
+  earlyEntryJudges?: Judge[]
+  showPaymentStatus?: boolean
 }) {
   const totalActive = activeJudges.length
   const totalInactive = inactiveJudges.length
-  const totalGrandfathered = grandfatheredJudges.length
+  const totalEarlyEntry = earlyEntryJudges.length
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-6">
@@ -96,9 +100,9 @@ function JudgeSection({
               {totalInactive} Inactive
             </span>
           )}
-          {showGrandfathered && totalGrandfathered > 0 && (
+          {showEarlyEntry && totalEarlyEntry > 0 && (
             <span className="rounded-full bg-blue-100 px-3 py-1 text-sm font-semibold text-blue-800">
-              {totalGrandfathered} Grandfathered
+              {totalEarlyEntry} Early Entry
             </span>
           )}
         </div>
@@ -107,32 +111,39 @@ function JudgeSection({
       {/* Active Judges */}
       {totalActive > 0 && (
         <div className="mb-6">
-          <h4 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-600">
-            Active ({totalActive})
-          </h4>
-          <div className="space-y-2">
-            {activeJudges.map((judge) => (
-              <JudgeCard
-                key={judge.email}
-                judge={judge}
-                showGrandfatheredTag={showGrandfathered && grandfatheredJudges.includes(judge)}
-              />
-            ))}
-          </div>
+          <CollapsibleSection
+            title="Active"
+            count={totalActive}
+            defaultOpen={true}
+          >
+            <div className="space-y-2">
+              {activeJudges.map((judge) => (
+                <JudgeCard
+                  key={judge.email}
+                  judge={judge}
+                  showEarlyEntryTag={showEarlyEntry && earlyEntryJudges.includes(judge)}
+                  showPaymentStatus={showPaymentStatus}
+                />
+              ))}
+            </div>
+          </CollapsibleSection>
         </div>
       )}
 
       {/* Inactive Judges */}
       {totalInactive > 0 && (
         <div>
-          <h4 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-600">
-            Inactive / Awaiting Payment ({totalInactive})
-          </h4>
-          <div className="space-y-2">
-            {inactiveJudges.map((judge) => (
-              <JudgeCard key={judge.email} judge={judge} />
-            ))}
-          </div>
+          <CollapsibleSection
+            title={`Inactive${showPaymentStatus ? ' / Awaiting Payment' : ''}`}
+            count={totalInactive}
+            defaultOpen={false}
+          >
+            <div className="space-y-2">
+              {inactiveJudges.map((judge) => (
+                <JudgeCard key={judge.email} judge={judge} showPaymentStatus={showPaymentStatus} />
+              ))}
+            </div>
+          </CollapsibleSection>
         </div>
       )}
 
@@ -143,9 +154,22 @@ function JudgeSection({
   )
 }
 
+function getServiceSupabase() {
+  const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+  if (!SUPABASE_URL || !serviceRoleKey) {
+    throw new Error('Service role key not configured.')
+  }
+
+  return createServiceClient(SUPABASE_URL, serviceRoleKey, {
+    auth: { persistSession: false },
+  })
+}
+
 export default async function JudgeAnalysis() {
-  const cookieStore = cookies()
-  const supabase = createClient(cookieStore)
+  // Use service role for admin queries to bypass RLS
+  const adminSupabase = getServiceSupabase()
 
   let judges: JudgeStats = {
     supplier: { active: [], inactive: [] },
@@ -156,17 +180,11 @@ export default async function JudgeAnalysis() {
   let error: string | null = null
 
   try {
-    // Fetch judge participations for 2026
-    const { data: participations, error: participationsError } = await supabase
+    // Fetch judge participations for 2026 using service role to bypass RLS
+    const { data: participations, error: participationsError } = await adminSupabase
       .from('judge_participations')
       .select('email, accepted')
       .eq('year', 2026)
-
-    console.log('[JudgeAnalysis] Participations query result:', {
-      count: participations?.length,
-      error: participationsError,
-      sample: participations?.slice(0, 2),
-    })
 
     if (participationsError) {
       throw participationsError
@@ -177,8 +195,6 @@ export default async function JudgeAnalysis() {
       participations?.map((p) => [p.email, p.accepted]) || []
     )
 
-    console.log('[JudgeAnalysis] Participation map size:', participationMap.size)
-
     // If no participations found, return empty judges object
     if (participationMap.size === 0) {
       judges = {
@@ -188,18 +204,12 @@ export default async function JudgeAnalysis() {
       }
       // Don't throw error, just show empty state
     } else {
-      // Fetch all judges who have participation records for 2026
-      const { data: judgesData, error: judgesError } = await supabase
+      // Fetch all judges who have participation records for 2026 using service role to bypass RLS
+      const { data: judgesData, error: judgesError } = await adminSupabase
         .from('judges')
         .select('email, name, type, active, stripe_payment_status, created_at')
         .in('email', Array.from(participationMap.keys()))
         .order('name', { ascending: true })
-
-      console.log('[JudgeAnalysis] Judges query result:', {
-        count: judgesData?.length,
-        error: judgesError,
-        emailsQueried: Array.from(participationMap.keys()).length,
-      })
 
       if (judgesError) {
         throw judgesError
@@ -250,7 +260,11 @@ export default async function JudgeAnalysis() {
               grouped.pro.inactive.push(judge)
             }
           } else if (judge.type === 'community') {
-            if (judge.participation_accepted) {
+            // For community judges: payment = auto-acceptance
+            // This handles edge cases where payment succeeded but participation record wasn't updated
+            const hasAccepted = judge.participation_accepted || judge.stripe_payment_status === 'succeeded'
+
+            if (hasAccepted) {
               grouped.community.active.push(judge)
               // Check if grandfathered (created before payment system was implemented)
               const judgeCreatedDate = new Date(judge.created_at)
@@ -314,7 +328,7 @@ export default async function JudgeAnalysis() {
           </div>
           <div className="rounded-lg bg-blue-50 px-4 py-2">
             <p className="text-xs font-medium uppercase tracking-wide text-blue-600">
-              Grandfathered
+              Early Entry
             </p>
             <p className="mt-1 text-2xl font-semibold text-blue-900">
               {judges.community.activeGrandfathered.length}
@@ -327,20 +341,23 @@ export default async function JudgeAnalysis() {
         title="Community Judges"
         activeJudges={judges.community.active}
         inactiveJudges={judges.community.inactive}
-        showGrandfathered={true}
-        grandfatheredJudges={judges.community.activeGrandfathered}
+        showEarlyEntry={true}
+        earlyEntryJudges={judges.community.activeGrandfathered}
+        showPaymentStatus={true}
       />
 
       <JudgeSection
         title="Pro Judges"
         activeJudges={judges.pro.active}
         inactiveJudges={judges.pro.inactive}
+        showPaymentStatus={false}
       />
 
       <JudgeSection
         title="Supplier Judges"
         activeJudges={judges.supplier.active}
         inactiveJudges={judges.supplier.inactive}
+        showPaymentStatus={false}
       />
     </div>
   )
