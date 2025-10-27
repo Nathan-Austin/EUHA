@@ -84,7 +84,44 @@ Deno.serve(async (req) => {
       }
     );
 
-    // 1. Upsert supplier
+    // 1. Create or get auth user first (required for login)
+    let authUserId: string;
+    try {
+      // Check if user already exists in auth
+      const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
+      const existingUser = existingUsers.users.find(
+        u => u.email?.toLowerCase() === payload.email.toLowerCase()
+      );
+
+      if (existingUser) {
+        authUserId = existingUser.id;
+        console.log(`Auth user already exists: ${payload.email}`);
+      } else {
+        // Create new auth user
+        const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+          email: payload.email,
+          email_confirm: true, // Auto-confirm so they can log in immediately
+          user_metadata: {
+            full_name: payload.contactName || payload.brand,
+            judge_type: 'supplier',
+            brand_name: payload.brand,
+            created_via: 'supplier-intake',
+            created_at: new Date().toISOString()
+          }
+        });
+
+        if (authError) throw authError;
+        if (!authData.user) throw new Error('Failed to create auth user');
+
+        authUserId = authData.user.id;
+        console.log(`Created new auth user: ${payload.email} (ID: ${authUserId})`);
+      }
+    } catch (authError: any) {
+      console.error('Auth user creation failed:', authError);
+      throw new Error(`Failed to create auth account: ${authError.message}`);
+    }
+
+    // 2. Upsert supplier
     const { data: supplier, error: supplierError } = await supabaseAdmin
       .from('suppliers')
       .upsert({
@@ -98,7 +135,7 @@ Deno.serve(async (req) => {
 
     if (supplierError) throw supplierError;
 
-    // 2. Upsert supplier AS A JUDGE
+    // 3. Upsert supplier AS A JUDGE
     const { error: judgeError } = await supabaseAdmin
       .from('judges')
       .upsert({
@@ -111,7 +148,7 @@ Deno.serve(async (req) => {
 
     if (judgeError) throw judgeError;
 
-    // 3. Track participation in current year
+    // 4. Track participation in current year
     const currentYear = 2026; // Competition year
     const { error: participationError } = await supabaseAdmin
       .from('judge_participations')
@@ -133,7 +170,7 @@ Deno.serve(async (req) => {
       // Don't throw - main registration succeeded
     }
 
-    // 4. Track supplier participation
+    // 5. Track supplier participation
     const sauceCount = payload.sauces.length;
     const { error: supplierParticipationError } = await supabaseAdmin
       .from('supplier_participations')
@@ -153,7 +190,7 @@ Deno.serve(async (req) => {
       // Don't throw - main registration succeeded
     }
 
-    // 5. Generate sauce codes and insert new sauces
+    // 6. Generate sauce codes and insert new sauces
     const saucesToCreate = [];
 
     // Track next number per category within this submission to avoid duplicates

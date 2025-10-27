@@ -41,7 +41,43 @@ Deno.serve(async (req) => {
     const judgeType = mapExperienceToType(payload.experience);
     const currentYear = 2026; // Competition year
 
-    // Insert/update in main judges table
+    // 1. Create or get auth user first (required for login)
+    let authUserId: string;
+    try {
+      // Check if user already exists in auth
+      const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
+      const existingUser = existingUsers.users.find(
+        u => u.email?.toLowerCase() === payload.email.toLowerCase()
+      );
+
+      if (existingUser) {
+        authUserId = existingUser.id;
+        console.log(`Auth user already exists: ${payload.email}`);
+      } else {
+        // Create new auth user
+        const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+          email: payload.email,
+          email_confirm: true, // Auto-confirm so they can log in immediately
+          user_metadata: {
+            full_name: payload.name,
+            judge_type: judgeType,
+            created_via: 'judge-intake',
+            created_at: new Date().toISOString()
+          }
+        });
+
+        if (authError) throw authError;
+        if (!authData.user) throw new Error('Failed to create auth user');
+
+        authUserId = authData.user.id;
+        console.log(`Created new auth user: ${payload.email} (ID: ${authUserId})`);
+      }
+    } catch (authError: any) {
+      console.error('Auth user creation failed:', authError);
+      throw new Error(`Failed to create auth account: ${authError.message}`);
+    }
+
+    // 2. Insert/update in main judges table
     const { data, error } = await supabaseAdmin
       .from('judges')
       .upsert({
@@ -62,7 +98,7 @@ Deno.serve(async (req) => {
 
     if (error) throw error;
 
-    // Also track in judge_participations for the current year
+    // 3. Track in judge_participations for the current year
     const { error: participationError } = await supabaseAdmin
       .from('judge_participations')
       .upsert({
