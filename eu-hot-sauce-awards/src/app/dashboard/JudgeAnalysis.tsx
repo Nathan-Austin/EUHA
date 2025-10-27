@@ -213,20 +213,21 @@ export default function JudgeAnalysis() {
         const PAYMENT_MIGRATION_DATE = new Date('2025-10-11T00:00:00Z')
 
         transformedJudges.forEach((judge) => {
+          // Use participation_accepted as the primary indicator for 2026 participation
           if (judge.type === 'supplier') {
-            if (judge.active && judge.participation_accepted) {
+            if (judge.participation_accepted) {
               grouped.supplier.active.push(judge)
             } else {
               grouped.supplier.inactive.push(judge)
             }
           } else if (judge.type === 'pro') {
-            if (judge.active && judge.participation_accepted) {
+            if (judge.participation_accepted) {
               grouped.pro.active.push(judge)
             } else {
               grouped.pro.inactive.push(judge)
             }
           } else if (judge.type === 'community') {
-            if (judge.active && judge.participation_accepted) {
+            if (judge.participation_accepted) {
               grouped.community.active.push(judge)
               // Check if grandfathered (created before payment system was implemented)
               const judgeCreatedDate = new Date(judge.created_at)
