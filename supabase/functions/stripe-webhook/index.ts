@@ -192,7 +192,12 @@ Deno.serve(async (req) => {
             });
 
             if (linkError || !linkData) {
-              console.error('Failed to generate magic link for judge:', linkError);
+              console.error('❌ CRITICAL: Failed to generate magic link for judge:', {
+                email: judge.email,
+                judgeId: judgeId,
+                error: linkError,
+                message: 'Judge paid successfully but cannot login - Auth account may be missing'
+              });
             } else {
               // Send magic link via email API
               const emailApiUrl = Deno.env.get('EMAIL_API_URL') || 'https://heatawards.eu';
@@ -331,7 +336,12 @@ Deno.serve(async (req) => {
           });
 
           if (linkError || !linkData) {
-            console.error('Failed to generate magic link:', linkError);
+            console.error('❌ CRITICAL: Failed to generate magic link for supplier:', {
+              email: supplier.email,
+              paymentId: paymentId,
+              error: linkError,
+              message: 'Supplier paid successfully but cannot login - Auth account may be missing'
+            });
           } else {
             // Send magic link via email API
             const emailApiUrl = Deno.env.get('EMAIL_API_URL') || 'https://heatawards.eu';

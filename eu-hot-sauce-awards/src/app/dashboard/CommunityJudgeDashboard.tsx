@@ -75,7 +75,7 @@ export default function CommunityJudgeDashboard() {
           <h2 className="text-xl sm:text-2xl font-bold text-white">Judge Dashboard</h2>
           <p className="text-sm text-gray-300 mt-1">
             {totalAssigned === 0 ? (
-              <span className="font-semibold text-green-400">Judging complete, thank you</span>
+              <span className="font-semibold text-yellow-400">Check back here once your judging box arrives</span>
             ) : (
               <><span className="font-semibold text-orange-400">{scoredSauces.length}/{totalAssigned}</span> sauces judged</>
             )}

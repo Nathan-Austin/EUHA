@@ -44,17 +44,16 @@ Deno.serve(async (req) => {
     // 1. Create or get auth user first (required for login)
     let authUserId: string;
     try {
-      // Check if user already exists in auth
-      const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
-      const existingUser = existingUsers.users.find(
-        u => u.email?.toLowerCase() === payload.email.toLowerCase()
+      // Use getUserByEmail instead of listUsers to avoid pagination issues
+      const { data: existingUserData, error: getUserError } = await supabaseAdmin.auth.admin.getUserByEmail(
+        payload.email
       );
 
-      if (existingUser) {
-        authUserId = existingUser.id;
-        console.log(`Auth user already exists: ${payload.email}`);
-      } else {
-        // Create new auth user
+      if (existingUserData?.user) {
+        authUserId = existingUserData.user.id;
+        console.log(`Auth user already exists: ${payload.email} (ID: ${authUserId})`);
+      } else if (getUserError && getUserError.message.includes('User not found')) {
+        // User doesn't exist, create new auth user
         const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
           email: payload.email,
           email_confirm: true, // Auto-confirm so they can log in immediately
@@ -66,11 +65,26 @@ Deno.serve(async (req) => {
           }
         });
 
-        if (authError) throw authError;
-        if (!authData.user) throw new Error('Failed to create auth user');
-
-        authUserId = authData.user.id;
-        console.log(`Created new auth user: ${payload.email} (ID: ${authUserId})`);
+        if (authError) {
+          // Handle duplicate user error gracefully
+          if (authError.message.includes('User already registered')) {
+            console.log('User exists but lookup failed, retrying getUserByEmail...');
+            const { data: retryData } = await supabaseAdmin.auth.admin.getUserByEmail(payload.email);
+            if (retryData?.user) {
+              authUserId = retryData.user.id;
+            } else {
+              throw authError;
+            }
+          } else {
+            throw authError;
+          }
+        } else {
+          if (!authData.user) throw new Error('Failed to create auth user');
+          authUserId = authData.user.id;
+          console.log(`Created new auth user: ${payload.email} (ID: ${authUserId})`);
+        }
+      } else {
+        throw getUserError;
       }
     } catch (authError: any) {
       console.error('Auth user creation failed:', authError);
@@ -78,6 +92,20 @@ Deno.serve(async (req) => {
     }
 
     // 2. Insert/update in main judges table
+    // Check if judge already exists to preserve their active status
+    const { data: existingJudge } = await supabaseAdmin
+      .from('judges')
+      .select('active, type, stripe_payment_status')
+      .eq('email', payload.email)
+      .single();
+
+    // Determine if we should reset stripe_payment_status
+    // Reset if: returning community judge registering for a new year
+    const shouldResetPaymentStatus = existingJudge &&
+                                      existingJudge.type === 'community' &&
+                                      judgeType === 'community' &&
+                                      existingJudge.stripe_payment_status === 'succeeded';
+
     const { data, error } = await supabaseAdmin
       .from('judges')
       .upsert({
@@ -91,7 +119,10 @@ Deno.serve(async (req) => {
         type: judgeType,
         industry_affiliation: payload.industryAffiliation || false,
         affiliation_details: payload.affiliationDetails || null,
-        active: false, // All new judges are inactive by default
+        // Preserve active status for existing judges, set false for new judges
+        active: existingJudge?.active ?? false,
+        // Reset payment status for returning community judges (they must pay for new year)
+        stripe_payment_status: shouldResetPaymentStatus ? null : undefined,
       }, { onConflict: 'email' })
       .select('id')
       .single();

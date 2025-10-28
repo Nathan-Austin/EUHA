@@ -87,17 +87,16 @@ Deno.serve(async (req) => {
     // 1. Create or get auth user first (required for login)
     let authUserId: string;
     try {
-      // Check if user already exists in auth
-      const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
-      const existingUser = existingUsers.users.find(
-        u => u.email?.toLowerCase() === payload.email.toLowerCase()
+      // Use getUserByEmail instead of listUsers to avoid pagination issues
+      const { data: existingUserData, error: getUserError } = await supabaseAdmin.auth.admin.getUserByEmail(
+        payload.email
       );
 
-      if (existingUser) {
-        authUserId = existingUser.id;
-        console.log(`Auth user already exists: ${payload.email}`);
-      } else {
-        // Create new auth user
+      if (existingUserData?.user) {
+        authUserId = existingUserData.user.id;
+        console.log(`Auth user already exists: ${payload.email} (ID: ${authUserId})`);
+      } else if (getUserError && getUserError.message.includes('User not found')) {
+        // User doesn't exist, create new auth user
         const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
           email: payload.email,
           email_confirm: true, // Auto-confirm so they can log in immediately
@@ -110,11 +109,26 @@ Deno.serve(async (req) => {
           }
         });
 
-        if (authError) throw authError;
-        if (!authData.user) throw new Error('Failed to create auth user');
-
-        authUserId = authData.user.id;
-        console.log(`Created new auth user: ${payload.email} (ID: ${authUserId})`);
+        if (authError) {
+          // Handle duplicate user error gracefully
+          if (authError.message.includes('User already registered')) {
+            console.log('User exists but lookup failed, retrying getUserByEmail...');
+            const { data: retryData } = await supabaseAdmin.auth.admin.getUserByEmail(payload.email);
+            if (retryData?.user) {
+              authUserId = retryData.user.id;
+            } else {
+              throw authError;
+            }
+          } else {
+            throw authError;
+          }
+        } else {
+          if (!authData.user) throw new Error('Failed to create auth user');
+          authUserId = authData.user.id;
+          console.log(`Created new auth user: ${payload.email} (ID: ${authUserId})`);
+        }
+      } else {
+        throw getUserError;
       }
     } catch (authError: any) {
       console.error('Auth user creation failed:', authError);
