@@ -94,13 +94,35 @@ export default function JudgeApplyPage() {
       });
 
       if (error) {
-        const detailedMessage =
+        const errorContextBody =
+          typeof error === "object" &&
+          error !== null &&
+          "context" in error &&
+          typeof (error as { context?: unknown }).context === "object" &&
+          (error as { context?: { body?: unknown } }).context !== null
+            ? (error as { context?: { body?: unknown } }).context?.body
+            : undefined;
+
+        const contextMessage =
+          errorContextBody &&
+          typeof errorContextBody === "object" &&
+          !Array.isArray(errorContextBody) &&
+          "error" in errorContextBody &&
+          typeof (errorContextBody as { error?: unknown }).error === "string"
+            ? (errorContextBody as { error?: string }).error
+            : typeof errorContextBody === "string"
+              ? errorContextBody
+              : undefined;
+
+        const dataMessage =
           data &&
           typeof data === "object" &&
           "error" in data &&
           typeof (data as { error?: unknown }).error === "string"
             ? (data as { error?: string }).error
-            : error.message;
+            : undefined;
+
+        const detailedMessage = contextMessage ?? dataMessage ?? error.message;
 
         throw new Error(`Registration failed: ${detailedMessage}`);
       }
