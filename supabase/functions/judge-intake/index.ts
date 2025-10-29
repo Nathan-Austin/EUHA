@@ -25,6 +25,30 @@ function mapExperienceToType(experience: string): 'pro' | 'community' {
   }
 }
 
+async function getAuthUserByEmail(supabaseAdmin: ReturnType<typeof createClient>, email: string) {
+  if (typeof (supabaseAdmin as any)?.auth?.admin?.getUserByEmail === 'function') {
+    return await supabaseAdmin.auth.admin.getUserByEmail(email);
+  }
+
+  // Fallback for older supabase-js versions without getUserByEmail
+  const { data, error } = await supabaseAdmin.auth.admin.listUsers({
+    page: 1,
+    perPage: 1,
+    email,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  const user = data.users?.[0];
+
+  return {
+    data: { user },
+    error: null,
+  };
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -44,15 +68,20 @@ Deno.serve(async (req) => {
     // 1. Create or get auth user first (required for login)
     let authUserId: string;
     try {
-      // Use getUserByEmail instead of listUsers to avoid pagination issues
-      const { data: existingUserData, error: getUserError } = await supabaseAdmin.auth.admin.getUserByEmail(
+      // Use getUserByEmail (or listUsers fallback) to avoid pagination issues
+      const { data: existingUserData, error: getUserError } = await getAuthUserByEmail(
+        supabaseAdmin,
         payload.email
       );
+
+      if (getUserError && !getUserError.message?.includes?.('User not found')) {
+        throw getUserError;
+      }
 
       if (existingUserData?.user) {
         authUserId = existingUserData.user.id;
         console.log(`Auth user already exists: ${payload.email} (ID: ${authUserId})`);
-      } else if (getUserError && getUserError.message.includes('User not found')) {
+      } else {
         // User doesn't exist, create new auth user
         const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
           email: payload.email,
@@ -67,9 +96,9 @@ Deno.serve(async (req) => {
 
         if (authError) {
           // Handle duplicate user error gracefully
-          if (authError.message.includes('User already registered')) {
+          if (authError.message?.includes?.('User already registered')) {
             console.log('User exists but lookup failed, retrying getUserByEmail...');
-            const { data: retryData } = await supabaseAdmin.auth.admin.getUserByEmail(payload.email);
+            const { data: retryData } = await getAuthUserByEmail(supabaseAdmin, payload.email);
             if (retryData?.user) {
               authUserId = retryData.user.id;
             } else {
@@ -83,8 +112,6 @@ Deno.serve(async (req) => {
           authUserId = authData.user.id;
           console.log(`Created new auth user: ${payload.email} (ID: ${authUserId})`);
         }
-      } else {
-        throw getUserError;
       }
     } catch (authError: any) {
       console.error('Auth user creation failed:', authError);
