@@ -94,7 +94,15 @@ export default function JudgeApplyPage() {
       });
 
       if (error) {
-        throw new Error(`Registration failed: ${error.message}`);
+        const detailedMessage =
+          data &&
+          typeof data === "object" &&
+          "error" in data &&
+          typeof (data as { error?: unknown }).error === "string"
+            ? (data as { error?: string }).error
+            : error.message;
+
+        throw new Error(`Registration failed: ${detailedMessage}`);
       }
 
       // Note: Magic link will be sent after payment for community judges
