@@ -65,13 +65,19 @@ Deno.serve(async (req) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
+  let currentStep = 'initial-request';
   try {
+    currentStep = 'parse-payload';
     const payload: SupplierIntakePayload = await req.json();
 
     if (!payload.sauces || payload.sauces.length === 0) {
       throw new Error('At least one sauce entry is required.');
     }
 
+    const trimmedEmail = payload.email.trim();
+    const lookupEmail = trimmedEmail.toLowerCase();
+
+    currentStep = 'init-supabase-client';
     // Initialize Supabase client with service role (bypasses RLS)
     const supabaseAdmin = createClient(
       Deno.env.get('PROJECT_URL') ?? '',
@@ -87,20 +93,30 @@ Deno.serve(async (req) => {
     // 1. Create or get auth user first (required for login)
     let authUserId: string;
     try {
-      // Use getUserByEmail instead of listUsers to avoid pagination issues
-      const { data: existingUserData, error: getUserError } = await supabaseAdmin.auth.admin.getUserByEmail(
-        payload.email
+      currentStep = 'lookup-auth-user';
+      // Edge runtime currently lacks auth.admin.getUserByEmail; filter listUsers by email instead.
+      const { data: existingUsers, error: listUsersError } = await supabaseAdmin.auth.admin.listUsers({
+        page: 1,
+        perPage: 1,
+        email: lookupEmail,
+      });
+
+      if (listUsersError) {
+        throw listUsersError;
+      }
+
+      const existingUser = existingUsers?.users?.find(
+        (user) => user.email?.toLowerCase() === lookupEmail
       );
 
-      if (existingUserData?.user) {
-        authUserId = existingUserData.user.id;
-        console.log(`Auth user already exists: ${payload.email} (ID: ${authUserId})`);
-      } else if (getUserError && !getUserError.message.includes('User not found')) {
-        throw getUserError;
+      if (existingUser) {
+        authUserId = existingUser.id;
+        console.log(`Auth user already exists: ${trimmedEmail} (ID: ${authUserId})`);
       } else {
         // User doesn't exist, create new auth user
+        currentStep = 'create-auth-user';
         const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-          email: payload.email,
+          email: trimmedEmail,
           email_confirm: true, // Auto-confirm so they can log in immediately
           user_metadata: {
             full_name: payload.contactName || payload.brand,
@@ -121,10 +137,23 @@ Deno.serve(async (req) => {
                 : JSON.stringify(authError);
 
           if (errorMessage.includes('User already registered')) {
-            console.log('User exists but lookup failed, retrying getUserByEmail...');
-            const { data: retryData } = await supabaseAdmin.auth.admin.getUserByEmail(payload.email);
-            if (retryData?.user) {
-              authUserId = retryData.user.id;
+            console.log('User exists but lookup failed, retrying admin.listUsers lookup...');
+            const { data: retryData, error: retryError } = await supabaseAdmin.auth.admin.listUsers({
+              page: 1,
+              perPage: 1,
+              email: lookupEmail,
+            });
+
+            if (retryError) {
+              throw retryError;
+            }
+
+            const retryUser = retryData?.users?.find(
+              (user) => user.email?.toLowerCase() === lookupEmail
+            );
+
+            if (retryUser) {
+              authUserId = retryUser.id;
             } else {
               throw authError;
             }
@@ -134,7 +163,7 @@ Deno.serve(async (req) => {
         } else {
           if (!authData.user) throw new Error('Failed to create auth user');
           authUserId = authData.user.id;
-          console.log(`Created new auth user: ${payload.email} (ID: ${authUserId})`);
+          console.log(`Created new auth user: ${trimmedEmail} (ID: ${authUserId})`);
         }
       }
     } catch (authError: any) {
@@ -145,14 +174,15 @@ Deno.serve(async (req) => {
           : typeof authError === 'string'
             ? authError
             : JSON.stringify(authError);
-      throw new Error(`Failed to create auth account: ${message}`);
+      throw new Error(`Failed at ${currentStep}: ${message}`);
     }
 
     // 2. Upsert supplier
+    currentStep = 'upsert-supplier';
     const { data: supplier, error: supplierError } = await supabaseAdmin
       .from('suppliers')
       .upsert({
-        email: payload.email,
+        email: trimmedEmail,
         brand_name: payload.brand,
         contact_name: payload.contactName,
         address: payload.address,
@@ -163,10 +193,11 @@ Deno.serve(async (req) => {
     if (supplierError) throw supplierError;
 
     // 3. Upsert supplier AS A JUDGE
+    currentStep = 'upsert-judge';
     const { error: judgeError } = await supabaseAdmin
       .from('judges')
       .upsert({
-        email: payload.email,
+        email: trimmedEmail,
         type: 'supplier',
         active: true, // Suppliers are automatically active judges
         name: payload.contactName || payload.brand,
@@ -177,10 +208,11 @@ Deno.serve(async (req) => {
 
     // 4. Track participation in current year
     const currentYear = 2026; // Competition year
+    currentStep = 'track-judge-participation';
     const { error: participationError } = await supabaseAdmin
       .from('judge_participations')
       .upsert({
-        email: payload.email,
+        email: trimmedEmail,
         full_name: payload.contactName || payload.brand,
         year: currentYear,
         application_date: new Date().toISOString(),
@@ -199,10 +231,11 @@ Deno.serve(async (req) => {
 
     // 5. Track supplier participation
     const sauceCount = payload.sauces.length;
+    currentStep = 'track-supplier-participation';
     const { error: supplierParticipationError } = await supabaseAdmin
       .from('supplier_participations')
       .upsert({
-        email: payload.email,
+        email: trimmedEmail,
         company_name: payload.brand,
         year: currentYear,
         sauce_count: sauceCount,
@@ -222,6 +255,7 @@ Deno.serve(async (req) => {
 
     // Track next number per category within this submission to avoid duplicates
     const categoryCounters: Record<string, number> = {};
+    currentStep = 'prepare-sauces';
 
     for (const sauce of payload.sauces) {
       const categoryCode = CATEGORY_CODES[sauce.category];
@@ -266,6 +300,7 @@ Deno.serve(async (req) => {
       });
     }
 
+    currentStep = 'insert-sauces';
     const { data: sauces, error: sauceError } = await supabaseAdmin
       .from('sauces')
       .insert(saucesToCreate)
@@ -279,6 +314,7 @@ Deno.serve(async (req) => {
     // Generate QR codes for each sauce
     const sauceIds = sauces.map((row) => row.id);
 
+    currentStep = 'generate-qr-codes';
     const qrUpdates = await Promise.all(
       sauceIds.map((id) => {
         const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?data=${id}&size=200x200`;
@@ -298,6 +334,7 @@ Deno.serve(async (req) => {
     const discountCents = Math.round(subtotalCents * discountRate);
     const amountDueCents = subtotalCents - discountCents;
 
+    currentStep = 'create-payment';
     const { data: payment, error: paymentError } = await supabaseAdmin
       .from('supplier_payments')
       .insert({
@@ -313,6 +350,7 @@ Deno.serve(async (req) => {
 
     if (paymentError) throw paymentError;
 
+    currentStep = 'link-sauce-payment';
     const { error: saucePaymentLinkError } = await supabaseAdmin
       .from('sauces')
       .update({ payment_id: payment.id })
@@ -324,6 +362,7 @@ Deno.serve(async (req) => {
       throw new Error('Mismatch between submitted sauces and stored records.');
     }
 
+    currentStep = 'assign-images';
     const imageAssignments: Record<string, string> = {};
 
     for (let index = 0; index < payload.sauces.length; index += 1) {
@@ -367,8 +406,19 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     });
-  } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
+  } catch (error: unknown) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : typeof error === 'string'
+          ? error
+          : JSON.stringify(error);
+    const responseMessage = message.startsWith('Failed at')
+      ? message
+      : `Failed at ${currentStep}: ${message}`;
+
+    console.error('supplier-intake error', { step: currentStep, error });
+    return new Response(JSON.stringify({ error: responseMessage }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 400,
     });
