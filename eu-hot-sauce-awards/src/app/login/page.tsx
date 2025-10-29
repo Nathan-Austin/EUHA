@@ -1,11 +1,37 @@
 'use client';
 
 import { useState } from 'react';
-import { createClient } from '@/lib/supabase/client';
+
+const LINK_EXPIRY_HOURS = 24;
+
+async function requestAuthLink(email: string, reason: 'login' | 'confirmation') {
+  const trimmedEmail = email.trim();
+  if (!trimmedEmail) {
+    throw new Error('Email is required.');
+  }
+
+  const response = await fetch('/api/auth/email-link', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: trimmedEmail, reason }),
+  });
+
+  let payload: { error?: string } = {};
+  try {
+    payload = await response.json();
+  } catch {
+    // Swallow JSON parse errors for non-JSON responses
+  }
+
+  if (!response.ok) {
+    throw new Error(payload?.error || 'Unable to send email link. Please try again.');
+  }
+}
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
@@ -15,19 +41,41 @@ export default function LoginPage() {
     setMessage('');
     setError('');
 
-    const supabase = createClient();
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
+    try {
+      await requestAuthLink(email, 'login');
+      setMessage(`Check your email for the magic link. It stays active for the next ${LINK_EXPIRY_HOURS} hours.`);
+    } catch (requestError) {
+      if (requestError instanceof Error) {
+        setError(requestError.message);
+      } else {
+        setError('Unable to send email link. Please try again.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    setLoading(false);
-    if (error) {
-      setError(error.message);
-    } else {
-      setMessage('Check your email for the magic link!');
+  const handleResendConfirmation = async () => {
+    if (!email) {
+      setError('Enter your email first so we know where to send the link.');
+      return;
+    }
+
+    setResendLoading(true);
+    setMessage('');
+    setError('');
+
+    try {
+      await requestAuthLink(email, 'confirmation');
+      setMessage(`If your email still needs to be confirmed, we just sent a fresh link. It will work for the next ${LINK_EXPIRY_HOURS} hours.`);
+    } catch (requestError) {
+      if (requestError instanceof Error) {
+        setError(requestError.message);
+      } else {
+        setError('Unable to resend the confirmation link. Please try again.');
+      }
+    } finally {
+      setResendLoading(false);
     }
   };
 
@@ -66,6 +114,22 @@ export default function LoginPage() {
             {loading ? 'Sending...' : 'Send Magic Link'}
           </button>
         </form>
+        <div className="space-y-2 border-t border-gray-200 pt-4">
+          <p className="text-sm text-gray-600">
+            Need a new confirmation email? We can resend it to the same address.
+          </p>
+          <button
+            type="button"
+            onClick={handleResendConfirmation}
+            disabled={resendLoading}
+            className="relative flex justify-center w-full px-4 py-2 text-sm font-medium text-indigo-700 border border-indigo-600 rounded-md hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:text-indigo-400 disabled:border-indigo-300 disabled:bg-white"
+          >
+            {resendLoading ? 'Sending...' : 'Resend Confirmation Link'}
+          </button>
+          <p className="text-xs text-center text-gray-500">
+            The new link stays valid for 24 hours. After confirming, you can always return here to request a fresh magic login link.
+          </p>
+        </div>
         {message && (
           <p className="mt-2 text-sm text-center text-green-600">
             {message}

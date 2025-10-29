@@ -284,7 +284,8 @@ export const emailTemplates = {
           <a href="${magicLink}" style="background-color: #ff4d00; color: white; padding: 15px 40px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">Access Judge Dashboard</a>
         </p>
 
-        <p style="color: #666; font-size: 14px;"><em>This link will expire in 1 hour for security purposes.</em></p>
+        <p style="color: #666; font-size: 14px;"><em>This link will expire in 24 hours for security purposes.</em></p>
+        <p style="color: #666; font-size: 14px;">Need another link later? Request a fresh one anytime at <a href="https://heatawards.eu/login" style="color: #ff4d00;">heatawards.eu/login</a>.</p>
 
         <h2 style="color: #ff4d00;">What's Next:</h2>
         <ul>
@@ -299,7 +300,53 @@ export const emailTemplates = {
         <p>Questions? Contact us at heataward@gmail.com</p>
       </div>
     `,
-    text: `Welcome to the judge panel! Click this link to access: ${magicLink}. This link expires in 1 hour.`,
+    text: `Welcome to the judge panel! Click this link to access: ${magicLink}. This link expires in 24 hours. Need another link later? Visit https://heatawards.eu/login and enter your email for a fresh one.`,
+  }),
+  authMagicLink: (name: string, magicLink: string, expiryHours: number) => ({
+    subject: 'EU Hot Sauce Awards - Secure Login Link',
+    html: `
+      ${emailBanner}
+      <div style="padding: 20px; font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h1 style="color: #ff4d00;">Here's Your Secure Login Link</h1>
+        <p>Hi ${name},</p>
+        <p>Use the button below to securely access your EU Hot Sauce Awards dashboard.</p>
+
+        <p style="text-align: center; margin: 30px 0;">
+          <a href="${magicLink}" style="background-color: #ff4d00; color: white; padding: 15px 40px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">Log In Now</a>
+        </p>
+
+        <p style="color: #666; font-size: 14px;">
+          This link stays active for the next ${expiryHours} hours. If it expires, request another one anytime at
+          <a href="https://heatawards.eu/login" style="color: #ff4d00;">heatawards.eu/login</a>.
+        </p>
+
+        <p>Need help? Reach us at heataward@gmail.com.</p>
+      </div>
+    `,
+    text: `Hi ${name}, use this link to access your EU Hot Sauce Awards dashboard: ${magicLink}. It stays active for the next ${expiryHours} hours. Need another? Head to https://heatawards.eu/login.`,
+  }),
+  authConfirmationLink: (name: string, magicLink: string, expiryHours: number) => ({
+    subject: 'Confirm Your Email - EU Hot Sauce Awards',
+    html: `
+      ${emailBanner}
+      <div style="padding: 20px; font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h1 style="color: #ff4d00;">Confirm Your Email</h1>
+        <p>Hi ${name},</p>
+        <p>Thanks for registering with the EU Hot Sauce Awards. Click the button below to confirm your email and access your dashboard.</p>
+
+        <p style="text-align: center; margin: 30px 0;">
+          <a href="${magicLink}" style="background-color: #ff4d00; color: white; padding: 15px 40px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">Confirm &amp; Continue</a>
+        </p>
+
+        <p style="color: #666; font-size: 14px;">
+          This link stays active for ${expiryHours} hours. If it expires, you can request a new confirmation email at
+          <a href="https://heatawards.eu/login" style="color: #ff4d00;">heatawards.eu/login</a>.
+        </p>
+
+        <p>If you have any questions, contact us at heataward@gmail.com.</p>
+      </div>
+    `,
+    text: `Hi ${name}, confirm your EU Hot Sauce Awards email with this link: ${magicLink}. It stays active for ${expiryHours} hours. Need another? Visit https://heatawards.eu/login.`,
   }),
 
   supplier2026Invitation: (brandName: string) => ({

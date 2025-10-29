@@ -1921,7 +1921,8 @@ export async function approveProJudge(judgeId: string) {
       email: judge.email,
       options: {
         redirectTo: `${SITE_URL}/auth/callback`,
-      },
+        expiresIn: 60 * 60 * 24,
+      } as any,
     });
 
     if (linkError || !linkData) {
