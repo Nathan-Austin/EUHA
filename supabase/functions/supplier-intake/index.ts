@@ -95,7 +95,9 @@ Deno.serve(async (req) => {
       if (existingUserData?.user) {
         authUserId = existingUserData.user.id;
         console.log(`Auth user already exists: ${payload.email} (ID: ${authUserId})`);
-      } else if (getUserError && getUserError.message.includes('User not found')) {
+      } else if (getUserError && !getUserError.message.includes('User not found')) {
+        throw getUserError;
+      } else {
         // User doesn't exist, create new auth user
         const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
           email: payload.email,
@@ -111,7 +113,14 @@ Deno.serve(async (req) => {
 
         if (authError) {
           // Handle duplicate user error gracefully
-          if (authError.message.includes('User already registered')) {
+          const errorMessage =
+            authError instanceof Error
+              ? authError.message
+              : typeof authError === 'string'
+                ? authError
+                : JSON.stringify(authError);
+
+          if (errorMessage.includes('User already registered')) {
             console.log('User exists but lookup failed, retrying getUserByEmail...');
             const { data: retryData } = await supabaseAdmin.auth.admin.getUserByEmail(payload.email);
             if (retryData?.user) {
@@ -127,12 +136,16 @@ Deno.serve(async (req) => {
           authUserId = authData.user.id;
           console.log(`Created new auth user: ${payload.email} (ID: ${authUserId})`);
         }
-      } else {
-        throw getUserError;
       }
     } catch (authError: any) {
       console.error('Auth user creation failed:', authError);
-      throw new Error(`Failed to create auth account: ${authError.message}`);
+      const message =
+        authError instanceof Error
+          ? authError.message
+          : typeof authError === 'string'
+            ? authError
+            : JSON.stringify(authError);
+      throw new Error(`Failed to create auth account: ${message}`);
     }
 
     // 2. Upsert supplier
