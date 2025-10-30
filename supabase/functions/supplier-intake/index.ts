@@ -59,6 +59,38 @@ function resolveDiscount(entryCount: number) {
   return band ? band.discount : DISCOUNT_BANDS[DISCOUNT_BANDS.length - 1].discount;
 }
 
+async function getAuthUserByEmail(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  email: string
+) {
+  const lookupEmail = email.toLowerCase();
+  const hasDirectLookup =
+    typeof (supabaseAdmin as any)?.auth?.admin?.getUserByEmail === 'function';
+
+  if (hasDirectLookup) {
+    return await supabaseAdmin.auth.admin.getUserByEmail(email);
+  }
+
+  const { data, error } = await supabaseAdmin.auth.admin.listUsers({
+    page: 1,
+    perPage: 200,
+    email,
+  });
+
+  if (error) {
+    return { data: { user: undefined }, error };
+  }
+
+  const user = data.users?.find(
+    (candidate) => candidate.email?.toLowerCase() === lookupEmail,
+  );
+
+  return {
+    data: { user },
+    error: null,
+  };
+}
+
 Deno.serve(async (req) => {
   // Handle CORS preflight request
   if (req.method === 'OPTIONS') {
@@ -75,7 +107,6 @@ Deno.serve(async (req) => {
     }
 
     const trimmedEmail = payload.email.trim();
-    const lookupEmail = trimmedEmail.toLowerCase();
 
     currentStep = 'init-supabase-client';
     // Initialize Supabase client with service role (bypasses RLS)
@@ -94,20 +125,16 @@ Deno.serve(async (req) => {
     let authUserId: string;
     try {
       currentStep = 'lookup-auth-user';
-      // Edge runtime currently lacks auth.admin.getUserByEmail; filter listUsers by email instead.
-      const { data: existingUsers, error: listUsersError } = await supabaseAdmin.auth.admin.listUsers({
-        page: 1,
-        perPage: 1,
-        email: lookupEmail,
-      });
+      const { data: existingUserData, error: getUserError } = await getAuthUserByEmail(
+        supabaseAdmin,
+        trimmedEmail,
+      );
 
-      if (listUsersError) {
-        throw listUsersError;
+      if (getUserError && (getUserError as any)?.code !== 'user_not_found') {
+        console.error('Auth lookup error:', getUserError);
       }
 
-      const existingUser = existingUsers?.users?.find(
-        (user) => user.email?.toLowerCase() === lookupEmail
-      );
+      const existingUser = existingUserData?.user;
 
       if (existingUser) {
         authUserId = existingUser.id;
@@ -136,24 +163,20 @@ Deno.serve(async (req) => {
                 ? authError
                 : JSON.stringify(authError);
 
-          if (errorMessage.includes('User already registered')) {
-            console.log('User exists but lookup failed, retrying admin.listUsers lookup...');
-            const { data: retryData, error: retryError } = await supabaseAdmin.auth.admin.listUsers({
-              page: 1,
-              perPage: 1,
-              email: lookupEmail,
-            });
+          const errorCode = (authError as { code?: string }).code;
+          if (errorCode === 'email_exists' || errorMessage.includes('already been registered')) {
+            console.log('User exists but lookup failed, retrying auth lookup...');
+            const { data: retryData, error: retryError } = await getAuthUserByEmail(
+              supabaseAdmin,
+              trimmedEmail,
+            );
 
             if (retryError) {
               throw retryError;
             }
 
-            const retryUser = retryData?.users?.find(
-              (user) => user.email?.toLowerCase() === lookupEmail
-            );
-
-            if (retryUser) {
-              authUserId = retryUser.id;
+            if (retryData?.user) {
+              authUserId = retryData.user.id;
             } else {
               throw authError;
             }
