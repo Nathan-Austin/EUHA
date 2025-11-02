@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { validateEmail } from '@/lib/validation';
 
 const LINK_EXPIRY_HOURS = 24;
 
@@ -8,6 +9,12 @@ async function requestAuthLink(email: string, reason: 'login' | 'confirmation') 
   const trimmedEmail = email.trim();
   if (!trimmedEmail) {
     throw new Error('Email is required.');
+  }
+
+  // Validate email format before sending
+  const validation = validateEmail(trimmedEmail);
+  if (!validation.isValid) {
+    throw new Error(validation.error);
   }
 
   const response = await fetch('/api/auth/email-link', {
@@ -34,12 +41,28 @@ export default function LoginPage() {
   const [resendLoading, setResendLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [emailError, setEmailError] = useState('');
+
+  const handleEmailChange = (value: string) => {
+    setEmail(value);
+    setEmailError(''); // Clear error when user types
+  };
+
+  const handleEmailBlur = () => {
+    if (email.trim()) {
+      const validation = validateEmail(email);
+      if (!validation.isValid) {
+        setEmailError(validation.error || 'Invalid email');
+      }
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setMessage('');
     setError('');
+    setEmailError('');
 
     try {
       await requestAuthLink(email, 'login');
@@ -100,10 +123,16 @@ export default function LoginPage() {
               autoComplete="email"
               required
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="relative block w-full px-3 py-2 text-gray-900 placeholder-gray-500 border border-gray-300 rounded-md appearance-none focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+              onChange={(e) => handleEmailChange(e.target.value)}
+              onBlur={handleEmailBlur}
+              className={`relative block w-full px-3 py-2 text-gray-900 placeholder-gray-500 border rounded-md appearance-none focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm ${
+                emailError ? 'border-red-500' : 'border-gray-300'
+              }`}
               placeholder="Email address"
             />
+            {emailError && (
+              <p className="mt-1 text-sm text-red-600">{emailError}</p>
+            )}
           </div>
 
           <button

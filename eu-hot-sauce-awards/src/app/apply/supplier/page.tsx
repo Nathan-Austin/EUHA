@@ -3,6 +3,7 @@
 import { ChangeEvent, FormEvent, useMemo, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { validateEmail } from "@/lib/validation";
 
 const categoryGroups = [
   {
@@ -176,6 +177,7 @@ export default function SupplierApplyPage() {
   const [paymentQuote, setPaymentQuote] = useState<PaymentQuote | null>(null);
   const [submittedSauces, setSubmittedSauces] = useState<SubmittedSauce[]>([]);
   const [supplierEmail, setSupplierEmail] = useState<string>("");
+  const [emailError, setEmailError] = useState<string | null>(null);
 
   const entryCount = sauces.length;
 
@@ -196,7 +198,22 @@ export default function SupplierApplyPage() {
   const handleBrandFieldChange = (
     field: keyof typeof formValues
   ) => (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setFormValues((prev) => ({ ...prev, [field]: event.target.value }));
+    const value = event.target.value;
+    setFormValues((prev) => ({ ...prev, [field]: value }));
+
+    // Clear email error when user types in email field
+    if (field === 'email') {
+      setEmailError(null);
+    }
+  };
+
+  const handleEmailBlur = () => {
+    if (formValues.email.trim()) {
+      const validation = validateEmail(formValues.email);
+      if (!validation.isValid) {
+        setEmailError(validation.error || 'Invalid email');
+      }
+    }
   };
 
   const handleSauceFieldChange = (
@@ -279,10 +296,20 @@ export default function SupplierApplyPage() {
     event.preventDefault();
     setIsSubmitting(true);
     setErrorMessage(null);
+    setEmailError(null);
 
     if (!formValues.brand.trim() || !formValues.email.trim() || !formValues.address.trim()) {
       setIsSubmitting(false);
       setErrorMessage("Please complete the brand, email, and address fields.");
+      return;
+    }
+
+    // Validate email format
+    const emailValidation = validateEmail(formValues.email);
+    if (!emailValidation.isValid) {
+      setIsSubmitting(false);
+      setEmailError(emailValidation.error || 'Invalid email');
+      setErrorMessage(emailValidation.error || 'Please enter a valid email address.');
       return;
     }
 
@@ -454,11 +481,17 @@ export default function SupplierApplyPage() {
                   type="email"
                   value={formValues.email}
                   onChange={handleBrandFieldChange("email")}
+                  onBlur={handleEmailBlur}
                   required
                   disabled={isComplete}
-                  className="rounded-xl border border-white/20 bg-black/30 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:border-amber-300 focus:outline-none disabled:opacity-60"
+                  className={`rounded-xl border bg-black/30 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:border-amber-300 focus:outline-none disabled:opacity-60 ${
+                    emailError ? 'border-red-500' : 'border-white/20'
+                  }`}
                   placeholder="team@brand.com"
                 />
+                {emailError && (
+                  <span className="text-xs text-red-400">{emailError}</span>
+                )}
               </label>
               <div className="rounded-2xl border border-white/10 bg-black/20 p-4 text-xs text-white/70">
                 <p className="font-semibold uppercase tracking-[0.25em] text-amber-200/80">Pricing Snapshot</p>

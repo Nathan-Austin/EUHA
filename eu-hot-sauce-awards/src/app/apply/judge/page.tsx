@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { validateEmail } from "@/lib/validation";
 
 const experiences = [
   {
@@ -58,12 +59,29 @@ export default function JudgeApplyPage() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [hasIndustryAffiliation, setHasIndustryAffiliation] = useState(false);
+  const [email, setEmail] = useState("");
+  const [emailError, setEmailError] = useState<string | null>(null);
+
+  const handleEmailChange = (value: string) => {
+    setEmail(value);
+    setEmailError(null); // Clear error when user types
+  };
+
+  const handleEmailBlur = () => {
+    if (email.trim()) {
+      const validation = validateEmail(email);
+      if (!validation.isValid) {
+        setEmailError(validation.error || 'Invalid email');
+      }
+    }
+  };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setIsSubmitting(true);
     setErrorMessage(null);
     setSuccessMessage(null);
+    setEmailError(null);
 
     const form = event.currentTarget;
     const formData = new FormData(form);
@@ -85,6 +103,15 @@ export default function JudgeApplyPage() {
     if (!payload.name || !payload.email || !payload.address || !payload.city || !payload.zip || !payload.country) {
       setIsSubmitting(false);
       setErrorMessage("Please complete all required fields before submitting.");
+      return;
+    }
+
+    // Validate email format
+    const emailValidation = validateEmail(payload.email);
+    if (!emailValidation.isValid) {
+      setIsSubmitting(false);
+      setEmailError(emailValidation.error || 'Invalid email');
+      setErrorMessage(emailValidation.error || 'Please enter a valid email address.');
       return;
     }
 
@@ -132,6 +159,8 @@ export default function JudgeApplyPage() {
 
       form.reset();
       setHasIndustryAffiliation(false);
+      setEmail('');
+      setEmailError(null);
 
       // Determine judge type from experience level
       const isPro = payload.experience === 'Professional Chili Person' ||
@@ -196,9 +225,17 @@ export default function JudgeApplyPage() {
                 name="email"
                 type="email"
                 required
-                className="rounded-xl border border-white/20 bg-black/30 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:border-amber-300 focus:outline-none"
+                value={email}
+                onChange={(e) => handleEmailChange(e.target.value)}
+                onBlur={handleEmailBlur}
+                className={`rounded-xl border bg-black/30 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:border-amber-300 focus:outline-none ${
+                  emailError ? 'border-red-500' : 'border-white/20'
+                }`}
                 placeholder="aine@example.com"
               />
+              {emailError && (
+                <span className="text-xs text-red-400">{emailError}</span>
+              )}
             </label>
           </div>
 
