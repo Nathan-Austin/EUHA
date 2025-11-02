@@ -267,6 +267,41 @@ export const emailTemplates = {
     text: `Welcome to your dashboard! Click this link to access: ${magicLink}. This link expires in 1 hour.`,
   }),
 
+  proJudgeApproval: (name: string, magicLink: string) => ({
+    subject: 'EU Hot Sauce Awards - Pro Judge Application Approved!',
+    html: `
+      ${emailBanner}
+      <div style="padding: 20px; font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h1 style="color: #ff4d00;">Welcome to the Professional Judge Panel!</h1>
+        <p>Dear ${name},</p>
+        <p>Great news! Your application to serve as a Professional Judge for the EU Hot Sauce Awards 2026 has been approved.</p>
+
+        <div style="background-color: #fff3cd; border: 2px solid #ff4d00; padding: 15px; margin: 20px 0; border-radius: 5px;">
+          <p style="margin: 0; font-weight: bold;">Click the button below to securely access your judge dashboard:</p>
+        </div>
+
+        <p style="text-align: center; margin: 30px 0;">
+          <a href="${magicLink}" style="background-color: #ff4d00; color: white; padding: 15px 40px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">Access Judge Dashboard</a>
+        </p>
+
+        <p style="color: #666; font-size: 14px;"><em>This link will expire in 24 hours for security purposes.</em></p>
+        <p style="color: #666; font-size: 14px;">Need another link later? Request a fresh one anytime at <a href="https://heatawards.eu/login" style="color: #ff4d00;">heatawards.eu/login</a>.</p>
+
+        <h2 style="color: #ff4d00;">What's Next:</h2>
+        <ul>
+          <li>Review judging guidelines and scoring criteria in your dashboard</li>
+          <li>Check for judging schedule updates and important announcements</li>
+          <li>Judging will take place in March 2026</li>
+          <li>You'll receive your judging kit by mail before the event</li>
+        </ul>
+
+        <p><strong>Important:</strong> As a professional judge, your expertise will help shape the future of the European hot sauce industry. We appreciate your participation!</p>
+
+        <p>Questions? Contact us at heataward@gmail.com</p>
+      </div>
+    `,
+    text: `Congratulations! Your Pro Judge application has been approved for the EU Hot Sauce Awards 2026. Access your dashboard: ${magicLink}. This link expires in 24 hours. Need another link later? Visit https://heatawards.eu/login.`,
+  }),
   judgeMagicLink: (name: string, magicLink: string) => ({
     subject: 'EU Hot Sauce Awards - Access Your Judge Dashboard',
     html: `

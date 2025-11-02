@@ -1932,7 +1932,7 @@ export async function approveProJudge(judgeId: string) {
     // Send magic link via email
     await sendEmail({
       to: judge.email,
-      ...emailTemplates.judgeMagicLink(judge.name || judge.email, linkData.properties.action_link),
+      ...emailTemplates.proJudgeApproval(judge.name || judge.email, linkData.properties.action_link),
     });
 
     revalidatePath('/dashboard');
