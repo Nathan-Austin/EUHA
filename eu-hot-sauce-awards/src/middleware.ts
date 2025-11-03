@@ -1,5 +1,6 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { COMPETITION_YEAR } from '@/lib/config'
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({
@@ -66,7 +67,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(redirectUrl)
   }
 
-  // For authenticated users on protected routes, check payment status
+  // For authenticated users on protected routes, check permissions
   if (isProtectedPath && user) {
     const { data: judge } = await supabase
       .from('judges')
@@ -75,6 +76,9 @@ export async function middleware(request: NextRequest) {
       .single()
 
     if (judge) {
+      // Admins bypass most checks (but still check on /judge routes below)
+      const isAdmin = judge.type === 'admin'
+
       // Community judges must have paid
       if (judge.type === 'community' && judge.stripe_payment_status !== 'succeeded') {
         // Only redirect if not already on dashboard (dashboard shows payment button)
@@ -85,9 +89,26 @@ export async function middleware(request: NextRequest) {
       }
 
       // All judges except admin must be active
-      if (!judge.active && judge.type !== 'admin') {
+      if (!judge.active && !isAdmin) {
         // Allow dashboard access (shows appropriate message)
         if (request.nextUrl.pathname.startsWith('/judge')) {
+          const redirectUrl = new URL('/dashboard', request.url)
+          return NextResponse.redirect(redirectUrl)
+        }
+      }
+
+      // CRITICAL: Check year-specific participation for /judge routes
+      // This prevents judges from previous years accessing current year judging
+      if (request.nextUrl.pathname.startsWith('/judge') && !isAdmin) {
+        const { data: participation } = await supabase
+          .from('judge_participations')
+          .select('accepted')
+          .eq('email', user.email)
+          .eq('year', COMPETITION_YEAR)
+          .single()
+
+        // Redirect to dashboard if not accepted for current year
+        if (!participation || participation.accepted !== true) {
           const redirectUrl = new URL('/dashboard', request.url)
           return NextResponse.redirect(redirectUrl)
         }

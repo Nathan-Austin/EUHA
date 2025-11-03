@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { revalidatePath } from 'next/cache'
 import { sendEmail, emailTemplates } from '@/lib/email'
+import { COMPETITION_YEAR } from '@/lib/config'
 
 type SauceStatus = 'registered' | 'arrived' | 'boxed' | 'judged';
 
@@ -427,12 +428,11 @@ export async function generateStickerData() {
     return { error: 'You are not authorized.' };
   }
 
-  // Count judges participating in current year (2026)
-  const currentYear = 2026;
+  // Count judges participating in current year
   const { count: judgeCount, error: judgeError } = await supabase
     .from('judge_participations')
     .select('*', { count: 'exact', head: true })
-    .eq('year', currentYear)
+    .eq('year', COMPETITION_YEAR)
     .eq('accepted', true);
 
   if (judgeError) {
@@ -660,12 +660,11 @@ export async function recordBottleScan(judgeId: string, sauceId: string) {
   }
 
   // Check if judge is participating in current year
-  const currentYear = 2026;
   const { data: participation, error: participationError } = await adminSupabase
     .from('judge_participations')
     .select('email, accepted')
     .eq('email', judge.email)
-    .eq('year', currentYear)
+    .eq('year', COMPETITION_YEAR)
     .single();
 
   if (participationError || !participation) {
@@ -872,12 +871,11 @@ export async function generateJudgeQRCodes() {
 
   const adminSupabase = serviceClientResult.client;
 
-  // Fetch judges participating in current year (2026)
-  const currentYear = 2026;
+  // Fetch judges participating in current year
   const { data: participations, error: participationError } = await adminSupabase
     .from('judge_participations')
     .select('email, judge_type')
-    .eq('year', currentYear)
+    .eq('year', COMPETITION_YEAR)
     .eq('accepted', true)
     .in('judge_type', ['pro', 'community', 'supplier']);
 
@@ -1444,11 +1442,12 @@ export async function sendSupplierInvitations(emails: string[]) {
       });
       results.sent.push(email);
 
-      // Update invited_date in database
+      // Update invited_date in database (only for current year)
       await supabase
         .from('supplier_participations')
         .update({ invited_date: new Date().toISOString(), responded: false })
-        .eq('email', email);
+        .eq('email', email)
+        .eq('year', COMPETITION_YEAR);
     } catch (error: any) {
       results.failed.push({ email, error: error.message });
     }
@@ -1534,11 +1533,12 @@ export async function sendJudgeInvitations(emails: string[]) {
       });
       results.sent.push(email);
 
-      // Update invited_date in database
+      // Update invited_date in database (only for current year)
       await supabase
         .from('judge_participations')
         .update({ invited_date: new Date().toISOString(), responded: false })
-        .eq('email', email);
+        .eq('email', email)
+        .eq('year', COMPETITION_YEAR);
     } catch (error: any) {
       results.failed.push({ email, error: error.message });
     }
@@ -1815,14 +1815,12 @@ export async function getPendingProJudges() {
 
   const adminSupabase = serviceClientResult.client;
 
-  // Get pro judges who have not been accepted for 2026
-  const currentYear = 2026;
-
+  // Get pro judges who have not been accepted for current competition year
   // First get emails of pro judges who are not accepted for current year
   const { data: pendingParticipations, error: participationError } = await adminSupabase
     .from('judge_participations')
     .select('email')
-    .eq('year', currentYear)
+    .eq('year', COMPETITION_YEAR)
     .eq('judge_type', 'pro')
     .eq('accepted', false);
 
@@ -1902,12 +1900,11 @@ export async function approveProJudge(judgeId: string) {
   }
 
   // Update judge_participations to mark as accepted for current year
-  const currentYear = 2026;
   const { error: participationError } = await adminSupabase
     .from('judge_participations')
     .update({ accepted: true })
     .eq('email', judge.email)
-    .eq('year', currentYear);
+    .eq('year', COMPETITION_YEAR);
 
   if (participationError) {
     console.error('Failed to update judge_participations:', participationError);

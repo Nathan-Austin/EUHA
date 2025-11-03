@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
+import { COMPETITION_YEAR } from '../_shared/config.ts';
 
 interface JudgePayload {
   name: string;
@@ -63,7 +64,6 @@ Deno.serve(async (req) => {
     );
 
     const judgeType = mapExperienceToType(payload.experience);
-    const currentYear = 2026; // Competition year
 
     // 1. Create or get auth user first (required for login)
     let authUserId: string;
@@ -162,7 +162,7 @@ Deno.serve(async (req) => {
       .upsert({
         email: payload.email,
         full_name: payload.name,
-        year: currentYear,
+        year: COMPETITION_YEAR,
         application_date: new Date().toISOString(),
         judge_type: judgeType,
         experience_level: payload.experience,

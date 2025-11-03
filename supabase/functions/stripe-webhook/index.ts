@@ -1,6 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import Stripe from 'https://esm.sh/stripe@11.1.0';
 import { corsHeaders } from '../_shared/cors.ts';
+import { COMPETITION_YEAR } from '../_shared/config.ts';
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') ?? '', {
   httpClient: Stripe.createFetchHttpClient(),
@@ -168,12 +169,11 @@ Deno.serve(async (req) => {
           // Don't throw - payment already succeeded
         } else {
           // Update judge_participations to mark as accepted for current year (community judges)
-          const currentYear = 2026;
           const { error: participationError } = await supabaseAdmin
             .from('judge_participations')
             .update({ accepted: true })
             .eq('email', judge.email)
-            .eq('year', currentYear);
+            .eq('year', COMPETITION_YEAR);
 
           if (participationError) {
             console.error('Failed to update judge_participations:', participationError);

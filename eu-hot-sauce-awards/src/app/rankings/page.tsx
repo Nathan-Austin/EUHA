@@ -5,6 +5,7 @@ import type { Metadata } from 'next';
 import { createClient } from '@/lib/supabase/server';
 import Image from 'next/image';
 import Link from 'next/link';
+import { COMPETITION_YEAR } from '@/lib/config';
 
 export const metadata: Metadata = {
   title: 'Global Rankings | EU Hot Sauce Awards',
@@ -49,7 +50,6 @@ async function getTopRankings(year: number = 2025) {
 
 const RankingsPage = async () => {
   const rankings = await getTopRankings();
-  const currentYear = 2025;
 
   const getCountryFlag = (country: string | null) => {
     if (!country) return '';
@@ -81,7 +81,7 @@ const RankingsPage = async () => {
     <div className="bg-[#08040e] min-h-screen">
       <Hero
         title="Global Rankings"
-        subtitle={`Top ${rankings.length} Hot Sauces of ${currentYear}`}
+        subtitle={`Top ${rankings.length} Hot Sauces of ${COMPETITION_YEAR}`}
       />
 
       <div className="space-y-10 md:space-y-16 py-10 md:py-16">
@@ -89,7 +89,7 @@ const RankingsPage = async () => {
           <div className="max-w-6xl mx-auto">
             <div className="flex justify-center mb-8">
               <div className="bg-black/30 py-3 px-6 rounded-full border border-white/20">
-                <span className="text-xl font-bold text-amber-200 uppercase tracking-wider">{currentYear} Rankings</span>
+                <span className="text-xl font-bold text-amber-200 uppercase tracking-wider">{COMPETITION_YEAR} Rankings</span>
               </div>
             </div>
 
@@ -187,10 +187,10 @@ const RankingsPage = async () => {
 
                 <div className="mt-8 text-center">
                   <Link
-                    href={`/results/${currentYear}`}
+                    href={`/results/${COMPETITION_YEAR}`}
                     className="inline-block rounded-full bg-gradient-to-r from-[#ff4d00] to-[#f1b12e] px-8 py-4 text-sm font-semibold uppercase tracking-[0.2em] text-white transition hover:from-[#ff7033] hover:to-[#ffd060]"
                   >
-                    View All {currentYear} Results
+                    View All {COMPETITION_YEAR} Results
                   </Link>
                 </div>
               </>

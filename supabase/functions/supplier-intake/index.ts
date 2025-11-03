@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
+import { COMPETITION_YEAR } from '../_shared/config.ts';
 
 // Define the expected payload structure
 interface SaucePayload {
@@ -230,14 +231,13 @@ Deno.serve(async (req) => {
     if (judgeError) throw judgeError;
 
     // 4. Track participation in current year
-    const currentYear = 2026; // Competition year
     currentStep = 'track-judge-participation';
     const { error: participationError } = await supabaseAdmin
       .from('judge_participations')
       .upsert({
         email: trimmedEmail,
         full_name: payload.contactName || payload.brand,
-        year: currentYear,
+        year: COMPETITION_YEAR,
         application_date: new Date().toISOString(),
         judge_type: 'supplier',
         company_affiliation: payload.brand,
