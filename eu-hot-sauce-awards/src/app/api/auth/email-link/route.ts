@@ -76,7 +76,9 @@ export async function POST(request: Request) {
       console.warn('Name lookup for email link failed', nameLookupError);
     }
 
-    const redirectTo = `${SITE_URL}/auth/callback`;
+    // Magic links use hash-based tokens that need client-side handling
+    // Redirect directly to the client-side auth handler instead of server callback
+    const redirectTo = `${SITE_URL}/auth/auth-code-error`;
     const generateLinkPayload = {
       type: 'magiclink',
       email,

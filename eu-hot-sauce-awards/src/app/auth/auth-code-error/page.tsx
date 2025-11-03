@@ -67,21 +67,26 @@ export default function AuthCodeError() {
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100">
       <div className="w-full max-w-md p-8 space-y-6 text-center bg-white rounded-lg shadow-md">
-        <h1 className="text-2xl font-bold text-red-600">
-          Authentication Error
-        </h1>
-
         {processing ? (
           <>
+            <div className="flex justify-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+            </div>
+            <h1 className="text-2xl font-bold text-gray-900">
+              Completing Sign In...
+            </h1>
             <p className="text-gray-700">
-              Hang tight&mdash;we&apos;re finalising your login.
+              Please wait while we complete your authentication.
             </p>
             <p className="text-gray-600 text-sm">
-              If nothing happens, you can safely close this tab and try again.
+              You&apos;ll be redirected to your dashboard shortly.
             </p>
           </>
         ) : (
           <>
+            <h1 className="text-2xl font-bold text-red-600">
+              Authentication Error
+            </h1>
             <p className="text-gray-700">
               The login link is invalid or has expired.
             </p>
