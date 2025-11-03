@@ -172,7 +172,7 @@ Deno.serve(async (req) => {
           const { error: participationError } = await supabaseAdmin
             .from('judge_participations')
             .update({ accepted: true })
-            .eq('email', judge.email)
+            .ilike('email', judge.email)
             .eq('year', COMPETITION_YEAR);
 
           if (participationError) {

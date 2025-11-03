@@ -123,7 +123,7 @@ Deno.serve(async (req) => {
     const { data: existingJudge } = await supabaseAdmin
       .from('judges')
       .select('active, type, stripe_payment_status')
-      .eq('email', payload.email)
+      .ilike('email', payload.email)
       .single();
 
     // Determine if we should reset stripe_payment_status
