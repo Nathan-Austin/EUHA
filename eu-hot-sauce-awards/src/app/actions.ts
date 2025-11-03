@@ -1255,10 +1255,11 @@ export async function getPreviousSuppliers() {
     return { error: 'You are not authorized.' };
   }
 
-  // Get all suppliers from participation table
+  // Get all suppliers from participation table (excluding current competition year)
   const { data: supplierParticipations, error: suppliersError } = await supabase
     .from('supplier_participations')
     .select('email, company_name, year, invited_date')
+    .neq('year', COMPETITION_YEAR)
     .order('year', { ascending: false });
 
   if (suppliersError) {
@@ -1277,14 +1278,26 @@ export async function getPreviousSuppliers() {
 
   const judgeEmails = new Set(judges?.map(j => j.email.toLowerCase()) || []);
 
-  // Deduplicate and exclude supplier-judges
+  // Get suppliers who have already signed up for current year (to exclude them)
+  const { data: currentYearSuppliers, error: currentYearError } = await supabase
+    .from('supplier_participations')
+    .select('email')
+    .eq('year', COMPETITION_YEAR);
+
+  if (currentYearError) {
+    return { error: `Failed to fetch current year suppliers: ${currentYearError.message}` };
+  }
+
+  const currentYearEmails = new Set(currentYearSuppliers?.map(s => s.email.toLowerCase()) || []);
+
+  // Deduplicate and exclude supplier-judges and current year participants
   const uniqueSuppliers = new Map<string, PreviousParticipant>();
 
   supplierParticipations?.forEach((sp: any) => {
     const emailLower = sp.email.toLowerCase();
 
-    // Skip if this email is a judge
-    if (judgeEmails.has(emailLower)) {
+    // Skip if this email is a judge or already signed up for current year
+    if (judgeEmails.has(emailLower) || currentYearEmails.has(emailLower)) {
       return;
     }
 
@@ -1324,10 +1337,11 @@ export async function getPreviousJudges() {
     return { error: 'You are not authorized.' };
   }
 
-  // Get all judge participations
+  // Get all judge participations (excluding current competition year)
   const { data: judgeParticipations, error: judgesError } = await supabase
     .from('judge_participations')
     .select('email, full_name, year, judge_type, invited_date')
+    .neq('year', COMPETITION_YEAR)
     .order('year', { ascending: false });
 
   if (judgesError) {
@@ -1345,14 +1359,26 @@ export async function getPreviousJudges() {
 
   const supplierEmails = new Set(suppliers?.map(s => s.email.toLowerCase()) || []);
 
-  // Deduplicate and exclude suppliers
+  // Get judges who have already signed up for current year (to exclude them)
+  const { data: currentYearJudges, error: currentYearError } = await supabase
+    .from('judge_participations')
+    .select('email')
+    .eq('year', COMPETITION_YEAR);
+
+  if (currentYearError) {
+    return { error: `Failed to fetch current year judges: ${currentYearError.message}` };
+  }
+
+  const currentYearEmails = new Set(currentYearJudges?.map(j => j.email.toLowerCase()) || []);
+
+  // Deduplicate and exclude suppliers and current year participants
   const uniqueJudges = new Map<string, PreviousParticipant & { judgeType: string }>();
 
   judgeParticipations?.forEach((jp: any) => {
     const emailLower = jp.email.toLowerCase();
 
-    // Skip if this email is a supplier (non-judge supplier)
-    if (supplierEmails.has(emailLower) && jp.judge_type === 'supplier') {
+    // Skip if this email is a supplier (non-judge supplier) or already signed up for current year
+    if ((supplierEmails.has(emailLower) && jp.judge_type === 'supplier') || currentYearEmails.has(emailLower)) {
       return;
     }
 
