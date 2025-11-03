@@ -69,6 +69,12 @@ export async function middleware(request: NextRequest) {
 
   // For authenticated users on protected routes, check permissions
   if (isProtectedPath && user) {
+    // Ensure user has an email
+    if (!user.email) {
+      const redirectUrl = new URL('/login', request.url)
+      return NextResponse.redirect(redirectUrl)
+    }
+
     const { data: judge } = await supabase
       .from('judges')
       .select('type, active, stripe_payment_status')
@@ -103,7 +109,7 @@ export async function middleware(request: NextRequest) {
         const { data: participation } = await supabase
           .from('judge_participations')
           .select('accepted')
-          .ilike('email', user.email)
+          .ilike('email', user.email!) // user.email is guaranteed to exist due to guard clause above
           .eq('year', COMPETITION_YEAR)
           .single()
 
