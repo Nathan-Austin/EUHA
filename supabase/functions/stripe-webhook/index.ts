@@ -1,11 +1,11 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import Stripe from 'https://esm.sh/stripe@11.1.0';
+import Stripe from 'https://esm.sh/stripe@14.21.0?target=deno';
 import { corsHeaders } from '../_shared/cors.ts';
 import { COMPETITION_YEAR } from '../_shared/config.ts';
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') ?? '', {
   httpClient: Stripe.createFetchHttpClient(),
-  apiVersion: '2023-10-16',
+  apiVersion: '2024-06-20',
 });
 
 const projectUrl = Deno.env.get('PROJECT_URL');
