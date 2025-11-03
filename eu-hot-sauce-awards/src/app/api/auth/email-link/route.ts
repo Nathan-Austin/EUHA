@@ -66,7 +66,7 @@ export async function POST(request: Request) {
       const { data: judge } = await adminSupabase
         .from('judges')
         .select('name')
-        .eq('email', email)
+        .ilike('email', email)
         .maybeSingle();
 
       if (judge?.name) {

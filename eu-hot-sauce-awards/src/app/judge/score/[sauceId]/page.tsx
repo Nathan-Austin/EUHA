@@ -23,7 +23,7 @@ export default async function ScorePage({ params }: ScorePageProps) {
   const { data: judge } = await supabase
     .from('judges')
     .select('id')
-    .eq('email', user.email)
+    .ilike('email', user.email)
     .single();
 
   if (!judge) {

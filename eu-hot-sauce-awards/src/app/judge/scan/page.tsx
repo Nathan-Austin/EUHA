@@ -72,7 +72,7 @@ export default function ScanPage() {
         const { data: judge, error: judgeError } = await supabase
           .from('judges')
           .select('id, type, stripe_payment_status')
-          .eq('email', user.email)
+          .ilike('email', user.email)
           .single();
 
         if (judgeError || !judge) {

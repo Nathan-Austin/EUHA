@@ -21,7 +21,7 @@ export async function updateSauceStatus(sauceId: string, newStatus: SauceStatus)
   const { data: judge, error: judgeError } = await supabase
     .from('judges')
     .select('type')
-    .eq('email', user.email)
+    .ilike('email', user.email)
     .single();
 
   if (judgeError || judge?.type !== 'admin') {
@@ -61,7 +61,7 @@ export async function assignSaucesToBox(formData: FormData) {
   const { data: judge, error: judgeError } = await supabase
     .from('judges')
     .select('type')
-    .eq('email', user.email)
+    .ilike('email', user.email)
     .single();
 
   if (judgeError || judge?.type !== 'admin') {
@@ -120,7 +120,7 @@ export async function submitAllScores(scoresJSON: string) {
   const { data: judge, error: judgeError } = await supabase
     .from('judges')
     .select('id, type, active, stripe_payment_status')
-    .eq('email', user.email)
+    .ilike('email', user.email)
     .single();
 
   if (judgeError || !judge) {
@@ -307,7 +307,7 @@ export async function addAdminUser(email: string) {
   const { data: adminCheck, error: adminError } = await supabase
     .from('judges')
     .select('type')
-    .eq('email', user.email)
+    .ilike('email', user.email)
     .single();
 
   if (adminError || adminCheck?.type !== 'admin') {
@@ -322,7 +322,7 @@ export async function addAdminUser(email: string) {
   const { data: existing } = await supabase
     .from('judges')
     .select('id, type')
-    .eq('email', email)
+    .ilike('email', email)
     .single();
 
   if (existing) {
@@ -333,7 +333,7 @@ export async function addAdminUser(email: string) {
     const { error: updateError } = await supabase
       .from('judges')
       .update({ type: 'admin' })
-      .eq('email', email);
+      .ilike('email', email);
 
     if (updateError) {
       return { error: `Failed to update user: ${updateError.message}` };
@@ -421,7 +421,7 @@ export async function generateStickerData() {
   const { data: adminCheck, error: adminError } = await supabase
     .from('judges')
     .select('type')
-    .eq('email', user.email)
+    .ilike('email', user.email)
     .single();
 
   if (adminError || adminCheck?.type !== 'admin') {
@@ -490,7 +490,7 @@ export async function getPackingStatus() {
   const { data: adminCheck, error: adminError } = await supabase
     .from('judges')
     .select('type')
-    .eq('email', user.email)
+    .ilike('email', user.email)
     .single();
 
   if (adminError || adminCheck?.type !== 'admin') {
@@ -563,7 +563,7 @@ export async function getJudgeBoxAssignments(judgeId: string) {
   const { data: adminCheck, error: adminError } = await supabase
     .from('judges')
     .select('type')
-    .eq('email', user.email)
+    .ilike('email', user.email)
     .single();
 
   if (adminError || adminCheck?.type !== 'admin') {
@@ -630,7 +630,7 @@ export async function recordBottleScan(judgeId: string, sauceId: string) {
   const { data: adminCheck, error: adminError } = await supabase
     .from('judges')
     .select('type')
-    .eq('email', user.email)
+    .ilike('email', user.email)
     .single();
 
   if (adminError || adminCheck?.type !== 'admin') {
@@ -663,7 +663,7 @@ export async function recordBottleScan(judgeId: string, sauceId: string) {
   const { data: participation, error: participationError } = await adminSupabase
     .from('judge_participations')
     .select('email, accepted')
-    .eq('email', judge.email)
+    .ilike('email', judge.email)
     .eq('year', COMPETITION_YEAR)
     .single();
 
@@ -825,7 +825,7 @@ export async function manuallyMarkAsBoxed(sauceId: string) {
   const { data: adminCheck, error: adminError } = await supabase
     .from('judges')
     .select('type')
-    .eq('email', user.email)
+    .ilike('email', user.email)
     .single();
 
   if (adminError || adminCheck?.type !== 'admin') {
@@ -857,7 +857,7 @@ export async function generateJudgeQRCodes() {
   const { data: adminCheck, error: adminError } = await supabase
     .from('judges')
     .select('type')
-    .eq('email', user.email)
+    .ilike('email', user.email)
     .single();
 
   if (adminError || adminCheck?.type !== 'admin') {
@@ -981,7 +981,7 @@ export async function checkConflictOfInterest(judgeId: string, sauceId: string) 
   const { data: adminCheck, error: adminError } = await supabase
     .from('judges')
     .select('type')
-    .eq('email', user.email)
+    .ilike('email', user.email)
     .single();
 
   if (adminError || adminCheck?.type !== 'admin') {
@@ -1050,7 +1050,7 @@ export async function submitTrackingInfo(trackingNumber: string, postalServiceNa
   const { data: judge } = await supabase
     .from('judges')
     .select('type')
-    .eq('email', user.email)
+    .ilike('email', user.email)
     .single();
 
   if (!judge || judge.type !== 'supplier') {
@@ -1065,7 +1065,7 @@ export async function submitTrackingInfo(trackingNumber: string, postalServiceNa
       postal_service_name: postalServiceName,
       package_status: 'shipped',
     })
-    .eq('email', user.email);
+    .ilike('email', user.email);
 
   if (error) {
     return { error: `Failed to submit tracking: ${error.message}` };
@@ -1076,7 +1076,7 @@ export async function submitTrackingInfo(trackingNumber: string, postalServiceNa
     const { data: supplier } = await supabase
       .from('suppliers')
       .select('brand_name')
-      .eq('email', user.email)
+      .ilike('email', user.email)
       .single();
 
     if (supplier) {
@@ -1110,7 +1110,7 @@ export async function markPackageReceived(supplierId: string) {
   const { data: adminCheck, error: adminError } = await supabase
     .from('judges')
     .select('type')
-    .eq('email', user.email)
+    .ilike('email', user.email)
     .single();
 
   if (adminError || adminCheck?.type !== 'admin') {
@@ -1180,7 +1180,7 @@ export async function getJudgeScoredSauces() {
   const { data: judge } = await supabase
     .from('judges')
     .select('id')
-    .eq('email', user.email)
+    .ilike('email', user.email)
     .single();
 
   if (!judge) {
@@ -1248,7 +1248,7 @@ export async function getPreviousSuppliers() {
   const { data: adminCheck, error: adminError } = await supabase
     .from('judges')
     .select('type')
-    .eq('email', user.email)
+    .ilike('email', user.email)
     .single();
 
   if (adminError || adminCheck?.type !== 'admin') {
@@ -1317,7 +1317,7 @@ export async function getPreviousJudges() {
   const { data: adminCheck, error: adminError } = await supabase
     .from('judges')
     .select('type')
-    .eq('email', user.email)
+    .ilike('email', user.email)
     .single();
 
   if (adminError || adminCheck?.type !== 'admin') {
@@ -1386,7 +1386,7 @@ export async function sendSupplierInvitations(emails: string[]) {
   const { data: adminCheck, error: adminError } = await supabase
     .from('judges')
     .select('type')
-    .eq('email', user.email)
+    .ilike('email', user.email)
     .single();
 
   if (adminError || adminCheck?.type !== 'admin') {
@@ -1446,7 +1446,7 @@ export async function sendSupplierInvitations(emails: string[]) {
       await supabase
         .from('supplier_participations')
         .update({ invited_date: new Date().toISOString(), responded: false })
-        .eq('email', email)
+        .ilike('email', email)
         .eq('year', COMPETITION_YEAR);
     } catch (error: any) {
       results.failed.push({ email, error: error.message });
@@ -1472,7 +1472,7 @@ export async function sendJudgeInvitations(emails: string[]) {
   const { data: adminCheck, error: adminError } = await supabase
     .from('judges')
     .select('type')
-    .eq('email', user.email)
+    .ilike('email', user.email)
     .single();
 
   if (adminError || adminCheck?.type !== 'admin') {
@@ -1537,7 +1537,7 @@ export async function sendJudgeInvitations(emails: string[]) {
       await supabase
         .from('judge_participations')
         .update({ invited_date: new Date().toISOString(), responded: false })
-        .eq('email', email)
+        .ilike('email', email)
         .eq('year', COMPETITION_YEAR);
     } catch (error: any) {
       results.failed.push({ email, error: error.message });
@@ -1566,7 +1566,7 @@ export async function getEmailTemplates() {
   const { data: adminCheck, error: adminError } = await supabase
     .from('judges')
     .select('type')
-    .eq('email', user.email)
+    .ilike('email', user.email)
     .single();
 
   if (adminError || adminCheck?.type !== 'admin') {
@@ -1596,7 +1596,7 @@ export async function getEmailTemplate(templateKey: string) {
   const { data: adminCheck, error: adminError } = await supabase
     .from('judges')
     .select('type')
-    .eq('email', user.email)
+    .ilike('email', user.email)
     .single();
 
   if (adminError || adminCheck?.type !== 'admin') {
@@ -1635,7 +1635,7 @@ export async function updateEmailTemplate(
   const { data: adminCheck, error: adminError } = await supabase
     .from('judges')
     .select('type')
-    .eq('email', user.email)
+    .ilike('email', user.email)
     .single();
 
   if (adminError || adminCheck?.type !== 'admin') {
@@ -1679,7 +1679,7 @@ export async function sendTestSupplierEmail(testEmail: string, brandName: string
   const { data: adminCheck, error: adminError } = await supabase
     .from('judges')
     .select('type')
-    .eq('email', user.email)
+    .ilike('email', user.email)
     .single();
 
   if (adminError || adminCheck?.type !== 'admin') {
@@ -1732,7 +1732,7 @@ export async function sendTestJudgeEmail(testEmail: string, judgeName: string, j
   const { data: adminCheck, error: adminError } = await supabase
     .from('judges')
     .select('type')
-    .eq('email', user.email)
+    .ilike('email', user.email)
     .single();
 
   if (adminError || adminCheck?.type !== 'admin') {
@@ -1801,7 +1801,7 @@ export async function getPendingProJudges() {
   const { data: adminCheck, error: adminError } = await supabase
     .from('judges')
     .select('type')
-    .eq('email', user.email)
+    .ilike('email', user.email)
     .single();
 
   if (adminError || adminCheck?.type !== 'admin') {
@@ -1860,7 +1860,7 @@ export async function approveProJudge(judgeId: string) {
   const { data: adminCheck, error: adminError } = await supabase
     .from('judges')
     .select('type')
-    .eq('email', user.email)
+    .ilike('email', user.email)
     .single();
 
   if (adminError || adminCheck?.type !== 'admin') {
@@ -1903,7 +1903,7 @@ export async function approveProJudge(judgeId: string) {
   const { error: participationError } = await adminSupabase
     .from('judge_participations')
     .update({ accepted: true })
-    .eq('email', judge.email)
+    .ilike('email', judge.email)
     .eq('year', COMPETITION_YEAR);
 
   if (participationError) {
@@ -1950,7 +1950,7 @@ export async function rejectProJudge(judgeId: string, reason?: string) {
   const { data: adminCheck, error: adminError } = await supabase
     .from('judges')
     .select('type')
-    .eq('email', user.email)
+    .ilike('email', user.email)
     .single();
 
   if (adminError || adminCheck?.type !== 'admin') {

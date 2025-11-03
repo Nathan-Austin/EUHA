@@ -21,7 +21,7 @@ export default async function DashboardPage() {
   const { data: judges, error: judgeQueryError } = await supabase
     .from('judges')
     .select('id, type, stripe_payment_status')
-    .eq('email', user.email)
+    .ilike('email', user.email)
 
   if (judgeQueryError) {
     return (
@@ -68,7 +68,7 @@ export default async function DashboardPage() {
         const { data: supplier } = await supabase
           .from('suppliers')
           .select('id, brand_name, tracking_number, postal_service_name, package_status, package_received_at')
-          .eq('email', user.email!)
+          .ilike('email', user.email!)
           .single();
 
         if (!supplier) {

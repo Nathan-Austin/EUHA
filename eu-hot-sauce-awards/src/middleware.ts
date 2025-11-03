@@ -72,7 +72,7 @@ export async function middleware(request: NextRequest) {
     const { data: judge } = await supabase
       .from('judges')
       .select('type, active, stripe_payment_status')
-      .eq('email', user.email)
+      .ilike('email', user.email)
       .single()
 
     if (judge) {
@@ -103,7 +103,7 @@ export async function middleware(request: NextRequest) {
         const { data: participation } = await supabase
           .from('judge_participations')
           .select('accepted')
-          .eq('email', user.email)
+          .ilike('email', user.email)
           .eq('year', COMPETITION_YEAR)
           .single()
 
