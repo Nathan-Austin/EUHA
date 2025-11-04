@@ -82,7 +82,7 @@ export default function Home() {
           <div className="rounded-3xl border border-white/15 bg-white/[0.07] p-8 backdrop-blur">
             <h2 className="text-center text-sm font-semibold uppercase tracking-[0.25em] text-amber-200/80 mb-6">Welcome to the Heat Awards</h2>
             <p className="text-center text-base text-white/75 sm:text-lg max-w-3xl mx-auto">
-              The European Hot Sauce Awards are back for our third year, bringing together the finest producers, judges, and chili fans from across the continent and beyond. We champion craftsmanship, innovation, and sustainability in the world of hot sauce.
+              The European Hot Sauce Awards are back for our third year, bringing together the finest producers, judges, and chili fans from across the continent and beyond. We champion craftsmanship, innovation, and sustainability in the world of hot sauce. Entry is open to all — European (continental) and international entries are judged separately.
             </p>
           </div>
         </SectionContainer>
