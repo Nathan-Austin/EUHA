@@ -2,13 +2,16 @@
 const nextConfig = {
   images: {
     unoptimized: true, // 👈 disable Vercel image optimization
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'csweurtdldauwrthqafo.supabase.co',
-        pathname: '/storage/v1/object/public/**',
-      },
-    ],
+    // remotePatterns disabled: Supabase storage images are no longer used
+    // Keeping this commented for easy restore if needed during testing.
+    // remotePatterns: [
+    //   {
+    //     protocol: 'https',
+    //     hostname: 'csweurtdldauwrthqafo.supabase.co',
+    //     pathname: '/storage/v1/object/public/**',
+    //   },
+    // ],
+    remotePatterns: [],
   },
   async redirects() {
     return [

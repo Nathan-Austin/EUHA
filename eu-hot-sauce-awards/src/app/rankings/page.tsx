@@ -130,10 +130,10 @@ const RankingsPage = async () => {
                             </td>
                             <td className="p-4">
                               <div className="flex items-center gap-4">
-                                {sauce.product_image_url && (
+                                {sauce.code && (
                                   <div className="relative w-16 h-16 rounded-lg overflow-hidden bg-black/20 flex-shrink-0">
                                     <Image
-                                      src={sauce.product_image_url}
+                                      src={`/images/${sauce.code}.jpg`}
                                       alt={sauce.entry_name}
                                       fill
                                       className="object-contain"
