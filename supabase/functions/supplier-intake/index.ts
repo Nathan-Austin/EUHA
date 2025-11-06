@@ -260,7 +260,7 @@ Deno.serve(async (req) => {
       .upsert({
         email: trimmedEmail,
         company_name: payload.brand,
-        year: currentYear,
+        year: COMPETITION_YEAR,
         sauce_count: sauceCount,
         participated: true,
         source: 'wordpress'
