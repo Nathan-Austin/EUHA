@@ -1,9 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
+import { COMPETITION_YEAR } from '../eu-hot-sauce-awards/src/lib/config';
 
 /**
  * Script to invite judges to Supabase Auth
  *
- * This script finds judges who are accepted for 2026 but don't have auth accounts,
+ * This script finds judges who are accepted for the current competition year but don't have auth accounts,
  * and creates auth accounts for them so they can use magic link login.
  *
  * Run with: npx tsx scripts/invite-judges-to-auth.ts
@@ -27,11 +28,11 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
 });
 
 async function findJudgesWithoutAuth() {
-  // Get all accepted judges for 2026
+  // Get all accepted judges for this season
   const { data: participations, error: participationError } = await supabase
     .from('judge_participations')
     .select('email, full_name, judge_type')
-    .eq('year', 2026)
+    .eq('year', COMPETITION_YEAR)
     .eq('accepted', true);
 
   if (participationError) {
@@ -99,7 +100,7 @@ async function main() {
   const judges = await findJudgesWithoutAuth();
 
   if (!judges || judges.length === 0) {
-    console.log('✅ All accepted judges for 2026 have auth accounts!');
+    console.log(`✅ All accepted judges for ${COMPETITION_YEAR} have auth accounts!`);
     return;
   }
 

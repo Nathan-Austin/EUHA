@@ -1,4 +1,5 @@
 import { createClient as createServiceClient } from '@supabase/supabase-js'
+import { COMPETITION_YEAR } from '@/lib/config'
 import CollapsibleSection from './CollapsibleSection'
 
 interface Judge {
@@ -180,11 +181,11 @@ export default async function JudgeAnalysis() {
   let error: string | null = null
 
   try {
-    // Fetch judge participations for 2026 using service role to bypass RLS
+    // Fetch judge participations for the current competition year using service role to bypass RLS
     const { data: participations, error: participationsError } = await adminSupabase
       .from('judge_participations')
       .select('email, accepted')
-      .eq('year', 2026)
+      .eq('year', COMPETITION_YEAR)
 
     if (participationsError) {
       throw participationsError
@@ -204,7 +205,7 @@ export default async function JudgeAnalysis() {
       }
       // Don't throw error, just show empty state
     } else {
-      // Fetch all judges who have participation records for 2026 using service role to bypass RLS
+      // Fetch all judges who have participation records for the current competition year using service role to bypass RLS
       const { data: judgesData, error: judgesError } = await adminSupabase
         .from('judges')
         .select('email, name, type, active, stripe_payment_status, created_at')
@@ -246,7 +247,7 @@ export default async function JudgeAnalysis() {
         const PAYMENT_MIGRATION_DATE = new Date('2025-10-11T00:00:00Z')
 
         transformedJudges.forEach((judge) => {
-          // Use participation_accepted as the primary indicator for 2026 participation
+          // Use participation_accepted as the primary indicator for participation this season
           if (judge.type === 'supplier') {
             if (judge.participation_accepted) {
               grouped.supplier.active.push(judge)
