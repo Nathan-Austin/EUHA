@@ -704,6 +704,20 @@ export default function SupplierApplyPage() {
                     📄 Download Packing Sheet (PDF)
                   </Link>
                 </div>
+                <div className="mt-4 pt-4 border-t border-emerald-300/20">
+                  <p className="mb-2 text-emerald-100 font-semibold">🚚 After shipping your sauces:</p>
+                  <ol className="list-decimal list-inside space-y-2 text-sm text-emerald-100/90">
+                    <li>Check your email for a login link from the EU Hot Sauce Awards</li>
+                    <li>Click the link to access your supplier dashboard</li>
+                    <li>Add your tracking number and postal service information</li>
+                  </ol>
+                  <p className="mt-3 text-xs text-emerald-100/80">
+                    💡 This helps us track your shipment and notify you when we receive your sauces. You can log in anytime at{' '}
+                    <Link href="/login" className="underline hover:text-emerald-50">
+                      euhotsauceawards.com/login
+                    </Link>
+                  </p>
+                </div>
               </div>
             )}
             {errorMessage && (
