@@ -73,7 +73,27 @@ Deno.serve(async (req) => {
           (new Date().getTime() - new Date(payment.created_at).getTime()) / (1000 * 60 * 60 * 24)
         );
 
-        // Send reminder email
+        // Generate magic link so supplier can login to complete payment
+        let magicLink = 'https://heatawards.eu/login';
+        try {
+          const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+            type: 'magiclink',
+            email: supplier.email,
+            options: {
+              redirectTo: 'https://heatawards.eu/auth/callback',
+            },
+          });
+
+          if (!linkError && linkData) {
+            magicLink = linkData.properties.action_link;
+          } else {
+            console.error('Failed to generate magic link for:', supplier.email, linkError);
+          }
+        } catch (linkErr) {
+          console.error('Error generating magic link:', linkErr);
+        }
+
+        // Send reminder email with magic link
         const emailResponse = await fetch(`${emailApiUrl}/api/send-email`, {
           method: 'POST',
           headers: {
@@ -89,6 +109,7 @@ Deno.serve(async (req) => {
               amount: (payment.amount_due_cents / 100).toFixed(2),
               daysSinceRegistration: daysSince,
               paymentId: payment.id,
+              magicLink: magicLink,
             },
           }),
         });
