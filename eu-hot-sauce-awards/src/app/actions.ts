@@ -188,15 +188,17 @@ export async function exportResults() {
   if (adminError || adminCheck?.type !== 'admin') return { error: 'You are not authorized.' };
 
   // 1. Fetch all scores with judge and category info
+  // IMPORTANT: Only export scores for PAID sauces to prevent unpaid entries from appearing in results
   const { data: scoresData, error: scoresError } = await supabase
     .from('judging_scores')
     .select(`
       score,
       sauce_id,
-      sauces ( name, suppliers ( brand_name ) ),
+      sauces!inner ( name, payment_status, suppliers ( brand_name ) ),
       judges ( type ),
       judging_categories ( name, weight )
-    `);
+    `)
+    .eq('sauces.payment_status', 'paid');
 
   if (scoresError) return { error: `Error fetching scores: ${scoresError.message}` };
   if (!scoresData || scoresData.length === 0) return { error: 'No scores to export.' };

@@ -521,4 +521,50 @@ export const emailTemplates = {
     `,
     text: `Dear ${name}, we'd love to have you back as a ${judgeType === 'pro' ? 'Professional' : 'Community'} Judge for the EU Hot Sauce Awards 2026! Register at https://heatawards.eu/apply/judge. Application deadline: February 15, 2026.`,
   }),
+
+  paymentReminder: (brandName: string, entryCount: number, amount: string, daysSinceRegistration: number) => ({
+    subject: 'EU Hot Sauce Awards - Payment Pending for Your Entry',
+    html: `
+      ${emailBanner}
+      <div style="padding: 20px; font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h1 style="color: #ff4d00;">Payment Reminder</h1>
+        <p>Dear ${brandName},</p>
+
+        <p>We noticed your sauce entry is still pending payment. Your ${entryCount} sauce ${entryCount > 1 ? 'entries are' : 'entry is'} registered but not yet confirmed.</p>
+
+        <div style="background-color: #fff3cd; border: 2px solid #ff4d00; padding: 15px; margin: 20px 0; border-radius: 5px;">
+          <h3 style="color: #ff4d00; margin-top: 0;">📋 Entry Summary</h3>
+          <ul style="margin: 10px 0;">
+            <li><strong>Entries:</strong> ${entryCount} sauce${entryCount > 1 ? 's' : ''}</li>
+            <li><strong>Amount Due:</strong> €${amount}</li>
+            <li><strong>Registered:</strong> ${daysSinceRegistration} day${daysSinceRegistration !== 1 ? 's' : ''} ago</li>
+          </ul>
+        </div>
+
+        <h2 style="color: #ff4d00;">Complete Your Payment</h2>
+        <p>To confirm your entry and avoid losing your spot:</p>
+        <ol>
+          <li>Log in to your dashboard at <a href="https://heatawards.eu/login" style="color: #ff4d00;">heatawards.eu/login</a></li>
+          <li>Click the "Complete Payment" button</li>
+          <li>Finish the secure Stripe checkout</li>
+        </ol>
+
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="https://heatawards.eu/login" style="background-color: #ff4d00; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">Complete Payment Now</a>
+        </div>
+
+        <div style="background-color: #f8f9fa; border-left: 4px solid #ff4d00; padding: 15px; margin: 20px 0;">
+          <p style="margin: 0;"><strong>⏰ Important:</strong> Unpaid entries will not be included in the competition. Please complete payment soon to secure your spot!</p>
+        </div>
+
+        <p>Once payment is confirmed, you'll receive a confirmation email with shipping instructions for your samples.</p>
+
+        <p>Questions? Contact us at heataward@gmail.com</p>
+
+        <p>Best regards,<br>
+        <strong>The EU Hot Sauce Awards Team</strong></p>
+      </div>
+    `,
+    text: `Payment Reminder - Dear ${brandName}, your ${entryCount} sauce ${entryCount > 1 ? 'entries are' : 'entry is'} still pending payment (€${amount}). Log in at https://heatawards.eu/login to complete payment and confirm your entry. Registered ${daysSinceRegistration} days ago.`,
+  }),
 };

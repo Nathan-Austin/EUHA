@@ -305,6 +305,19 @@ Deno.serve(async (req) => {
 
         console.log('Supplier payment status updated successfully');
 
+        // Update all sauces linked to this payment to mark them as paid
+        const { error: sauceUpdateError } = await supabaseAdmin
+          .from('sauces')
+          .update({ payment_status: 'paid' })
+          .eq('payment_id', paymentId);
+
+        if (sauceUpdateError) {
+          console.error('Failed to update sauce payment status', sauceUpdateError);
+          // Don't throw - payment already succeeded, this is a secondary operation
+        } else {
+          console.log('Sauce payment status updated to paid for payment:', paymentId);
+        }
+
         // Create or update judge profile for supplier
         const { error: judgeError } = await supabaseAdmin
           .from('judges')

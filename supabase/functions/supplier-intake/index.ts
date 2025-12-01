@@ -320,6 +320,7 @@ Deno.serve(async (req) => {
         sauce_code: sauceCode,
         status: 'registered',
         webshop_link: sauce.webshopLink || null,
+        payment_status: 'pending_payment',
       });
     }
 

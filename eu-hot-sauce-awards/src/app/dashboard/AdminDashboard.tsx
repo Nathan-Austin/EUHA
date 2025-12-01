@@ -15,6 +15,7 @@ import EmailTemplateEditor from './EmailTemplateEditor'
 import ProJudgeApproval from './ProJudgeApproval'
 import JudgeAnalysis from './JudgeAnalysis'
 import AdminTabs from './AdminTabs'
+import SendPaymentRemindersButton from './SendPaymentRemindersButton'
 
 const formatStatusLabel = (status: string) =>
   status
@@ -50,6 +51,7 @@ export default async function AdminDashboard() {
         name,
         sauce_code,
         status,
+        payment_status,
         category,
         suppliers ( brand_name )
       `
@@ -72,6 +74,8 @@ export default async function AdminDashboard() {
   }
 
   const totalSauces = sauces.length
+  const paidSauces = sauces.filter((sauce) => sauce.payment_status === 'paid').length
+  const unpaidSauces = sauces.filter((sauce) => sauce.payment_status === 'pending_payment').length
   const statusCounts = sauces.reduce((acc, sauce) => {
     const statusKey = sauce.status || 'unknown'
     acc[statusKey] = (acc[statusKey] || 0) + 1
@@ -93,6 +97,8 @@ export default async function AdminDashboard() {
 
   const overviewStats = [
     { label: 'Total Sauces', value: totalSauces },
+    { label: 'Paid Sauces', value: paidSauces, highlight: true },
+    { label: 'Unpaid Sauces', value: unpaidSauces, warning: unpaidSauces > 0 },
     { label: 'Missing Codes', value: missingCodes },
     { label: 'Packages In Transit', value: packagesInTransit },
     { label: 'Awaiting Check-In', value: packagesAwaitingCheckIn },
@@ -119,15 +125,30 @@ export default async function AdminDashboard() {
                 <ExportResultsButton />
               </div>
             </div>
-            <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
               {overviewStats.map((stat) => (
-                <div key={stat.label} className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
-                  <p className="text-xs font-medium uppercase tracking-wide text-gray-500">{stat.label}</p>
-                  <p className="mt-1 text-2xl font-semibold text-gray-900">{stat.value}</p>
+                <div key={stat.label} className={`rounded-xl border px-4 py-3 ${
+                  stat.warning
+                    ? 'border-orange-300 bg-orange-50'
+                    : stat.highlight
+                    ? 'border-green-300 bg-green-50'
+                    : 'border-gray-200 bg-gray-50'
+                }`}>
+                  <p className={`text-xs font-medium uppercase tracking-wide ${
+                    stat.warning ? 'text-orange-700' : stat.highlight ? 'text-green-700' : 'text-gray-500'
+                  }`}>{stat.label}</p>
+                  <p className={`mt-1 text-2xl font-semibold ${
+                    stat.warning ? 'text-orange-900' : stat.highlight ? 'text-green-900' : 'text-gray-900'
+                  }`}>{stat.value}</p>
                 </div>
               ))}
             </div>
           </Card>
+          {unpaidSauces > 0 && (
+            <Card>
+              <SendPaymentRemindersButton />
+            </Card>
+          )}
         </div>
       ),
     },
@@ -160,6 +181,7 @@ export default async function AdminDashboard() {
                     <th className="px-4 py-3 text-left">Brand</th>
                     <th className="px-4 py-3 text-left">Sauce Name</th>
                     <th className="px-4 py-3 text-left">Category</th>
+                    <th className="px-4 py-3 text-left">Payment</th>
                     <th className="px-4 py-3 text-left">Status</th>
                     <th className="px-4 py-3 text-left">Actions</th>
                   </tr>
@@ -179,6 +201,19 @@ export default async function AdminDashboard() {
                       <td className="px-4 py-3 text-gray-700">{sauce.suppliers?.brand_name || 'N/A'}</td>
                       <td className="px-4 py-3 text-gray-900">{sauce.name}</td>
                       <td className="px-4 py-3 text-gray-600">{sauce.category}</td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={`rounded-full px-2 py-1 text-xs font-semibold ${
+                            sauce.payment_status === 'paid'
+                              ? 'bg-green-100 text-green-800'
+                              : sauce.payment_status === 'pending_payment'
+                              ? 'bg-orange-100 text-orange-800'
+                              : 'bg-gray-100 text-gray-800'
+                          }`}
+                        >
+                          {sauce.payment_status === 'paid' ? '✓ Paid' : sauce.payment_status === 'pending_payment' ? '⚠ Unpaid' : 'Waived'}
+                        </span>
+                      </td>
                       <td className="px-4 py-3">
                         <span
                           className={`rounded-full px-2 py-1 text-xs font-semibold ${

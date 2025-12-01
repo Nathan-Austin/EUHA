@@ -31,13 +31,14 @@ export default async function ScorePage({ params }: ScorePageProps) {
   }
 
   // Fetch sauce details, categories, and verify assignment in parallel
+  // IMPORTANT: Only allow scoring of PAID sauces
   const [
     { data: sauce, error: sauceError },
     { data: categories, error: categoriesError },
     { data: existingScores },
     { data: assignment, error: assignmentError }
   ] = await Promise.all([
-    supabase.from('sauces').select('id, name, sauce_code, supplier_id, suppliers(brand_name)').eq('id', sauceId).single(),
+    supabase.from('sauces').select('id, name, sauce_code, payment_status, supplier_id, suppliers(brand_name)').eq('id', sauceId).eq('payment_status', 'paid').single(),
     supabase.from('judging_categories').select('*'),
     supabase.from('judging_scores').select('id').eq('judge_id', judge.id).eq('sauce_id', sauceId).limit(1),
     supabase.from('box_assignments').select('id').eq('judge_id', judge.id).eq('sauce_id', sauceId).single()

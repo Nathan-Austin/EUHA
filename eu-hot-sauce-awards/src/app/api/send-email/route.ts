@@ -78,6 +78,15 @@ export async function POST(request: NextRequest) {
         break;
       }
 
+      case 'payment_reminder': {
+        const { email, brandName, entryCount, amount, daysSinceRegistration } = data;
+        await sendEmail({
+          to: email,
+          ...emailTemplates.paymentReminder(brandName, entryCount, amount, daysSinceRegistration)
+        });
+        break;
+      }
+
       default:
         return NextResponse.json({ error: 'Invalid email type' }, { status: 400 });
     }
