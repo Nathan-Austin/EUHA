@@ -848,6 +848,159 @@ export async function manuallyMarkAsBoxed(sauceId: string) {
   return { success: true, message: 'Sauce manually marked as boxed.' };
 }
 
+export async function bypassPayment(sauceId: string) {
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+
+  // Admin check
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user?.email) return { error: 'You must be logged in.' };
+
+  const { data: judge, error: judgeError } = await supabase
+    .from('judges')
+    .select('type')
+    .ilike('email', user.email)
+    .single();
+
+  if (judgeError || judge?.type !== 'admin') {
+    return { error: 'You are not authorized.' };
+  }
+
+  // Get sauce and supplier info
+  type SupplierInfo = { id: string; email: string; brand_name: string | null };
+  type SauceWithSupplier = {
+    id: string;
+    name: string;
+    payment_status: string;
+    supplier_id: string;
+    suppliers: SupplierInfo | SupplierInfo[] | null;
+  };
+
+  const { data: sauce, error: sauceError } = await supabase
+    .from('sauces')
+    .select(`
+      id,
+      name,
+      payment_status,
+      supplier_id,
+      suppliers (
+        id,
+        email,
+        brand_name
+      )
+    `)
+    .eq('id', sauceId)
+    .single();
+
+  if (sauceError || !sauce) {
+    return { error: 'Sauce not found.' };
+  }
+
+  const sauceData = sauce as SauceWithSupplier;
+
+  if (sauceData.payment_status !== 'pending_payment') {
+    return { error: `Sauce payment status is already ${sauceData.payment_status}` };
+  }
+
+  // Normalize suppliers (handle both array and single object)
+  const normalizeSupplier = <T>(value: T | T[] | null | undefined): T | null => {
+    if (Array.isArray(value)) {
+      return value[0] ?? null;
+    }
+    return value ?? null;
+  };
+
+  const supplier = normalizeSupplier(sauceData.suppliers);
+
+  if (!supplier?.email) {
+    return { error: 'Supplier email not found.' };
+  }
+
+  const supplierEmail = supplier.email;
+  const brandName = supplier.brand_name || 'Unknown Brand';
+  const supplierId = sauceData.supplier_id;
+
+  // Update ALL sauces from this supplier to 'paid'
+  const { error: updateError } = await supabase
+    .from('sauces')
+    .update({ payment_status: 'paid' })
+    .eq('supplier_id', supplierId);
+
+  if (updateError) {
+    return { error: `Failed to update sauce status: ${updateError.message}` };
+  }
+
+  // Create/activate judge profile
+  const { error: judgeUpsertError } = await supabase
+    .from('judges')
+    .upsert({
+      email: supplierEmail,
+      type: 'supplier',
+      active: true,
+    }, {
+      onConflict: 'email',
+      ignoreDuplicates: false,
+    });
+
+  if (judgeUpsertError) {
+    console.error('Failed to create judge profile:', judgeUpsertError);
+    return { error: 'Failed to create judge profile.' };
+  }
+
+  // Generate and send magic link using service role client
+  const serviceResult = getServiceSupabase();
+  if ('error' in serviceResult) {
+    return { error: serviceResult.error };
+  }
+
+  const { client: serviceClient } = serviceResult;
+
+  try {
+    // Generate magic link
+    const { data: linkData, error: linkError } = await serviceClient.auth.admin.generateLink({
+      type: 'magiclink',
+      email: supplierEmail,
+      options: {
+        redirectTo: `${SITE_URL}/auth/callback`,
+      },
+    });
+
+    if (linkError || !linkData) {
+      console.error('Failed to generate magic link:', linkError);
+      return { error: 'Failed to generate magic link.' };
+    }
+
+    // Send magic link email
+    const emailResponse = await fetch(`${SITE_URL}/api/send-email`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+      },
+      body: JSON.stringify({
+        type: 'supplier_magic_link',
+        data: {
+          email: supplierEmail,
+          brandName: brandName,
+          magicLink: linkData.properties.action_link,
+        },
+      }),
+    });
+
+    if (!emailResponse.ok) {
+      console.error('Failed to send magic link email:', await emailResponse.text());
+      // Don't fail - judge profile and sauce status already updated
+    }
+
+  } catch (emailError) {
+    console.error('Error sending magic link:', emailError);
+    // Don't fail - judge profile and sauce status already updated
+  }
+
+  revalidatePath('/dashboard');
+  return { success: true };
+}
+
 export async function generateJudgeQRCodes() {
   const cookieStore = cookies();
   const supabase = createClient(cookieStore);

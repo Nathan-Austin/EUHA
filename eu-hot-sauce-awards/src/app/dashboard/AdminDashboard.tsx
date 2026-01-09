@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import SauceStatusUpdater from './SauceStatusUpdater'
+import BypassPaymentButton from './BypassPaymentButton'
 import BoxManagement from './BoxManagement'
 import ExportResultsButton from './ExportResultsButton'
 import AddAdminUser from './AddAdminUser'
@@ -230,7 +231,16 @@ export default async function AdminDashboard() {
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        <SauceStatusUpdater sauceId={sauce.id} currentStatus={sauce.status} />
+                        <div className="flex flex-col gap-2">
+                          <SauceStatusUpdater sauceId={sauce.id} currentStatus={sauce.status} />
+                          {sauce.payment_status === 'pending_payment' && (
+                            <BypassPaymentButton
+                              sauceId={sauce.id}
+                              sauceName={sauce.name}
+                              brandName={sauce.suppliers?.brand_name || 'Unknown'}
+                            />
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
