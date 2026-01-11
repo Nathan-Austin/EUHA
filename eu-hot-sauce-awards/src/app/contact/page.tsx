@@ -4,6 +4,7 @@ import Hero from '@/components/Hero';
 import SectionContainer from '@/components/SectionContainer';
 import { sendContactEmail } from './actions';
 import { useState } from 'react';
+import { COMPANY_INFO } from '@/lib/company';
 
 const ContactPage = () => {
   const [status, setStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -37,35 +38,35 @@ const ContactPage = () => {
               <div className="space-y-4 text-white/80">
                 <div>
                   <p className="text-xs uppercase tracking-wider text-white/60 mb-1">Company</p>
-                  <p className="text-base">Chili Punk Berlin</p>
+                  <p className="text-base">{COMPANY_INFO.name}</p>
                 </div>
                 <div>
                   <p className="text-xs uppercase tracking-wider text-white/60 mb-1">Email</p>
-                  <p className="text-base">heataward@gmail.com</p>
+                  <p className="text-base">{COMPANY_INFO.email}</p>
                 </div>
                 <div>
                   <p className="text-xs uppercase tracking-wider text-white/60 mb-1">Phone</p>
-                  <p className="text-base">+4917682204595</p>
+                  <p className="text-base">{COMPANY_INFO.phone}</p>
                 </div>
                 <div>
                   <p className="text-xs uppercase tracking-wider text-white/60 mb-1">WhatsApp</p>
-                  <a href="https://wa.me/4917682204595" className="text-base text-amber-200 hover:text-amber-100 transition">
+                  <a href={`https://wa.me/${COMPANY_INFO.whatsapp.replace(/[^0-9]/g, '')}`} className="text-base text-amber-200 hover:text-amber-100 transition">
                     Message us on WhatsApp
                   </a>
                 </div>
                 <div>
                   <p className="text-xs uppercase tracking-wider text-white/60 mb-1">Address</p>
                   <address className="not-italic text-base">
-                    Chili Punk Berlin<br />
-                    Co/ DUTTON<br />
-                    Urbanstraße 96<br />
-                    10967 Berlin<br />
-                    Germany
+                    {COMPANY_INFO.address.line1}<br />
+                    {COMPANY_INFO.address.line2}<br />
+                    {COMPANY_INFO.address.street}<br />
+                    {COMPANY_INFO.address.postalCode} {COMPANY_INFO.address.city}<br />
+                    {COMPANY_INFO.address.country}
                   </address>
                 </div>
                 <div>
                   <p className="text-xs uppercase tracking-wider text-white/60 mb-1">VAT</p>
-                  <p className="text-base">DE314890098</p>
+                  <p className="text-base">{COMPANY_INFO.vat.number}</p>
                 </div>
               </div>
             </div>

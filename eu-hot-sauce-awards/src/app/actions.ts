@@ -2192,3 +2192,170 @@ export async function rejectProJudge(judgeId: string, reason?: string) {
   revalidatePath('/dashboard');
   return { success: true, message: `Judge application rejected.` };
 }
+
+/**
+ * Send VAT invoice email to a supplier for current year entries
+ */
+export async function sendVatEmail(supplierId: string) {
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+
+  // 1. Check admin authentication
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user?.email) {
+    return { error: 'You must be logged in to perform this action.' };
+  }
+
+  const { data: adminJudge, error: adminError } = await supabase
+    .from('judges')
+    .select('type, email')
+    .ilike('email', user.email)
+    .single();
+
+  if (adminError || adminJudge?.type !== 'admin') {
+    return { error: 'You are not authorized to perform this action.' };
+  }
+
+  // 2. Validate supplier exists
+  const { data: supplier, error: supplierError } = await supabase
+    .from('suppliers')
+    .select('id, brand_name, contact_name, email, address')
+    .eq('id', supplierId)
+    .single();
+
+  if (supplierError || !supplier) {
+    return { error: 'Supplier not found.' };
+  }
+
+  // 3. Get all paid payments for this supplier in current year
+  const currentYear = COMPETITION_YEAR;
+  const yearStart = `${currentYear}-01-01`;
+  const yearEnd = `${currentYear}-12-31`;
+
+  const { data: payments, error: paymentsError } = await supabase
+    .from('supplier_payments')
+    .select('id, entry_count, subtotal_cents, discount_cents, amount_due_cents, created_at')
+    .eq('supplier_id', supplierId)
+    .eq('stripe_payment_status', 'succeeded')
+    .gte('created_at', yearStart)
+    .lte('created_at', yearEnd);
+
+  if (paymentsError) {
+    return { error: `Failed to fetch payments: ${paymentsError.message}` };
+  }
+
+  if (!payments || payments.length === 0) {
+    return { error: 'No paid entries found for this supplier in the current year.' };
+  }
+
+  // 4. Calculate totals (combine all payments)
+  const totalEntries = payments.reduce((sum, p) => sum + p.entry_count, 0);
+  const totalGrossCents = payments.reduce((sum, p) => sum + p.amount_due_cents, 0);
+
+  // Import helper functions from company lib
+  const { COMPANY_INFO, calculateVAT, formatEuro } = await import('@/lib/company');
+
+  const vatBreakdown = calculateVAT(totalGrossCents);
+
+  // 5. Generate invoice number using DB function
+  const serviceSupabase = createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
+  const { data: invoiceNumberResult, error: invoiceError } = await serviceSupabase
+    .rpc('generate_invoice_number', { p_year: currentYear });
+
+  if (invoiceError || !invoiceNumberResult) {
+    return { error: `Failed to generate invoice number: ${invoiceError?.message || 'Unknown error'}` };
+  }
+
+  const invoiceNumber = invoiceNumberResult as string;
+  const invoiceDate = new Date().toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric'
+  });
+
+  // 6. Generate and send email
+  const emailTemplate = emailTemplates.vatInvoice({
+    invoiceNumber,
+    invoiceDate,
+    year: currentYear,
+    supplierName: supplier.brand_name,
+    supplierContactName: supplier.contact_name || '',
+    supplierAddress: supplier.address || '',
+    entryCount: totalEntries,
+    grossAmount: formatEuro(vatBreakdown.gross).replace('€', '').trim(),
+    netAmount: formatEuro(vatBreakdown.net).replace('€', '').trim(),
+    vatAmount: formatEuro(vatBreakdown.vat).replace('€', '').trim(),
+    vatRate: (vatBreakdown.vatRate * 100).toFixed(0),
+    companyName: COMPANY_INFO.name,
+    companyAddress: COMPANY_INFO.address.full,
+    companyVat: COMPANY_INFO.vat.number,
+  });
+
+  try {
+    await sendEmail({
+      to: supplier.email,
+      subject: emailTemplate.subject,
+      html: emailTemplate.html,
+      text: emailTemplate.text,
+    });
+  } catch (emailError: any) {
+    // Log failed attempt
+    await serviceSupabase.from('email_audit').insert({
+      email_type: 'vat_invoice',
+      invoice_number: invoiceNumber,
+      recipient_email: supplier.email,
+      supplier_id: supplierId,
+      year: currentYear,
+      total_entries: totalEntries,
+      gross_amount_cents: totalGrossCents,
+      net_amount_cents: Math.round(vatBreakdown.net * 100),
+      vat_amount_cents: Math.round(vatBreakdown.vat * 100),
+      sent_by_email: adminJudge.email,
+      status: 'failed',
+      error_message: emailError?.message || 'Unknown error',
+      metadata: { payment_ids: payments.map(p => p.id) },
+    });
+
+    return { error: `Failed to send email: ${emailError?.message || 'Unknown error'}` };
+  }
+
+  // 7. Log successful email send
+  const { error: auditError } = await serviceSupabase
+    .from('email_audit')
+    .insert({
+      email_type: 'vat_invoice',
+      invoice_number: invoiceNumber,
+      recipient_email: supplier.email,
+      supplier_id: supplierId,
+      year: currentYear,
+      total_entries: totalEntries,
+      gross_amount_cents: totalGrossCents,
+      net_amount_cents: Math.round(vatBreakdown.net * 100),
+      vat_amount_cents: Math.round(vatBreakdown.vat * 100),
+      sent_by_email: adminJudge.email,
+      status: 'sent',
+      metadata: { payment_ids: payments.map(p => p.id) },
+    });
+
+  if (auditError) {
+    console.error('Failed to log email audit:', auditError);
+    // Don't fail the whole operation if audit logging fails
+  }
+
+  return {
+    success: true,
+    message: `VAT invoice ${invoiceNumber} sent to ${supplier.brand_name} (${supplier.email})`,
+    data: {
+      invoiceNumber,
+      supplierName: supplier.brand_name,
+      entryCount: totalEntries,
+      grossAmount: formatEuro(vatBreakdown.gross),
+      netAmount: formatEuro(vatBreakdown.net),
+      vatAmount: formatEuro(vatBreakdown.vat),
+    }
+  };
+}

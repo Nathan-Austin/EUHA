@@ -17,6 +17,7 @@ import ProJudgeApproval from './ProJudgeApproval'
 import JudgeAnalysis from './JudgeAnalysis'
 import AdminTabs from './AdminTabs'
 import SendPaymentRemindersButton from './SendPaymentRemindersButton'
+import SendVatEmailButton from './SendVatEmailButton'
 
 const formatStatusLabel = (status: string) =>
   status
@@ -124,6 +125,7 @@ export default async function AdminDashboard() {
               </div>
               <div className="flex flex-wrap items-center gap-3">
                 <ExportResultsButton />
+                <SendVatEmailButton />
               </div>
             </div>
             <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
