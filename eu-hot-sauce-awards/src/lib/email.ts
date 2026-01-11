@@ -564,4 +564,98 @@ export const emailTemplates = {
     `,
     text: `Payment Reminder - Dear ${brandName}, your ${entryCount} sauce ${entryCount > 1 ? 'entries are' : 'entry is'} still pending payment (€${amount}). Access your dashboard to complete payment: ${magicLink || 'https://heatawards.eu/login'}. Registered ${daysSinceRegistration} days ago.`,
   }),
+
+  vatInvoice: (params: {
+    invoiceNumber: string;
+    invoiceDate: string;
+    year: number;
+    supplierName: string;
+    supplierContactName: string;
+    supplierAddress: string;
+    entryCount: number;
+    grossAmount: string;
+    netAmount: string;
+    vatAmount: string;
+    vatRate: string;
+    companyName: string;
+    companyAddress: string;
+    companyVat: string;
+  }) => ({
+    subject: `VAT Invoice ${params.invoiceNumber} - EU Hot Sauce Awards ${params.year}`,
+    html: `
+      ${emailBanner}
+      <div style="padding: 20px; font-family: Arial, sans-serif; max-width: 700px; margin: 0 auto;">
+        <div style="text-align: right; color: #666; margin-bottom: 20px;">
+          <p style="margin: 2px 0;"><strong>Invoice Number:</strong> ${params.invoiceNumber}</p>
+          <p style="margin: 2px 0;"><strong>Invoice Date:</strong> ${params.invoiceDate}</p>
+        </div>
+
+        <h1 style="color: #ff4d00; border-bottom: 3px solid #ff4d00; padding-bottom: 10px;">VAT INVOICE</h1>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 30px 0;">
+          <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px;">
+            <h3 style="color: #ff4d00; margin-top: 0;">From:</h3>
+            <p style="margin: 5px 0; font-weight: bold;">${params.companyName}</p>
+            <p style="margin: 2px 0; white-space: pre-line;">${params.companyAddress}</p>
+            <p style="margin: 10px 0 0 0;"><strong>VAT Number:</strong> ${params.companyVat}</p>
+          </div>
+
+          <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px;">
+            <h3 style="color: #ff4d00; margin-top: 0;">To:</h3>
+            <p style="margin: 5px 0; font-weight: bold;">${params.supplierName}</p>
+            ${params.supplierContactName ? `<p style="margin: 2px 0;">Attn: ${params.supplierContactName}</p>` : ''}
+            <p style="margin: 2px 0; white-space: pre-line;">${params.supplierAddress}</p>
+          </div>
+        </div>
+
+        <div style="margin: 30px 0;">
+          <h3 style="color: #ff4d00;">Description</h3>
+          <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+            <thead>
+              <tr style="background-color: #ff4d00; color: white;">
+                <th style="padding: 12px; text-align: left; border: 1px solid #ddd;">Item</th>
+                <th style="padding: 12px; text-align: center; border: 1px solid #ddd;">Quantity</th>
+                <th style="padding: 12px; text-align: right; border: 1px solid #ddd;">Amount (incl. VAT)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="padding: 12px; border: 1px solid #ddd;">EU Hot Sauce Awards ${params.year} - Competition Entry</td>
+                <td style="padding: 12px; text-align: center; border: 1px solid #ddd;">${params.entryCount}</td>
+                <td style="padding: 12px; text-align: right; border: 1px solid #ddd;">€${params.grossAmount}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div style="margin: 30px 0; background-color: #fff3cd; padding: 20px; border-radius: 5px; border-left: 4px solid #ff4d00;">
+          <table style="width: 100%; max-width: 300px; margin-left: auto;">
+            <tr>
+              <td style="padding: 8px 0;"><strong>Net Amount:</strong></td>
+              <td style="padding: 8px 0; text-align: right;">€${params.netAmount}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0;"><strong>VAT (${params.vatRate}%):</strong></td>
+              <td style="padding: 8px 0; text-align: right;">€${params.vatAmount}</td>
+            </tr>
+            <tr style="border-top: 2px solid #ff4d00;">
+              <td style="padding: 12px 0;"><strong style="font-size: 18px;">Total Amount:</strong></td>
+              <td style="padding: 12px 0; text-align: right;"><strong style="font-size: 18px; color: #ff4d00;">€${params.grossAmount}</strong></td>
+            </tr>
+          </table>
+        </div>
+
+        <div style="background-color: #f8f9fa; padding: 15px; margin: 20px 0; border-radius: 5px;">
+          <p style="margin: 0; font-size: 14px; color: #666;"><strong>Payment Status:</strong> Paid via Stripe</p>
+          <p style="margin: 10px 0 0 0; font-size: 14px; color: #666;">Thank you for your participation in the EU Hot Sauce Awards ${params.year}!</p>
+        </div>
+
+        <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 12px; color: #666;">
+          <p style="margin: 5px 0;">This is an automatically generated VAT invoice.</p>
+          <p style="margin: 5px 0;">For questions, please contact: heataward@gmail.com</p>
+        </div>
+      </div>
+    `,
+    text: `VAT INVOICE\n\nInvoice Number: ${params.invoiceNumber}\nInvoice Date: ${params.invoiceDate}\n\nFrom:\n${params.companyName}\n${params.companyAddress}\nVAT Number: ${params.companyVat}\n\nTo:\n${params.supplierName}\n${params.supplierContactName ? `Attn: ${params.supplierContactName}\n` : ''}${params.supplierAddress}\n\nDescription: EU Hot Sauce Awards ${params.year} - Competition Entry\nQuantity: ${params.entryCount}\n\nNet Amount: €${params.netAmount}\nVAT (${params.vatRate}%): €${params.vatAmount}\nTotal Amount: €${params.grossAmount}\n\nPayment Status: Paid via Stripe\n\nThank you for your participation in the EU Hot Sauce Awards ${params.year}!`,
+  }),
 };
