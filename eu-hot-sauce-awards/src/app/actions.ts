@@ -2227,23 +2227,27 @@ export async function sendVatEmail(supplierId: string) {
     return { error: 'Supplier not found.' };
   }
 
-  // 3. Get all paid payments for this supplier (any year)
-  // Note: We don't filter by payment creation date because suppliers may pay
-  // in one year for entries in the next competition year
+  // 3. Get all paid payments for this supplier in competition cycle
+  // Competition cycle runs May-to-May (e.g., May 2025 - May 2026 for 2026 competition)
+  // This accounts for entries opening in May and closing end of February
   const currentYear = COMPETITION_YEAR;
+  const cycleStart = `${currentYear - 1}-05-01`;
+  const cycleEnd = `${currentYear}-05-31`;
 
   const { data: payments, error: paymentsError } = await supabase
     .from('supplier_payments')
     .select('id, entry_count, subtotal_cents, discount_cents, amount_due_cents, created_at')
     .eq('supplier_id', supplierId)
-    .eq('stripe_payment_status', 'succeeded');
+    .eq('stripe_payment_status', 'succeeded')
+    .gte('created_at', cycleStart)
+    .lte('created_at', cycleEnd);
 
   if (paymentsError) {
     return { error: `Failed to fetch payments: ${paymentsError.message}` };
   }
 
   if (!payments || payments.length === 0) {
-    return { error: 'No paid entries found for this supplier.' };
+    return { error: 'No paid entries found for this supplier in the current competition cycle.' };
   }
 
   // 4. Calculate totals (combine all payments)
