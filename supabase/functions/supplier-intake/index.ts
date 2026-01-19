@@ -287,13 +287,15 @@ Deno.serve(async (req) => {
         throw new Error(`Unknown category: ${sauce.category}`);
       }
 
-      // Check for existing unpaid sauce with the same name from this supplier
+      // Check for existing unpaid sauce with the same name AND category from this supplier
+      // (allows same sauce in different categories, prevents true duplicates)
       currentStep = 'check-existing-sauce';
       const { data: existingUnpaid, error: existingError } = await supabaseAdmin
         .from('sauces')
         .select('id, name, sauce_code')
         .eq('supplier_id', supplier.id)
         .eq('name', sauce.name)
+        .eq('category', sauce.category)
         .eq('payment_status', 'pending_payment')
         .limit(1)
         .single();
