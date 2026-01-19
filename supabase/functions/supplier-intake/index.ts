@@ -273,8 +273,9 @@ Deno.serve(async (req) => {
       // Don't throw - main registration succeeded
     }
 
-    // 6. Generate sauce codes and insert new sauces
+    // 6. Generate sauce codes and insert/update sauces (with duplicate prevention)
     const saucesToCreate = [];
+    const reusedSauces: { id: string; name: string; sauce_code: string }[] = [];
 
     // Track next number per category within this submission to avoid duplicates
     const categoryCounters: Record<string, number> = {};
@@ -286,53 +287,95 @@ Deno.serve(async (req) => {
         throw new Error(`Unknown category: ${sauce.category}`);
       }
 
-      // Only query database once per category
-      if (!(categoryCode in categoryCounters)) {
-        // Get the highest existing code number for this category
-        const { data: existingSauces, error: countError } = await supabaseAdmin
-          .from('sauces')
-          .select('sauce_code')
-          .like('sauce_code', `${categoryCode}%`)
-          .order('sauce_code', { ascending: false })
-          .limit(1);
+      // Check for existing unpaid sauce with the same name from this supplier
+      currentStep = 'check-existing-sauce';
+      const { data: existingUnpaid, error: existingError } = await supabaseAdmin
+        .from('sauces')
+        .select('id, name, sauce_code')
+        .eq('supplier_id', supplier.id)
+        .eq('name', sauce.name)
+        .eq('payment_status', 'pending_payment')
+        .limit(1)
+        .single();
 
-        if (countError) throw countError;
-
-        let nextNumber = 1;
-        if (existingSauces && existingSauces.length > 0) {
-          const lastCode = existingSauces[0].sauce_code;
-          const lastNumber = parseInt(lastCode.substring(1), 10);
-          nextNumber = lastNumber + 1;
-        }
-
-        categoryCounters[categoryCode] = nextNumber;
+      if (existingError && existingError.code !== 'PGRST116') {
+        // PGRST116 = no rows returned, which is expected if no duplicate exists
+        throw existingError;
       }
 
-      const sauceCode = `${categoryCode}${String(categoryCounters[categoryCode]).padStart(3, '0')}`;
-      categoryCounters[categoryCode]++;
+      if (existingUnpaid) {
+        // Reuse existing unpaid sauce - update its details
+        console.log(`Reusing existing unpaid sauce: ${existingUnpaid.sauce_code} - ${sauce.name}`);
+        const { error: updateError } = await supabaseAdmin
+          .from('sauces')
+          .update({
+            ingredients: sauce.ingredients,
+            allergens: sauce.allergens,
+            webshop_link: sauce.webshopLink || null,
+          })
+          .eq('id', existingUnpaid.id);
 
-      saucesToCreate.push({
-        supplier_id: supplier.id,
-        name: sauce.name,
-        ingredients: sauce.ingredients,
-        allergens: sauce.allergens,
-        category: sauce.category,
-        sauce_code: sauceCode,
-        status: 'registered',
-        webshop_link: sauce.webshopLink || null,
-        payment_status: 'pending_payment',
-      });
+        if (updateError) throw updateError;
+
+        reusedSauces.push(existingUnpaid);
+      } else {
+        // No existing unpaid sauce found - create a new one
+        // Only query database once per category
+        if (!(categoryCode in categoryCounters)) {
+          // Get the highest existing code number for this category
+          const { data: existingSauces, error: countError } = await supabaseAdmin
+            .from('sauces')
+            .select('sauce_code')
+            .like('sauce_code', `${categoryCode}%`)
+            .order('sauce_code', { ascending: false })
+            .limit(1);
+
+          if (countError) throw countError;
+
+          let nextNumber = 1;
+          if (existingSauces && existingSauces.length > 0) {
+            const lastCode = existingSauces[0].sauce_code;
+            const lastNumber = parseInt(lastCode.substring(1), 10);
+            nextNumber = lastNumber + 1;
+          }
+
+          categoryCounters[categoryCode] = nextNumber;
+        }
+
+        const sauceCode = `${categoryCode}${String(categoryCounters[categoryCode]).padStart(3, '0')}`;
+        categoryCounters[categoryCode]++;
+
+        saucesToCreate.push({
+          supplier_id: supplier.id,
+          name: sauce.name,
+          ingredients: sauce.ingredients,
+          allergens: sauce.allergens,
+          category: sauce.category,
+          sauce_code: sauceCode,
+          status: 'registered',
+          webshop_link: sauce.webshopLink || null,
+          payment_status: 'pending_payment',
+        });
+      }
     }
 
     currentStep = 'insert-sauces';
-    const { data: sauces, error: sauceError } = await supabaseAdmin
-      .from('sauces')
-      .insert(saucesToCreate)
-      .select('id, name, sauce_code');
+    let newSauces: { id: string; name: string; sauce_code: string }[] = [];
+    if (saucesToCreate.length > 0) {
+      const { data: insertedSauces, error: sauceError } = await supabaseAdmin
+        .from('sauces')
+        .insert(saucesToCreate)
+        .select('id, name, sauce_code');
 
-    if (sauceError) throw sauceError;
-    if (!sauces || sauces.length === 0) {
-      throw new Error('No sauces were created for this submission.');
+      if (sauceError) throw sauceError;
+      newSauces = insertedSauces || [];
+    }
+
+    // Combine reused and newly created sauces
+    const sauces = [...reusedSauces, ...newSauces];
+
+    if (sauces.length === 0) {
+      throw new Error('No sauces were created or found for this submission.');
     }
 
     // Generate QR codes for each sauce
