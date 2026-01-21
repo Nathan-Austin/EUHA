@@ -930,6 +930,18 @@ export async function bypassPayment(sauceId: string) {
     return { error: `Failed to update sauce status: ${updateError.message}` };
   }
 
+  // Update ALL payment records from this supplier to 'succeeded'
+  const { error: paymentUpdateError } = await supabase
+    .from('supplier_payments')
+    .update({ stripe_payment_status: 'succeeded' })
+    .eq('supplier_id', supplierId)
+    .neq('stripe_payment_status', 'succeeded');
+
+  if (paymentUpdateError) {
+    console.error('Failed to update payment status:', paymentUpdateError);
+    // Don't fail - sauces already marked as paid, this is a secondary operation
+  }
+
   // Create/activate judge profile
   const { error: judgeUpsertError } = await supabase
     .from('judges')
