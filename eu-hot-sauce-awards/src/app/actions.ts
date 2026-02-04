@@ -2556,6 +2556,41 @@ export async function createSauceEntry(formData: FormData) {
     // Don't fail the whole operation
   }
 
+  // Check if there's a pending payment (without Stripe session) and auto-add this sauce to it
+  const { data: pendingPayment } = await serviceSupabase
+    .from('supplier_payments')
+    .select('id, entry_count, stripe_session_id')
+    .eq('supplier_id', supplier.id)
+    .eq('stripe_payment_status', 'pending')
+    .is('stripe_session_id', null) // Only if no Stripe session created yet
+    .single();
+
+  if (pendingPayment) {
+    // Link this sauce to the existing payment
+    await serviceSupabase
+      .from('sauces')
+      .update({ payment_id: pendingPayment.id })
+      .eq('id', newSauce.id);
+
+    // Update payment amounts with new sauce count
+    const newEntryCount = pendingPayment.entry_count + 1;
+    const newDiscountRate = resolveDiscount(newEntryCount);
+    const newSubtotalCents = newEntryCount * BASE_PRICE_CENTS;
+    const newDiscountCents = Math.round(newSubtotalCents * newDiscountRate);
+    const newAmountDueCents = newSubtotalCents - newDiscountCents;
+
+    await serviceSupabase
+      .from('supplier_payments')
+      .update({
+        entry_count: newEntryCount,
+        discount_percent: Number((newDiscountRate * 100).toFixed(2)),
+        subtotal_cents: newSubtotalCents,
+        discount_cents: newDiscountCents,
+        amount_due_cents: newAmountDueCents,
+      })
+      .eq('id', pendingPayment.id);
+  }
+
   // Handle image upload if provided
   if (imagePath) {
     const bucket = process.env.NEXT_PUBLIC_SAUCE_IMAGE_BUCKET || 'sauce-media';
@@ -2746,7 +2781,8 @@ export async function deleteSauce(sauceId: string) {
 
   // Check if this sauce has a payment_id and handle the foreign key constraint
   let shouldDeletePayment = false;
-  const paymentIdToDelete = sauce.payment_id;
+  let shouldUpdatePayment = false;
+  const paymentIdToUpdate = sauce.payment_id;
 
   if (sauce.payment_id) {
     const { data: saucesInPayment, error: countError } = await serviceSupabase
@@ -2758,9 +2794,14 @@ export async function deleteSauce(sauceId: string) {
       return { error: countError.message };
     }
 
-    // If this is the only sauce in the payment, we'll delete the payment after removing the sauce
-    if (saucesInPayment && saucesInPayment.length === 1) {
+    const remainingSauces = saucesInPayment.length - 1; // After we delete this one
+
+    if (remainingSauces === 0) {
+      // Last sauce in payment - delete the payment
       shouldDeletePayment = true;
+    } else {
+      // Other sauces remain - update payment amounts
+      shouldUpdatePayment = true;
     }
 
     // First, remove the payment_id from this sauce to avoid foreign key constraint
@@ -2784,16 +2825,45 @@ export async function deleteSauce(sauceId: string) {
     return { error: deleteError.message };
   }
 
-  // If this was the only sauce in the payment, delete the orphaned payment
-  if (shouldDeletePayment && paymentIdToDelete) {
-    const { error: paymentDeleteError } = await serviceSupabase
-      .from('supplier_payments')
-      .delete()
-      .eq('id', paymentIdToDelete);
+  // Handle payment updates or deletion
+  if (paymentIdToUpdate) {
+    if (shouldDeletePayment) {
+      // Delete the orphaned payment
+      const { error: paymentDeleteError } = await serviceSupabase
+        .from('supplier_payments')
+        .delete()
+        .eq('id', paymentIdToUpdate);
 
-    if (paymentDeleteError) {
-      console.error('Failed to delete orphaned payment:', paymentDeleteError);
-      // Don't fail the whole operation - sauce is already deleted
+      if (paymentDeleteError) {
+        console.error('Failed to delete orphaned payment:', paymentDeleteError);
+        // Don't fail the whole operation - sauce is already deleted
+      }
+    } else if (shouldUpdatePayment) {
+      // Update payment amounts with reduced sauce count
+      const { data: payment } = await serviceSupabase
+        .from('supplier_payments')
+        .select('entry_count')
+        .eq('id', paymentIdToUpdate)
+        .single();
+
+      if (payment) {
+        const newEntryCount = payment.entry_count - 1;
+        const newDiscountRate = resolveDiscount(newEntryCount);
+        const newSubtotalCents = newEntryCount * BASE_PRICE_CENTS;
+        const newDiscountCents = Math.round(newSubtotalCents * newDiscountRate);
+        const newAmountDueCents = newSubtotalCents - newDiscountCents;
+
+        await serviceSupabase
+          .from('supplier_payments')
+          .update({
+            entry_count: newEntryCount,
+            discount_percent: Number((newDiscountRate * 100).toFixed(2)),
+            subtotal_cents: newSubtotalCents,
+            discount_cents: newDiscountCents,
+            amount_due_cents: newAmountDueCents,
+          })
+          .eq('id', paymentIdToUpdate);
+      }
     }
   }
 
