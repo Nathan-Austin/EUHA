@@ -84,8 +84,8 @@ export default function SupplierDashboard({ supplierData, pendingPayment, unpaid
         <p className="text-gray-300">Welcome, {supplierData.brandName}!</p>
       </div>
 
-      {/* Sauce Management Section - Always visible if there are unpaid sauces or no pending payment */}
-      {(unpaidSauces.length > 0 || !pendingPayment) && (
+      {/* Sauce Management Section - Only show if there's NO pending payment */}
+      {!pendingPayment && (
         <div className="bg-white rounded-lg p-6">
           <SupplierSauceManager initialSauces={unpaidSauces} />
         </div>

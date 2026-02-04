@@ -2719,7 +2719,10 @@ export async function deleteSauce(sauceId: string) {
     return { error: 'Only unpaid sauces can be deleted.' };
   }
 
-  // Check if this sauce has a payment_id and if it's the only sauce in that payment
+  // Check if this sauce has a payment_id and handle the foreign key constraint
+  let shouldDeletePayment = false;
+  const paymentIdToDelete = sauce.payment_id;
+
   if (sauce.payment_id) {
     const { data: saucesInPayment, error: countError } = await serviceSupabase
       .from('sauces')
@@ -2730,16 +2733,19 @@ export async function deleteSauce(sauceId: string) {
       return { error: countError.message };
     }
 
-    // If this is the only sauce in the payment, delete the payment too
+    // If this is the only sauce in the payment, we'll delete the payment after removing the sauce
     if (saucesInPayment && saucesInPayment.length === 1) {
-      const { error: paymentDeleteError } = await serviceSupabase
-        .from('supplier_payments')
-        .delete()
-        .eq('id', sauce.payment_id);
+      shouldDeletePayment = true;
+    }
 
-      if (paymentDeleteError) {
-        return { error: `Failed to delete payment: ${paymentDeleteError.message}` };
-      }
+    // First, remove the payment_id from this sauce to avoid foreign key constraint
+    const { error: unlinkError } = await serviceSupabase
+      .from('sauces')
+      .update({ payment_id: null })
+      .eq('id', sauceId);
+
+    if (unlinkError) {
+      return { error: `Failed to unlink sauce from payment: ${unlinkError.message}` };
     }
   }
 
@@ -2751,6 +2757,19 @@ export async function deleteSauce(sauceId: string) {
 
   if (deleteError) {
     return { error: deleteError.message };
+  }
+
+  // If this was the only sauce in the payment, delete the orphaned payment
+  if (shouldDeletePayment && paymentIdToDelete) {
+    const { error: paymentDeleteError } = await serviceSupabase
+      .from('supplier_payments')
+      .delete()
+      .eq('id', paymentIdToDelete);
+
+    if (paymentDeleteError) {
+      console.error('Failed to delete orphaned payment:', paymentDeleteError);
+      // Don't fail the whole operation - sauce is already deleted
+    }
   }
 
   revalidatePath('/dashboard');
