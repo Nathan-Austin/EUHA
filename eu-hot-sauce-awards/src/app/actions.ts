@@ -2556,13 +2556,12 @@ export async function createSauceEntry(formData: FormData) {
     // Don't fail the whole operation
   }
 
-  // Check if there's a pending payment (without Stripe session) and auto-add this sauce to it
+  // Check if there's a pending payment and auto-add this sauce to it
   const { data: pendingPayment } = await serviceSupabase
     .from('supplier_payments')
     .select('id, entry_count, stripe_session_id')
     .eq('supplier_id', supplier.id)
     .eq('stripe_payment_status', 'pending')
-    .is('stripe_session_id', null) // Only if no Stripe session created yet
     .single();
 
   if (pendingPayment) {
@@ -2587,6 +2586,7 @@ export async function createSauceEntry(formData: FormData) {
         subtotal_cents: newSubtotalCents,
         discount_cents: newDiscountCents,
         amount_due_cents: newAmountDueCents,
+        stripe_session_id: null, // Clear old Stripe session - it will be recreated with correct amounts
       })
       .eq('id', pendingPayment.id);
   }
@@ -2861,6 +2861,7 @@ export async function deleteSauce(sauceId: string) {
             subtotal_cents: newSubtotalCents,
             discount_cents: newDiscountCents,
             amount_due_cents: newAmountDueCents,
+            stripe_session_id: null, // Clear old Stripe session - it will be recreated with correct amounts
           })
           .eq('id', paymentIdToUpdate);
       }
