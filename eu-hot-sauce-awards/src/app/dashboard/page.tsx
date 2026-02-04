@@ -86,6 +86,14 @@ export default async function DashboardPage() {
 
         const pendingPayment = pendingPayments && pendingPayments.length > 0 ? pendingPayments[0] : null;
 
+        // Fetch unpaid sauces for sauce management
+        const { data: unpaidSauces } = await supabase
+          .from('sauces')
+          .select('id, name, category, sauce_code, ingredients, allergens, webshop_link, created_at')
+          .eq('supplier_id', supplier.id)
+          .eq('payment_status', 'pending_payment')
+          .order('created_at', { ascending: false });
+
         return <SupplierDashboard
           supplierData={{
             brandName: supplier.brand_name,
@@ -95,6 +103,7 @@ export default async function DashboardPage() {
             packageReceivedAt: supplier.package_received_at,
           }}
           pendingPayment={pendingPayment}
+          unpaidSauces={unpaidSauces || []}
           userEmail={user.email!}
         />;
       }

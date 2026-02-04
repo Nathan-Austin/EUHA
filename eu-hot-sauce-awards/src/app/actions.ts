@@ -2373,3 +2373,386 @@ export async function sendVatEmail(supplierId: string) {
     }
   };
 }
+
+// ============================================================================
+// SUPPLIER SAUCE MANAGEMENT ACTIONS
+// ============================================================================
+
+const BASE_PRICE_CENTS = 5000; // €50 per entry
+
+const CATEGORY_CODES: Record<string, string> = {
+  'Mild Chili Sauce': 'D',
+  'Medium Chili Sauce': 'M',
+  'Hot Chili Sauce': 'H',
+  'Extra Hot Chili Sauce': 'X',
+  'Extract Based Chili Sauce': 'E',
+  'BBQ Chili Sauce': 'B',
+  'Chili Ketchup': 'K',
+  'Sweet': 'W',
+  'Chili Honey': 'R',
+  'Garlic Chili Sauce': 'G',
+  'Sambal, Chutney & Pickles': 'C',
+  'Chili Oil': 'T',
+  'Freestyle': 'F',
+  'Asian Style Chili Sauce': 'S',
+  'Chili Paste': 'P',
+  'Salt & Condiments': 'A',
+};
+
+const DISCOUNT_BANDS: { min: number; max: number; discount: number }[] = [
+  { min: 1, max: 1, discount: 0 },
+  { min: 2, max: 2, discount: 0.03 },
+  { min: 3, max: 3, discount: 0.05 },
+  { min: 4, max: 4, discount: 0.07 },
+  { min: 5, max: 5, discount: 0.09 },
+  { min: 6, max: 6, discount: 0.12 },
+  { min: 7, max: 10, discount: 0.13 },
+  { min: 11, max: 20, discount: 0.14 },
+  { min: 21, max: 100, discount: 0.16 },
+];
+
+function resolveDiscount(entryCount: number) {
+  const band = DISCOUNT_BANDS.find((tier) => entryCount >= tier.min && entryCount <= tier.max);
+  return band ? band.discount : DISCOUNT_BANDS[DISCOUNT_BANDS.length - 1].discount;
+}
+
+/**
+ * Get all unpaid sauce entries for the logged-in supplier
+ */
+export async function getSupplierUnpaidSauces() {
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+
+  // Get authenticated user
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user?.email) {
+    return { error: 'You must be logged in to view your sauces.' };
+  }
+
+  // Get supplier record
+  const { data: supplier, error: supplierError } = await supabase
+    .from('suppliers')
+    .select('id')
+    .ilike('email', user.email)
+    .single();
+
+  if (supplierError || !supplier) {
+    return { error: 'Supplier account not found.' };
+  }
+
+  // Fetch all unpaid sauces
+  const { data: sauces, error: saucesError } = await supabase
+    .from('sauces')
+    .select('id, name, category, sauce_code, ingredients, allergens, webshop_link, created_at')
+    .eq('supplier_id', supplier.id)
+    .eq('payment_status', 'pending_payment')
+    .order('created_at', { ascending: false });
+
+  if (saucesError) {
+    return { error: saucesError.message };
+  }
+
+  return { success: true, data: sauces || [] };
+}
+
+/**
+ * Create a new sauce entry for the logged-in supplier
+ */
+export async function createSauceEntry(formData: FormData) {
+  const name = formData.get('name') as string;
+  const category = formData.get('category') as string;
+  const ingredients = formData.get('ingredients') as string;
+  const allergens = formData.get('allergens') as string;
+  const webshopLink = formData.get('webshopLink') as string;
+  const imagePath = formData.get('imagePath') as string | null;
+
+  if (!name || !category || !ingredients) {
+    return { error: 'Name, category, and ingredients are required.' };
+  }
+
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+
+  // Get authenticated user
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user?.email) {
+    return { error: 'You must be logged in to create a sauce entry.' };
+  }
+
+  // Get supplier record
+  const { data: supplier, error: supplierError } = await supabase
+    .from('suppliers')
+    .select('id')
+    .ilike('email', user.email)
+    .single();
+
+  if (supplierError || !supplier) {
+    return { error: 'Supplier account not found.' };
+  }
+
+  // Get category code
+  const categoryCode = CATEGORY_CODES[category];
+  if (!categoryCode) {
+    return { error: `Unknown category: ${category}` };
+  }
+
+  // Use service client to bypass RLS for sauce code generation
+  const serviceSupabase = createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
+  // Generate sauce code
+  const { data: existingSauces, error: countError } = await serviceSupabase
+    .from('sauces')
+    .select('sauce_code')
+    .like('sauce_code', `${categoryCode}%`)
+    .order('sauce_code', { ascending: false })
+    .limit(1);
+
+  if (countError) {
+    return { error: countError.message };
+  }
+
+  let nextNumber = 1;
+  if (existingSauces && existingSauces.length > 0) {
+    const lastCode = existingSauces[0].sauce_code;
+    const lastNumber = parseInt(lastCode.substring(1), 10);
+    nextNumber = lastNumber + 1;
+  }
+
+  const sauceCode = `${categoryCode}${String(nextNumber).padStart(3, '0')}`;
+
+  // Create sauce entry
+  const { data: newSauce, error: insertError } = await serviceSupabase
+    .from('sauces')
+    .insert({
+      supplier_id: supplier.id,
+      name,
+      category,
+      ingredients,
+      allergens: allergens || 'None',
+      webshop_link: webshopLink || null,
+      sauce_code: sauceCode,
+      status: 'registered',
+      payment_status: 'pending_payment',
+    })
+    .select('id')
+    .single();
+
+  if (insertError) {
+    return { error: insertError.message };
+  }
+
+  // Generate QR code
+  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?data=${newSauce.id}&size=200x200`;
+  const { error: qrError } = await serviceSupabase
+    .from('sauces')
+    .update({ qr_code_url: qrCodeUrl })
+    .eq('id', newSauce.id);
+
+  if (qrError) {
+    console.error('Failed to generate QR code:', qrError);
+    // Don't fail the whole operation
+  }
+
+  // Handle image upload if provided
+  if (imagePath) {
+    const bucket = process.env.NEXT_PUBLIC_SAUCE_IMAGE_BUCKET || 'sauce-media';
+    const targetPath = `suppliers/${supplier.id}/${newSauce.id}.webp`;
+
+    // Move image from pending to final location
+    const { error: moveError } = await serviceSupabase.storage
+      .from(bucket)
+      .move(imagePath, targetPath);
+
+    if (moveError) {
+      console.error('Failed to move image:', moveError);
+      // Don't fail the whole operation, but log the error
+    } else {
+      // Update sauce with image path
+      const { error: updateError } = await serviceSupabase
+        .from('sauces')
+        .update({ image_path: targetPath })
+        .eq('id', newSauce.id);
+
+      if (updateError) {
+        console.error('Failed to update sauce with image path:', updateError);
+      }
+    }
+  }
+
+  revalidatePath('/dashboard');
+  return { success: true, data: { id: newSauce.id, sauce_code: sauceCode } };
+}
+
+/**
+ * Create a payment batch for all unpaid sauces
+ */
+export async function createPaymentBatch() {
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+
+  // Get authenticated user
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user?.email) {
+    return { error: 'You must be logged in to create a payment.' };
+  }
+
+  // Get supplier record
+  const { data: supplier, error: supplierError } = await supabase
+    .from('suppliers')
+    .select('id')
+    .ilike('email', user.email)
+    .single();
+
+  if (supplierError || !supplier) {
+    return { error: 'Supplier account not found.' };
+  }
+
+  // Use service client to bypass RLS
+  const serviceSupabase = createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
+  // Get all unpaid sauces for this supplier
+  const { data: unpaidSauces, error: saucesError } = await serviceSupabase
+    .from('sauces')
+    .select('id')
+    .eq('supplier_id', supplier.id)
+    .eq('payment_status', 'pending_payment');
+
+  if (saucesError) {
+    return { error: saucesError.message };
+  }
+
+  if (!unpaidSauces || unpaidSauces.length === 0) {
+    return { error: 'No unpaid sauces found.' };
+  }
+
+  const entryCount = unpaidSauces.length;
+  const discountRate = resolveDiscount(entryCount);
+  const subtotalCents = entryCount * BASE_PRICE_CENTS;
+  const discountCents = Math.round(subtotalCents * discountRate);
+  const amountDueCents = subtotalCents - discountCents;
+
+  // Create payment record
+  const { data: payment, error: paymentError } = await serviceSupabase
+    .from('supplier_payments')
+    .insert({
+      supplier_id: supplier.id,
+      entry_count: entryCount,
+      discount_percent: Number((discountRate * 100).toFixed(2)),
+      subtotal_cents: subtotalCents,
+      discount_cents: discountCents,
+      amount_due_cents: amountDueCents,
+    })
+    .select('id, entry_count, discount_percent, subtotal_cents, discount_cents, amount_due_cents')
+    .single();
+
+  if (paymentError) {
+    return { error: paymentError.message };
+  }
+
+  // Link all unpaid sauces to this payment
+  const sauceIds = unpaidSauces.map(s => s.id);
+  const { error: linkError } = await serviceSupabase
+    .from('sauces')
+    .update({ payment_id: payment.id })
+    .in('id', sauceIds);
+
+  if (linkError) {
+    return { error: linkError.message };
+  }
+
+  revalidatePath('/dashboard');
+  return { success: true, data: payment };
+}
+
+/**
+ * Delete an unpaid sauce entry
+ */
+export async function deleteSauce(sauceId: string) {
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+
+  // Get authenticated user
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user?.email) {
+    return { error: 'You must be logged in to delete a sauce.' };
+  }
+
+  // Get supplier record
+  const { data: supplier, error: supplierError } = await supabase
+    .from('suppliers')
+    .select('id')
+    .ilike('email', user.email)
+    .single();
+
+  if (supplierError || !supplier) {
+    return { error: 'Supplier account not found.' };
+  }
+
+  // Use service client to bypass RLS
+  const serviceSupabase = createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
+  // Verify sauce belongs to supplier and is unpaid
+  const { data: sauce, error: sauceError } = await serviceSupabase
+    .from('sauces')
+    .select('id, supplier_id, payment_status, payment_id')
+    .eq('id', sauceId)
+    .single();
+
+  if (sauceError || !sauce) {
+    return { error: 'Sauce not found.' };
+  }
+
+  if (sauce.supplier_id !== supplier.id) {
+    return { error: 'You are not authorized to delete this sauce.' };
+  }
+
+  if (sauce.payment_status !== 'pending_payment') {
+    return { error: 'Only unpaid sauces can be deleted.' };
+  }
+
+  // Check if this sauce has a payment_id and if it's the only sauce in that payment
+  if (sauce.payment_id) {
+    const { data: saucesInPayment, error: countError } = await serviceSupabase
+      .from('sauces')
+      .select('id')
+      .eq('payment_id', sauce.payment_id);
+
+    if (countError) {
+      return { error: countError.message };
+    }
+
+    // If this is the only sauce in the payment, delete the payment too
+    if (saucesInPayment && saucesInPayment.length === 1) {
+      const { error: paymentDeleteError } = await serviceSupabase
+        .from('supplier_payments')
+        .delete()
+        .eq('id', sauce.payment_id);
+
+      if (paymentDeleteError) {
+        return { error: `Failed to delete payment: ${paymentDeleteError.message}` };
+      }
+    }
+  }
+
+  // Delete the sauce
+  const { error: deleteError } = await serviceSupabase
+    .from('sauces')
+    .delete()
+    .eq('id', sauceId);
+
+  if (deleteError) {
+    return { error: deleteError.message };
+  }
+
+  revalidatePath('/dashboard');
+  return { success: true };
+}

@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react';
 import { submitTrackingInfo } from '@/app/actions';
 import SupplierPaymentButton from './SupplierPaymentButton';
+import SupplierSauceManager from './SupplierSauceManager';
 
 interface PaymentQuote {
   id: string;
@@ -14,6 +15,17 @@ interface PaymentQuote {
   stripe_payment_status: string;
 }
 
+interface UnpaidSauce {
+  id: string;
+  name: string;
+  category: string;
+  sauce_code: string;
+  ingredients: string;
+  allergens: string;
+  webshop_link: string | null;
+  created_at: string;
+}
+
 interface SupplierDashboardProps {
   supplierData: {
     brandName: string;
@@ -23,10 +35,11 @@ interface SupplierDashboardProps {
     packageReceivedAt: string | null;
   };
   pendingPayment?: PaymentQuote | null;
+  unpaidSauces: UnpaidSauce[];
   userEmail: string;
 }
 
-export default function SupplierDashboard({ supplierData, pendingPayment, userEmail }: SupplierDashboardProps) {
+export default function SupplierDashboard({ supplierData, pendingPayment, unpaidSauces, userEmail }: SupplierDashboardProps) {
   const [trackingNumber, setTrackingNumber] = useState(supplierData.trackingNumber || '');
   const [postalService, setPostalService] = useState(supplierData.postalServiceName || '');
   const [isPending, startTransition] = useTransition();
@@ -70,6 +83,13 @@ export default function SupplierDashboard({ supplierData, pendingPayment, userEm
         <h2 className="text-2xl font-bold text-white mb-2">Supplier Dashboard</h2>
         <p className="text-gray-300">Welcome, {supplierData.brandName}!</p>
       </div>
+
+      {/* Sauce Management Section - Always visible if there are unpaid sauces or no pending payment */}
+      {(unpaidSauces.length > 0 || !pendingPayment) && (
+        <div className="bg-white rounded-lg p-6">
+          <SupplierSauceManager initialSauces={unpaidSauces} />
+        </div>
+      )}
 
       {pendingPayment ? (
         <>
