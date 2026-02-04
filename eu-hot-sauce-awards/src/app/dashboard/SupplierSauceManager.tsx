@@ -135,9 +135,7 @@ export default function SupplierSauceManager({ initialSauces }: SupplierSauceMan
         }
       } else {
         setSuccess(`Sauce entry created successfully! Code: ${result.data?.sauce_code}`);
-        setShowAddForm(false);
-        e.currentTarget.reset();
-        // Refresh the page to get updated sauces
+        // Refresh the page to get updated sauces (no need to reset form, reload will clear it)
         window.location.reload();
       }
     });
