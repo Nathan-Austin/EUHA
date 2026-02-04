@@ -17,6 +17,7 @@ interface UnpaidSauce {
 
 interface SupplierSauceManagerProps {
   initialSauces: UnpaidSauce[];
+  hideAddButton?: boolean;
 }
 
 const CATEGORIES = [
@@ -72,7 +73,7 @@ const formatCurrency = (amount: number) =>
     minimumFractionDigits: 2,
   }).format(amount);
 
-export default function SupplierSauceManager({ initialSauces }: SupplierSauceManagerProps) {
+export default function SupplierSauceManager({ initialSauces, hideAddButton = false }: SupplierSauceManagerProps) {
   const [sauces, setSauces] = useState<UnpaidSauce[]>(initialSauces);
   const [showAddForm, setShowAddForm] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
@@ -180,15 +181,19 @@ export default function SupplierSauceManager({ initialSauces }: SupplierSauceMan
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Manage Your Sauce Entries</h2>
           <p className="text-sm text-gray-600 mt-1">
-            Add new sauce entries or remove unpaid entries before completing payment
+            {hideAddButton
+              ? 'View or remove sauces from your payment batch'
+              : 'Add new sauce entries or remove unpaid entries before completing payment'}
           </p>
         </div>
-        <button
-          onClick={() => setShowAddForm(!showAddForm)}
-          className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          {showAddForm ? 'Cancel' : '+ Add Sauce Entry'}
-        </button>
+        {!hideAddButton && (
+          <button
+            onClick={() => setShowAddForm(!showAddForm)}
+            className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            {showAddForm ? 'Cancel' : '+ Add Sauce Entry'}
+          </button>
+        )}
       </div>
 
       {error && (
@@ -203,8 +208,8 @@ export default function SupplierSauceManager({ initialSauces }: SupplierSauceMan
         </div>
       )}
 
-      {/* Add Sauce Form */}
-      {showAddForm && (
+      {/* Add Sauce Form - only show if not hidden */}
+      {!hideAddButton && showAddForm && (
         <form onSubmit={handleAddSauce} className="bg-blue-50 border-2 border-blue-200 rounded-lg p-6 space-y-4">
           <h3 className="text-lg font-semibold text-blue-900">Add New Sauce Entry</h3>
 

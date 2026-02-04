@@ -84,16 +84,22 @@ export default function SupplierDashboard({ supplierData, pendingPayment, unpaid
         <p className="text-gray-300">Welcome, {supplierData.brandName}!</p>
       </div>
 
-      {/* Sauce Management Section - Only show if there's NO pending payment */}
-      {!pendingPayment && (
-        <div className="bg-white rounded-lg p-6">
-          <SupplierSauceManager initialSauces={unpaidSauces} />
-        </div>
-      )}
-
       {pendingPayment ? (
         <>
           <SupplierPaymentButton paymentQuote={pendingPayment} userEmail={userEmail} />
+
+          {/* Show sauce manager below payment button so users can see/manage what's in the batch */}
+          {unpaidSauces.length > 0 && (
+            <div className="bg-white rounded-lg p-6">
+              <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                <p className="text-sm text-blue-800">
+                  💡 <strong>Tip:</strong> The {unpaidSauces.length} sauce{unpaidSauces.length > 1 ? 's' : ''} below {unpaidSauces.length > 1 ? 'are' : 'is'} in your payment batch.
+                  Delete {unpaidSauces.length > 1 ? 'them' : 'it'} to start over, or complete the payment above.
+                </p>
+              </div>
+              <SupplierSauceManager initialSauces={unpaidSauces} hideAddButton={true} />
+            </div>
+          )}
           <div className="p-4 bg-gray-100 border border-gray-300 rounded-lg">
             <div className="flex items-center gap-3">
               <svg className="h-5 w-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -110,6 +116,10 @@ export default function SupplierDashboard({ supplierData, pendingPayment, unpaid
         </>
       ) : (
         <>
+          {/* Show sauce manager when no pending payment */}
+          <div className="bg-white rounded-lg p-6">
+            <SupplierSauceManager initialSauces={unpaidSauces} />
+          </div>
           <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
             <div className="flex items-center justify-between">
               <div>
