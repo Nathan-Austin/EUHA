@@ -17,7 +17,7 @@ interface UnpaidSauce {
 
 interface SupplierSauceManagerProps {
   initialSauces: UnpaidSauce[];
-  hideAddButton?: boolean;
+  hasExistingPayment?: boolean;
 }
 
 const CATEGORIES = [
@@ -73,7 +73,7 @@ const formatCurrency = (amount: number) =>
     minimumFractionDigits: 2,
   }).format(amount);
 
-export default function SupplierSauceManager({ initialSauces, hideAddButton = false }: SupplierSauceManagerProps) {
+export default function SupplierSauceManager({ initialSauces, hasExistingPayment = false }: SupplierSauceManagerProps) {
   const [sauces, setSauces] = useState<UnpaidSauce[]>(initialSauces);
   const [showAddForm, setShowAddForm] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
@@ -181,19 +181,15 @@ export default function SupplierSauceManager({ initialSauces, hideAddButton = fa
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Manage Your Sauce Entries</h2>
           <p className="text-sm text-gray-600 mt-1">
-            {hideAddButton
-              ? 'View or remove sauces from your payment batch'
-              : 'Add new sauce entries or remove unpaid entries before completing payment'}
+            Add new sauce entries or remove unpaid entries
           </p>
         </div>
-        {!hideAddButton && (
-          <button
-            onClick={() => setShowAddForm(!showAddForm)}
-            className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            {showAddForm ? 'Cancel' : '+ Add Sauce Entry'}
-          </button>
-        )}
+        <button
+          onClick={() => setShowAddForm(!showAddForm)}
+          className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors"
+        >
+          {showAddForm ? 'Cancel' : '+ Add Sauce Entry'}
+        </button>
       </div>
 
       {error && (
@@ -208,8 +204,8 @@ export default function SupplierSauceManager({ initialSauces, hideAddButton = fa
         </div>
       )}
 
-      {/* Add Sauce Form - only show if not hidden */}
-      {!hideAddButton && showAddForm && (
+      {/* Add Sauce Form */}
+      {showAddForm && (
         <form onSubmit={handleAddSauce} className="bg-blue-50 border-2 border-blue-200 rounded-lg p-6 space-y-4">
           <h3 className="text-lg font-semibold text-blue-900">Add New Sauce Entry</h3>
 
@@ -397,11 +393,15 @@ export default function SupplierSauceManager({ initialSauces, hideAddButton = fa
                 disabled={isPending}
                 className="w-full px-4 py-3 bg-orange-600 text-white font-semibold rounded-lg hover:bg-orange-700 disabled:bg-orange-400 transition-colors"
               >
-                {isPending ? 'Creating Payment...' : 'Proceed to Payment'}
+                {isPending
+                  ? (hasExistingPayment ? 'Updating Payment...' : 'Creating Payment...')
+                  : (hasExistingPayment ? 'Update Payment Batch' : 'Proceed to Payment')}
               </button>
 
               <p className="text-xs text-orange-800 text-center">
-                This will create a payment batch for all unpaid entries above
+                {hasExistingPayment
+                  ? 'This will update your payment batch with the new discount'
+                  : 'This will create a payment batch for all unpaid entries above'}
               </p>
             </div>
           )}

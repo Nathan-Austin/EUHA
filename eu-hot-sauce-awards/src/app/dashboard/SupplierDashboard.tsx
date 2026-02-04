@@ -88,16 +88,15 @@ export default function SupplierDashboard({ supplierData, pendingPayment, unpaid
         <>
           <SupplierPaymentButton paymentQuote={pendingPayment} userEmail={userEmail} />
 
-          {/* Show sauce manager below payment button so users can see/manage what's in the batch */}
+          {/* Show sauce manager below payment button - users can add more sauces to improve discount */}
           {unpaidSauces.length > 0 && (
             <div className="bg-white rounded-lg p-6">
               <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
                 <p className="text-sm text-blue-800">
-                  💡 <strong>Tip:</strong> The {unpaidSauces.length} sauce{unpaidSauces.length > 1 ? 's' : ''} below {unpaidSauces.length > 1 ? 'are' : 'is'} in your payment batch.
-                  Delete {unpaidSauces.length > 1 ? 'them' : 'it'} to start over, or complete the payment above.
+                  💡 <strong>Tip:</strong> You can add more sauces below to get a better discount, then click "Update Payment Batch" to recalculate.
                 </p>
               </div>
-              <SupplierSauceManager initialSauces={unpaidSauces} hideAddButton={true} />
+              <SupplierSauceManager initialSauces={unpaidSauces} hasExistingPayment={true} />
             </div>
           )}
           <div className="p-4 bg-gray-100 border border-gray-300 rounded-lg">

@@ -2588,6 +2588,7 @@ export async function createSauceEntry(formData: FormData) {
 
 /**
  * Create a payment batch for all unpaid sauces
+ * If a pending payment already exists, delete it and create a new one with updated discount
  */
 export async function createPaymentBatch() {
   const cookieStore = cookies();
@@ -2616,7 +2617,31 @@ export async function createPaymentBatch() {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-  // Get all unpaid sauces for this supplier
+  // Check for existing pending payment and delete it (we'll create a new one with all sauces)
+  const { data: existingPayments } = await serviceSupabase
+    .from('supplier_payments')
+    .select('id')
+    .eq('supplier_id', supplier.id)
+    .neq('stripe_payment_status', 'succeeded');
+
+  if (existingPayments && existingPayments.length > 0) {
+    // Unlink all sauces from the old payment
+    await serviceSupabase
+      .from('sauces')
+      .update({ payment_id: null })
+      .eq('supplier_id', supplier.id)
+      .eq('payment_status', 'pending_payment');
+
+    // Delete old pending payments
+    for (const payment of existingPayments) {
+      await serviceSupabase
+        .from('supplier_payments')
+        .delete()
+        .eq('id', payment.id);
+    }
+  }
+
+  // Get all unpaid sauces for this supplier (including those just unlinked)
   const { data: unpaidSauces, error: saucesError } = await serviceSupabase
     .from('sauces')
     .select('id')
