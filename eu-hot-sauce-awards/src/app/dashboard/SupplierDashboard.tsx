@@ -48,16 +48,9 @@ interface SupplierDashboardProps {
   userEmail: string;
 }
 
-export default function SupplierDashboard({ supplierData, pendingPayment, unpaidSauces, enteredSauces: _enteredSauces, userEmail }: SupplierDashboardProps) {
+export default function SupplierDashboard({ supplierData, pendingPayment, unpaidSauces, enteredSauces, userEmail }: SupplierDashboardProps) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const imageBucket = process.env.NEXT_PUBLIC_SAUCE_IMAGE_BUCKET || 'sauce-media';
-
-  // TODO: REMOVE — temporary mock data for layout preview
-  const enteredSauces: EnteredSauce[] = [
-    { id: '1', name: 'Dragon Breath Habanero', category: 'Hot Chili Sauce', image_path: null, status: 'arrived' },
-    { id: '2', name: 'Smoky BBQ Reaper', category: 'BBQ Chili Sauce', image_path: null, status: 'registered' },
-    { id: '3', name: 'Mango Madness', category: 'Sweet', image_path: null, status: 'boxed' },
-  ];
 
   const [trackingNumber, setTrackingNumber] = useState(supplierData.trackingNumber || '');
   const [postalService, setPostalService] = useState(supplierData.postalServiceName || '');
