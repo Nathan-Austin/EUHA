@@ -111,7 +111,7 @@ export const emailTemplates = {
           <li>We'll notify you when your package is received</li>
         </ol>
 
-        <p><strong>Important:</strong> Samples must arrive by 28 February 2026</p>
+        <p><strong>Important:</strong> Samples must arrive by 10 March 2026</p>
 
         <p>You can log in anytime at: <a href="https://heatawards.eu/login" style="color: #ff4d00;">https://heatawards.eu/login</a></p>
 

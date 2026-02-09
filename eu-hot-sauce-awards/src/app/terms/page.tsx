@@ -49,7 +49,7 @@ const TermsPage = () => {
                   <li>Submit detailed ingredients list</li>
                   <li>Provide accurate allergen information</li>
                   <li>Ship sauce samples according to provided guidelines</li>
-                  <li>Ensure all entries reach the competition by Saturday 28th February 2025</li>
+                  <li>Ensure all entries reach the competition by Tuesday 10th March 2026</li>
                 </ul>
 
                 <h3 className="text-base font-semibold text-white mb-2 mt-4">2.2 Fees and Payments</h3>

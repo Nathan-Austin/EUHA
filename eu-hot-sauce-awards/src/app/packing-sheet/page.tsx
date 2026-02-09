@@ -28,7 +28,7 @@ const PackingSheetPage = () => {
                 </p>
                 <div className="bg-black/30 p-4 rounded-lg mt-6">
                   <p className="text-xs uppercase tracking-wider text-white/60 mb-2">Important Deadline</p>
-                  <p className="font-bold text-lg text-amber-200">Samples must arrive by: 28 February 2026</p>
+                  <p className="font-bold text-lg text-amber-200">Samples must arrive by: 10 March 2026</p>
                 </div>
               </div>
             </div>
