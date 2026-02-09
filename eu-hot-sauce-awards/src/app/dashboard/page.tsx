@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { COMPETITION_YEAR } from '@/lib/config'
 import LogoutButton from './LogoutButton'
 import AdminDashboard from './AdminDashboard'
 import CommunityJudgeDashboard from './CommunityJudgeDashboard'
@@ -94,6 +95,16 @@ export default async function DashboardPage() {
           .eq('payment_status', 'pending_payment')
           .order('created_at', { ascending: false });
 
+        // Fetch entered (paid) sauces for current competition year
+        const { data: enteredSauces } = await supabase
+          .from('sauces')
+          .select('id, name, category, image_path, status')
+          .eq('supplier_id', supplier.id)
+          .in('payment_status', ['paid', 'payment_waived'])
+          .gte('created_at', `${COMPETITION_YEAR}-01-01`)
+          .lt('created_at', `${COMPETITION_YEAR + 1}-01-01`)
+          .order('created_at', { ascending: false });
+
         return <SupplierDashboard
           supplierData={{
             brandName: supplier.brand_name,
@@ -104,6 +115,7 @@ export default async function DashboardPage() {
           }}
           pendingPayment={pendingPayment}
           unpaidSauces={unpaidSauces || []}
+          enteredSauces={enteredSauces || []}
           userEmail={user.email!}
         />;
       }

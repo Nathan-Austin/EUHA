@@ -26,6 +26,14 @@ interface UnpaidSauce {
   created_at: string;
 }
 
+interface EnteredSauce {
+  id: string;
+  name: string;
+  category: string;
+  image_path: string | null;
+  status: string;
+}
+
 interface SupplierDashboardProps {
   supplierData: {
     brandName: string;
@@ -36,10 +44,21 @@ interface SupplierDashboardProps {
   };
   pendingPayment?: PaymentQuote | null;
   unpaidSauces: UnpaidSauce[];
+  enteredSauces: EnteredSauce[];
   userEmail: string;
 }
 
-export default function SupplierDashboard({ supplierData, pendingPayment, unpaidSauces, userEmail }: SupplierDashboardProps) {
+export default function SupplierDashboard({ supplierData, pendingPayment, unpaidSauces, enteredSauces: _enteredSauces, userEmail }: SupplierDashboardProps) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const imageBucket = process.env.NEXT_PUBLIC_SAUCE_IMAGE_BUCKET || 'sauce-media';
+
+  // TODO: REMOVE — temporary mock data for layout preview
+  const enteredSauces: EnteredSauce[] = [
+    { id: '1', name: 'Dragon Breath Habanero', category: 'Hot Chili Sauce', image_path: null, status: 'arrived' },
+    { id: '2', name: 'Smoky BBQ Reaper', category: 'BBQ Chili Sauce', image_path: null, status: 'registered' },
+    { id: '3', name: 'Mango Madness', category: 'Sweet', image_path: null, status: 'boxed' },
+  ];
+
   const [trackingNumber, setTrackingNumber] = useState(supplierData.trackingNumber || '');
   const [postalService, setPostalService] = useState(supplierData.postalServiceName || '');
   const [isPending, startTransition] = useTransition();
@@ -83,6 +102,43 @@ export default function SupplierDashboard({ supplierData, pendingPayment, unpaid
         <h2 className="text-2xl font-bold text-white mb-2">Supplier Dashboard</h2>
         <p className="text-gray-300">Welcome, {supplierData.brandName}!</p>
       </div>
+
+      {enteredSauces.length > 0 && (
+        <div className="bg-white rounded-lg p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">
+            Your Entered Sauces ({enteredSauces.length})
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {enteredSauces.map((sauce) => (
+              <div key={sauce.id} className="flex items-center gap-3 border border-gray-200 rounded-lg p-3">
+                {sauce.image_path && supabaseUrl ? (
+                  <img
+                    src={`${supabaseUrl}/storage/v1/object/public/${imageBucket}/${sauce.image_path}`}
+                    alt={sauce.name}
+                    className="w-14 h-14 rounded-md object-cover flex-shrink-0"
+                  />
+                ) : (
+                  <div className="w-14 h-14 rounded-md bg-gray-100 flex items-center justify-center flex-shrink-0">
+                    <span className="text-gray-400 text-xs">No img</span>
+                  </div>
+                )}
+                <div className="min-w-0">
+                  <p className="font-semibold text-gray-900 truncate">{sauce.name}</p>
+                  <p className="text-sm text-gray-600">{sauce.category}</p>
+                  <span className={`inline-block mt-1 px-2 py-0.5 rounded text-xs font-medium ${
+                    sauce.status === 'arrived' ? 'bg-green-100 text-green-800' :
+                    sauce.status === 'boxed' ? 'bg-blue-100 text-blue-800' :
+                    sauce.status === 'judged' ? 'bg-purple-100 text-purple-800' :
+                    'bg-gray-100 text-gray-700'
+                  }`}>
+                    {sauce.status.charAt(0).toUpperCase() + sauce.status.slice(1)}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {pendingPayment ? (
         <>
