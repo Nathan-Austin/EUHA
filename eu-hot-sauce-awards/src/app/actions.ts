@@ -2622,6 +2622,82 @@ export async function createSauceEntry(formData: FormData) {
 }
 
 /**
+ * Upload or replace a sauce image for an existing sauce owned by the current supplier
+ */
+export async function updateSauceImage(sauceId: string, imagePath: string) {
+  if (!sauceId || !imagePath) {
+    return { error: 'Sauce ID and image path are required.' };
+  }
+
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+
+  // Get authenticated user
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user?.email) {
+    return { error: 'You must be logged in to update a sauce image.' };
+  }
+
+  // Get supplier record
+  const { data: supplier, error: supplierError } = await supabase
+    .from('suppliers')
+    .select('id')
+    .ilike('email', user.email)
+    .single();
+
+  if (supplierError || !supplier) {
+    return { error: 'Supplier account not found.' };
+  }
+
+  const serviceSupabase = createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
+  // Verify this sauce belongs to the supplier
+  const { data: sauce, error: sauceError } = await serviceSupabase
+    .from('sauces')
+    .select('id, supplier_id')
+    .eq('id', sauceId)
+    .eq('supplier_id', supplier.id)
+    .single();
+
+  if (sauceError || !sauce) {
+    return { error: 'Sauce not found or does not belong to your account.' };
+  }
+
+  const bucket = process.env.NEXT_PUBLIC_SAUCE_IMAGE_BUCKET || 'sauce-media';
+  const targetPath = `suppliers/${supplier.id}/${sauceId}.webp`;
+
+  // Remove any existing file at the target path so move() doesn't fail
+  await serviceSupabase.storage.from(bucket).remove([targetPath]);
+
+  // Move image from pending to final location
+  const { error: moveError } = await serviceSupabase.storage
+    .from(bucket)
+    .move(imagePath, targetPath);
+
+  if (moveError) {
+    console.error('Failed to move image:', moveError);
+    return { error: 'Failed to process uploaded image.' };
+  }
+
+  // Update sauce with image path
+  const { error: updateError } = await serviceSupabase
+    .from('sauces')
+    .update({ image_path: targetPath })
+    .eq('id', sauceId);
+
+  if (updateError) {
+    console.error('Failed to update sauce with image path:', updateError);
+    return { error: 'Image uploaded but failed to update sauce record.' };
+  }
+
+  revalidatePath('/dashboard');
+  return { success: true };
+}
+
+/**
  * Create a payment batch for all unpaid sauces
  * If a pending payment already exists, delete it and create a new one with updated discount
  */

@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useTransition } from 'react';
-import { submitTrackingInfo } from '@/app/actions';
+import { useState, useRef, useTransition } from 'react';
+import { submitTrackingInfo, updateSauceImage } from '@/app/actions';
+import { createClient } from '@/lib/supabase/client';
 import SupplierPaymentButton from './SupplierPaymentButton';
 import SupplierSauceManager from './SupplierSauceManager';
 
@@ -57,6 +58,8 @@ export default function SupplierDashboard({ supplierData, pendingPayment, unpaid
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [uploadingSauceId, setUploadingSauceId] = useState<string | null>(null);
+  const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -76,6 +79,39 @@ export default function SupplierDashboard({ supplierData, pendingPayment, unpaid
         setSuccess('Tracking information submitted successfully! We\'ll notify you when your package arrives.');
       }
     });
+  };
+
+  const handleImageUpload = async (sauceId: string, file: File) => {
+    setUploadingSauceId(sauceId);
+    try {
+      const supabase = createClient();
+      const bucket = process.env.NEXT_PUBLIC_SAUCE_IMAGE_BUCKET || 'sauce-media';
+      const pendingPath = `pending/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from(bucket)
+        .upload(pendingPath, file, {
+          contentType: file.type,
+          upsert: false,
+        });
+
+      if (uploadError) {
+        setError(`Image upload failed: ${uploadError.message}`);
+        setUploadingSauceId(null);
+        return;
+      }
+
+      const result = await updateSauceImage(sauceId, pendingPath);
+      if (result.error) {
+        setError(result.error);
+        await supabase.storage.from(bucket).remove([pendingPath]);
+      } else {
+        window.location.reload();
+      }
+    } catch {
+      setError('Failed to upload image. Please try again.');
+    }
+    setUploadingSauceId(null);
   };
 
   const getStatusBadge = () => {
@@ -104,16 +140,60 @@ export default function SupplierDashboard({ supplierData, pendingPayment, unpaid
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {enteredSauces.map((sauce) => (
               <div key={sauce.id} className="flex items-center gap-3 border border-gray-200 rounded-lg p-3">
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  ref={(el) => { fileInputRefs.current[sauce.id] = el; }}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleImageUpload(sauce.id, file);
+                    e.target.value = '';
+                  }}
+                />
                 {sauce.image_path && supabaseUrl ? (
-                  <img
-                    src={`${supabaseUrl}/storage/v1/object/public/${imageBucket}/${sauce.image_path}`}
-                    alt={sauce.name}
-                    className="w-14 h-14 rounded-md object-cover flex-shrink-0"
-                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRefs.current[sauce.id]?.click()}
+                    className="relative w-14 h-14 rounded-md flex-shrink-0 group cursor-pointer"
+                    disabled={uploadingSauceId === sauce.id}
+                    title="Replace image"
+                  >
+                    <img
+                      src={`${supabaseUrl}/storage/v1/object/public/${imageBucket}/${sauce.image_path}`}
+                      alt={sauce.name}
+                      className="w-14 h-14 rounded-md object-cover"
+                    />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 rounded-md transition-colors flex items-center justify-center">
+                      <svg className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                    </div>
+                  </button>
                 ) : (
-                  <div className="w-14 h-14 rounded-md bg-gray-100 flex items-center justify-center flex-shrink-0">
-                    <span className="text-gray-400 text-xs">No img</span>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => fileInputRefs.current[sauce.id]?.click()}
+                    className="w-14 h-14 rounded-md bg-gray-100 hover:bg-gray-200 flex flex-col items-center justify-center flex-shrink-0 cursor-pointer transition-colors"
+                    disabled={uploadingSauceId === sauce.id}
+                    title="Upload image"
+                  >
+                    {uploadingSauceId === sauce.id ? (
+                      <svg className="w-5 h-5 text-gray-400 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                    ) : (
+                      <>
+                        <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        <span className="text-gray-400 text-[10px] mt-0.5">Add</span>
+                      </>
+                    )}
+                  </button>
                 )}
                 <div className="min-w-0">
                   <p className="font-semibold text-gray-900 truncate">{sauce.name}</p>
