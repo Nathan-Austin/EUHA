@@ -13,6 +13,12 @@
 export const COMPETITION_YEAR = 2026;
 
 /**
+ * The most recent completed competition year (for rankings and past results pages).
+ * Update this after each competition's results are finalised.
+ */
+export const PAST_RESULTS_YEAR = 2025;
+
+/**
  * Helper to validate that the competition year is current
  * Call this during application startup to catch configuration issues early
  */
