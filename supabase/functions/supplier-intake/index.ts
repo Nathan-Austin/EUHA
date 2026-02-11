@@ -274,14 +274,18 @@ Deno.serve(async (req) => {
     }
 
     // 6. Generate sauce codes and insert/update sauces (with duplicate prevention)
-    const saucesToCreate = [];
-    const reusedSauces: { id: string; name: string; sauce_code: string }[] = [];
+    // resolvedSauces keeps the same index order as payload.sauces so image
+    // assignment later pairs images with the correct sauce.
+    const resolvedSauces: ({ id: string; name: string; sauce_code: string } | null)[] =
+      new Array(payload.sauces.length).fill(null);
+    const saucesToCreate: { index: number; data: Record<string, unknown> }[] = [];
 
     // Track next number per category within this submission to avoid duplicates
     const categoryCounters: Record<string, number> = {};
     currentStep = 'prepare-sauces';
 
-    for (const sauce of payload.sauces) {
+    for (let i = 0; i < payload.sauces.length; i++) {
+      const sauce = payload.sauces[i];
       const categoryCode = CATEGORY_CODES[sauce.category];
       if (!categoryCode) {
         throw new Error(`Unknown category: ${sauce.category}`);
@@ -319,7 +323,7 @@ Deno.serve(async (req) => {
 
         if (updateError) throw updateError;
 
-        reusedSauces.push(existingUnpaid);
+        resolvedSauces[i] = existingUnpaid;
       } else {
         // No existing unpaid sauce found - create a new one
         // Only query database once per category
@@ -348,33 +352,41 @@ Deno.serve(async (req) => {
         categoryCounters[categoryCode]++;
 
         saucesToCreate.push({
-          supplier_id: supplier.id,
-          name: sauce.name,
-          ingredients: sauce.ingredients,
-          allergens: sauce.allergens,
-          category: sauce.category,
-          sauce_code: sauceCode,
-          status: 'registered',
-          webshop_link: sauce.webshopLink || null,
-          payment_status: 'pending_payment',
+          index: i,
+          data: {
+            supplier_id: supplier.id,
+            name: sauce.name,
+            ingredients: sauce.ingredients,
+            allergens: sauce.allergens,
+            category: sauce.category,
+            sauce_code: sauceCode,
+            status: 'registered',
+            webshop_link: sauce.webshopLink || null,
+            payment_status: 'pending_payment',
+          },
         });
       }
     }
 
     currentStep = 'insert-sauces';
-    let newSauces: { id: string; name: string; sauce_code: string }[] = [];
     if (saucesToCreate.length > 0) {
       const { data: insertedSauces, error: sauceError } = await supabaseAdmin
         .from('sauces')
-        .insert(saucesToCreate)
+        .insert(saucesToCreate.map((s) => s.data))
         .select('id, name, sauce_code');
 
       if (sauceError) throw sauceError;
-      newSauces = insertedSauces || [];
+
+      // Place inserted sauces back into their original payload positions
+      for (let j = 0; j < saucesToCreate.length; j++) {
+        resolvedSauces[saucesToCreate[j].index] = insertedSauces![j];
+      }
     }
 
-    // Combine reused and newly created sauces
-    const sauces = [...reusedSauces, ...newSauces];
+    // Filter out any null entries (shouldn't happen, but be safe)
+    const sauces = resolvedSauces.filter(
+      (s): s is { id: string; name: string; sauce_code: string } => s !== null
+    );
 
     if (sauces.length === 0) {
       throw new Error('No sauces were created or found for this submission.');
@@ -436,10 +448,15 @@ Deno.serve(async (req) => {
 
     for (let index = 0; index < payload.sauces.length; index += 1) {
       const pendingPath = payload.sauces[index]?.imagePath;
-      const sauceId = sauces[index]?.id;
-      if (!pendingPath || !sauceId) continue;
+      const sauce = resolvedSauces[index];
+      if (!pendingPath || !sauce) continue;
 
-      const targetPath = `suppliers/${supplier.id}/${sauceId}.webp`;
+      const targetPath = `suppliers/${supplier.id}/${sauce.id}.webp`;
+
+      // Remove any existing file at the target path so move() doesn't
+      // fail on retries where the image was already assigned.
+      await supabaseAdmin.storage.from(SAUCE_IMAGE_BUCKET).remove([targetPath]);
+
       const moveResult = await supabaseAdmin.storage
         .from(SAUCE_IMAGE_BUCKET)
         .move(pendingPath, targetPath);
@@ -451,13 +468,13 @@ Deno.serve(async (req) => {
       const { error: updateError } = await supabaseAdmin
         .from('sauces')
         .update({ image_path: targetPath })
-        .eq('id', sauceId);
+        .eq('id', sauce.id);
 
       if (updateError) {
         throw updateError;
       }
 
-      imageAssignments[sauceId] = targetPath;
+      imageAssignments[sauce.id] = targetPath;
     }
 
     const decoratedSauces = sauces.map((sauce) => ({

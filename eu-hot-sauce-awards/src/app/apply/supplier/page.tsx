@@ -370,7 +370,15 @@ export default function SupplierApplyPage() {
       });
 
       if (error) {
-        throw new Error(error.message);
+        // Extract the detailed error from the edge function response body
+        let detail = "";
+        try {
+          const body = await error.context?.json?.();
+          if (body?.error) detail = body.error;
+        } catch {
+          // context may not be available
+        }
+        throw new Error(detail || error.message);
       }
 
       // Note: Magic link will be sent after payment is completed via Stripe webhook
@@ -411,7 +419,14 @@ export default function SupplierApplyPage() {
       });
 
       if (error) {
-        throw new Error(error.message);
+        let detail = "";
+        try {
+          const body = await error.context?.json?.();
+          if (body?.error) detail = body.error;
+        } catch {
+          // context may not be available
+        }
+        throw new Error(detail || error.message);
       }
 
       if (data?.alreadyPaid) {
