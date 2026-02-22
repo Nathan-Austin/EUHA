@@ -281,7 +281,7 @@ export default function SupplierApplyPage() {
       }
     });
 
-    setFormValues({ brand: "", contactName: "", email: "", address: "" });
+    setFormValues({ brand: "", contactName: "", email: "", address: "", website: "" });
     setSauces([createEmptySauce()]);
     setIsSubmitting(false);
     setIsComplete(false);
