@@ -166,6 +166,7 @@ export default function SupplierApplyPage() {
     contactName: "",
     email: "",
     address: "",
+    website: "", // honeypot
   });
   const [sauces, setSauces] = useState<SauceForm[]>([createEmptySauce()]);
 
@@ -363,6 +364,7 @@ export default function SupplierApplyPage() {
         email: formValues.email.trim().toLowerCase(),
         address: formValues.address.trim(),
         sauces: processedSauces,
+        website: formValues.website, // honeypot: edge function rejects if non-empty
       };
 
       const { data, error } = await supabase.functions.invoke("supplier-intake", {
@@ -468,6 +470,17 @@ export default function SupplierApplyPage() {
 
         <section className="space-y-6 rounded-3xl border border-white/15 bg-white/[0.07] p-8 backdrop-blur">
           <form onSubmit={handleSubmit} className="space-y-8">
+            {/* Honeypot: hidden from humans via off-screen positioning, filled by bots */}
+            <input
+              type="text"
+              name="website"
+              value={formValues.website}
+              onChange={handleBrandFieldChange("website")}
+              tabIndex={-1}
+              autoComplete="off"
+              aria-hidden="true"
+              style={{ position: "absolute", left: "-9999px", top: 0, width: 0, height: 0, overflow: "hidden", opacity: 0 }}
+            />
             <div className="grid gap-6 sm:grid-cols-2">
               <label className="flex flex-col gap-2">
                 <span className="text-xs uppercase tracking-[0.2em] text-white/60">Brand Name *</span>

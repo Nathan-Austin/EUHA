@@ -18,6 +18,8 @@ interface SupplierIntakePayload {
   address: string;
   email: string;
   sauces: SaucePayload[];
+  // Honeypot field: must be absent or empty. Bots fill it; humans never see it.
+  website?: string;
 }
 
 const BASE_PRICE_CENTS = 5000; // 50.00 EUR
@@ -102,6 +104,15 @@ Deno.serve(async (req) => {
   try {
     currentStep = 'parse-payload';
     const payload: SupplierIntakePayload = await req.json();
+
+    // Honeypot check: legitimate form submissions never populate this field.
+    // Return a fake success so bots don't know they were caught.
+    if (payload.website) {
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200,
+      });
+    }
 
     if (!payload.sauces || payload.sauces.length === 0) {
       throw new Error('At least one sauce entry is required.');
