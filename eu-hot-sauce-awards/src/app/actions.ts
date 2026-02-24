@@ -942,8 +942,16 @@ export async function bypassPayment(sauceId: string) {
     // Don't fail - sauces already marked as paid, this is a secondary operation
   }
 
+  // Get service role client (bypasses RLS) for judge upsert and magic link
+  const serviceResult = getServiceSupabase();
+  if ('error' in serviceResult) {
+    return { error: serviceResult.error };
+  }
+
+  const { client: serviceClient } = serviceResult;
+
   // Create/activate judge profile
-  const { error: judgeUpsertError } = await supabase
+  const { error: judgeUpsertError } = await serviceClient
     .from('judges')
     .upsert({
       email: supplierEmail,
@@ -958,14 +966,6 @@ export async function bypassPayment(sauceId: string) {
     console.error('Failed to create judge profile:', judgeUpsertError);
     return { error: 'Failed to create judge profile.' };
   }
-
-  // Generate and send magic link using service role client
-  const serviceResult = getServiceSupabase();
-  if ('error' in serviceResult) {
-    return { error: serviceResult.error };
-  }
-
-  const { client: serviceClient } = serviceResult;
 
   try {
     // Generate magic link
