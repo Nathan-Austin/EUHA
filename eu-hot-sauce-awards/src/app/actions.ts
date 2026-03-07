@@ -3131,7 +3131,8 @@ export async function getSuppliersMissingAddressInfo(includeAll = false): Promis
   if (includeAll) {
     const { data: allSuppliers, error: suppError } = await supabase
       .from('suppliers')
-      .select('brand_name, email')
+      .select('brand_name, email, shipping_address_email_sent_at')
+      .is('shipping_address_email_sent_at', null)
 
     if (suppError || !allSuppliers) return { error: suppError?.message || 'Failed to fetch suppliers' }
 
@@ -3190,7 +3191,8 @@ export async function sendShippingAddressRequests(
   if (sendToAll) {
     const { data: allSuppliers, error: suppError } = await supabase
       .from('suppliers')
-      .select('brand_name, email')
+      .select('brand_name, email, shipping_address_email_sent_at')
+      .is('shipping_address_email_sent_at', null)
 
     if (suppError || !allSuppliers) return { sent: 0, failed: 0, alreadyHave: 0, errors: [suppError?.message || 'Failed to fetch suppliers'] }
 
@@ -3263,6 +3265,13 @@ export async function sendShippingAddressRequests(
 
       await sendEmail(emailOptions)
       sent++
+
+      if (sendToAll) {
+        await supabase
+          .from('suppliers')
+          .update({ shipping_address_email_sent_at: new Date().toISOString() })
+          .ilike('email', supplier.email)
+      }
     } catch (err) {
       errors.push(`${supplier.email}: ${err instanceof Error ? err.message : 'Unknown error'}`)
       failed++

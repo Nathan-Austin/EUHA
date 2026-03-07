@@ -79,7 +79,7 @@ export default function ShippingAddressRequestSender() {
           <span className="text-sm font-medium text-gray-700">Send to all suppliers</span>
         </label>
         <span className="text-xs text-gray-500">
-          {sendToAll ? 'Including those who already have an address' : 'Only suppliers missing an address'}
+          {sendToAll ? 'All suppliers not yet emailed (skips already sent)' : 'Only suppliers missing an address'}
         </span>
       </div>
 
