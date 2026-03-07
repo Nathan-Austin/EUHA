@@ -1322,6 +1322,13 @@ export async function markPackageReceived(supplierId: string) {
     return { error: `Failed to update package status: ${error.message}` };
   }
 
+  // Also mark all of this supplier's registered sauces as 'arrived'
+  await supabase
+    .from('sauces')
+    .update({ status: 'arrived' })
+    .eq('supplier_id', supplierId)
+    .eq('status', 'registered');
+
   // Get sauce names for email
   const { data: sauces } = await supabase
     .from('sauces')
