@@ -3128,6 +3128,18 @@ export async function getSuppliersMissingAddressInfo(includeAll = false): Promis
 
   if (!adminJudge?.[0] || adminJudge[0].type !== 'admin') return { error: 'Admin access required' }
 
+  if (includeAll) {
+    const { data: allSuppliers, error: suppError } = await supabase
+      .from('suppliers')
+      .select('brand_name, email')
+
+    if (suppError || !allSuppliers) return { error: suppError?.message || 'Failed to fetch suppliers' }
+
+    return {
+      suppliers: allSuppliers.map((s) => ({ name: s.brand_name, email: s.email, brandName: s.brand_name })),
+    }
+  }
+
   const { data: judgeSuppliers, error } = await supabase
     .from('judges')
     .select('name, email, address, city, postal_code, country')
@@ -3135,13 +3147,11 @@ export async function getSuppliersMissingAddressInfo(includeAll = false): Promis
 
   if (error || !judgeSuppliers) return { error: error?.message || 'Failed to fetch suppliers' }
 
-  const targets = includeAll
-    ? judgeSuppliers
-    : judgeSuppliers.filter((s) => !s.address || !s.city || !s.postal_code || !s.country)
+  const missing = judgeSuppliers.filter((s) => !s.address || !s.city || !s.postal_code || !s.country)
 
   // Look up brand names
   const result = await Promise.all(
-    targets.map(async (s) => {
+    missing.map(async (s) => {
       const { data: sup } = await supabase
         .from('suppliers')
         .select('brand_name')
@@ -3174,19 +3184,31 @@ export async function sendShippingAddressRequests(
 
   if (adminJudge?.type !== 'admin') return { sent: 0, failed: 0, alreadyHave: 0, errors: ['Admin access required'] }
 
-  // Get all supplier judges
-  const { data: suppliers, error } = await supabase
-    .from('judges')
-    .select('id, name, email, address, city, postal_code, country')
-    .eq('type', 'supplier')
+  let targets: { email: string; name: string; brandName?: string }[]
+  let alreadyHave = 0
 
-  if (error || !suppliers) return { sent: 0, failed: 0, alreadyHave: 0, errors: [error?.message || 'Failed to fetch suppliers'] }
+  if (sendToAll) {
+    const { data: allSuppliers, error: suppError } = await supabase
+      .from('suppliers')
+      .select('brand_name, email')
 
-  const missing = suppliers.filter(
-    (s) => !s.address || !s.city || !s.postal_code || !s.country
-  )
-  const alreadyHave = suppliers.length - missing.length
-  const targets = sendToAll ? suppliers : missing
+    if (suppError || !allSuppliers) return { sent: 0, failed: 0, alreadyHave: 0, errors: [suppError?.message || 'Failed to fetch suppliers'] }
+
+    targets = allSuppliers.map((s) => ({ email: s.email, name: s.brand_name, brandName: s.brand_name }))
+  } else {
+    const { data: judgeSuppliers, error } = await supabase
+      .from('judges')
+      .select('id, name, email, address, city, postal_code, country')
+      .eq('type', 'supplier')
+
+    if (error || !judgeSuppliers) return { sent: 0, failed: 0, alreadyHave: 0, errors: [error?.message || 'Failed to fetch suppliers'] }
+
+    const missing = judgeSuppliers.filter(
+      (s) => !s.address || !s.city || !s.postal_code || !s.country
+    )
+    alreadyHave = judgeSuppliers.length - missing.length
+    targets = missing
+  }
 
   const adminClient = createServiceClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -3215,14 +3237,16 @@ export async function sendShippingAddressRequests(
         continue
       }
 
-      // Look up brand name from suppliers table
-      const { data: supplierRecord } = await supabase
-        .from('suppliers')
-        .select('brand_name')
-        .ilike('email', supplier.email)
-        .single()
-
-      const brandName = supplierRecord?.brand_name || supplier.name
+      // Use pre-fetched brand name or look up from suppliers table
+      let brandName = supplier.brandName
+      if (!brandName) {
+        const { data: supplierRecord } = await supabase
+          .from('suppliers')
+          .select('brand_name')
+          .ilike('email', supplier.email)
+          .single()
+        brandName = supplierRecord?.brand_name || supplier.name
+      }
 
       const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://heatawards.eu'
       const actionLink = linkData.properties.action_link.replace(
