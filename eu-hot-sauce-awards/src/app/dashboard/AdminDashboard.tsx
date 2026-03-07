@@ -20,6 +20,7 @@ import SendPaymentRemindersButton from './SendPaymentRemindersButton'
 import SendVatEmailButton from './SendVatEmailButton'
 import JudgeShippingManager from './JudgeShippingManager'
 import RequestShippingAddressButton from './RequestShippingAddressButton'
+import DhlLabelScanner from './DhlLabelScanner'
 
 const formatStatusLabel = (status: string) =>
   status
@@ -362,6 +363,9 @@ export default async function AdminDashboard() {
           {suppliersMissingAddress > 0 && (
             <RequestShippingAddressButton missingCount={suppliersMissingAddress} />
           )}
+          <Card>
+            <DhlLabelScanner />
+          </Card>
           <Card>
             <JudgeShippingManager judges={shippingJudges || []} />
           </Card>

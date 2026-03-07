@@ -707,6 +707,20 @@ export async function recordBottleScan(judgeId: string, sauceId: string) {
     return { error: 'This sauce is already in this judge\'s box.' };
   }
 
+  // Check if judge's box is already full (max 12 sauces)
+  const { count: judgeBoxCount, error: judgeBoxCountError } = await adminSupabase
+    .from('box_assignments')
+    .select('*', { count: 'exact', head: true })
+    .eq('judge_id', judgeId);
+
+  if (judgeBoxCountError) {
+    return { error: `Failed to check box size: ${judgeBoxCountError.message}` };
+  }
+
+  if ((judgeBoxCount || 0) >= 12) {
+    return { error: `This judge's box is full (12/12 sauces). Scan a different judge to continue.` };
+  }
+
   // Check if sauce has reached maximum assignments (7 bottles total)
   const { count: totalAssignments, error: countError } = await adminSupabase
     .from('box_assignments')
@@ -3171,4 +3185,47 @@ export async function sendShippingAddressRequests(): Promise<{ sent: number; fai
   }
 
   return { sent, failed, alreadyHave, errors }
+}
+
+export async function getJudgeForShipping(judgeId: string): Promise<{
+  judge?: {
+    id: string
+    name: string
+    email: string
+    type: string
+    address: string | null
+    address_line2: string | null
+    city: string | null
+    postal_code: string | null
+    country: string | null
+    dhl_tracking_number: string | null
+    dhl_label_url: string | null
+    label_generated_at: string | null
+    label_generation_error: string | null
+  }
+  error?: string
+}> {
+  const cookieStore = cookies()
+  const supabase = createClient(cookieStore)
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user?.email) return { error: 'Not authenticated' }
+
+  const { data: adminJudge } = await supabase
+    .from('judges')
+    .select('type')
+    .ilike('email', user.email)
+    .single()
+
+  if (adminJudge?.type !== 'admin') return { error: 'Admin access required' }
+
+  const { data: judge, error } = await supabase
+    .from('judges')
+    .select('id, name, email, type, address, address_line2, city, postal_code, country, dhl_tracking_number, dhl_label_url, label_generated_at, label_generation_error')
+    .eq('id', judgeId)
+    .single()
+
+  if (error || !judge) return { error: 'Judge not found' }
+
+  return { judge }
 }
