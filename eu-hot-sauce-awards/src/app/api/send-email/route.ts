@@ -96,6 +96,12 @@ export async function POST(request: NextRequest) {
         break;
       }
 
+      case 'custom': {
+        const { email, subject, html } = data;
+        await sendEmail({ to: email, subject, html });
+        break;
+      }
+
       default:
         return NextResponse.json({ error: 'Invalid email type' }, { status: 400 });
     }

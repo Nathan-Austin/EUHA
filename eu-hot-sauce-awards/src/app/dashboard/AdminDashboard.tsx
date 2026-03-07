@@ -13,6 +13,7 @@ import PackageTracker from './PackageTracker'
 import EventsManager from './EventsManager'
 import EmailCampaignManager from './EmailCampaignManager'
 import EmailTemplateEditor from './EmailTemplateEditor'
+import ShippingAddressRequestSender from './ShippingAddressRequestSender'
 import ProJudgeApproval from './ProJudgeApproval'
 import JudgeAnalysis from './JudgeAnalysis'
 import AdminTabs from './AdminTabs'
@@ -391,6 +392,9 @@ export default async function AdminDashboard() {
             title="Marketing & Outreach"
             description="Manage email campaigns and customize email templates."
           />
+          <Card>
+            <ShippingAddressRequestSender />
+          </Card>
           <Card>
             <EmailTemplateEditor />
           </Card>

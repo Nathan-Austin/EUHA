@@ -3110,7 +3110,54 @@ export async function updateJudgeShippingAddress(data: {
   return { success: true }
 }
 
-export async function sendShippingAddressRequests(): Promise<{ sent: number; failed: number; alreadyHave: number; errors: string[] }> {
+export async function getSuppliersMissingAddressInfo(): Promise<{
+  suppliers?: { name: string; email: string; brandName: string }[]
+  error?: string
+}> {
+  const cookieStore = cookies()
+  const supabase = createClient(cookieStore)
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user?.email) return { error: 'Not authenticated' }
+
+  const { data: adminJudge } = await supabase
+    .from('judges')
+    .select('type')
+    .ilike('email', user.email)
+    .limit(1)
+
+  if (!adminJudge?.[0] || adminJudge[0].type !== 'admin') return { error: 'Admin access required' }
+
+  const { data: judgeSuppliers, error } = await supabase
+    .from('judges')
+    .select('name, email, address, city, postal_code, country')
+    .eq('type', 'supplier')
+
+  if (error || !judgeSuppliers) return { error: error?.message || 'Failed to fetch suppliers' }
+
+  const missing = judgeSuppliers.filter(
+    (s) => !s.address || !s.city || !s.postal_code || !s.country
+  )
+
+  // Look up brand names
+  const result = await Promise.all(
+    missing.map(async (s) => {
+      const { data: sup } = await supabase
+        .from('suppliers')
+        .select('brand_name')
+        .ilike('email', s.email)
+        .single()
+      return { name: s.name, email: s.email, brandName: sup?.brand_name || s.name }
+    })
+  )
+
+  return { suppliers: result }
+}
+
+export async function sendShippingAddressRequests(
+  customSubject?: string,
+  customBody?: string
+): Promise<{ sent: number; failed: number; alreadyHave: number; errors: string[] }> {
   const cookieStore = cookies()
   const supabase = createClient(cookieStore)
 
@@ -3181,16 +3228,33 @@ export async function sendShippingAddressRequests(): Promise<{ sent: number; fai
         appUrl
       )
 
+      // If custom subject/body provided, interpolate variables and send directly
+      let emailPayload: object
+      if (customSubject && customBody) {
+        const interpolate = (str: string) =>
+          str.replace(/\{\{brandName\}\}/g, brandName).replace(/\{\{magicLink\}\}/g, actionLink)
+        emailPayload = {
+          type: 'custom',
+          data: {
+            email: supplier.email,
+            subject: interpolate(customSubject),
+            html: interpolate(customBody),
+          },
+        }
+      } else {
+        emailPayload = {
+          type: 'shipping_address_request',
+          data: { email: supplier.email, brandName, magicLink: actionLink },
+        }
+      }
+
       const response = await fetch(`${appUrl}/api/send-email`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
         },
-        body: JSON.stringify({
-          type: 'shipping_address_request',
-          data: { email: supplier.email, brandName, magicLink: actionLink },
-        }),
+        body: JSON.stringify(emailPayload),
       })
 
       if (!response.ok) {
