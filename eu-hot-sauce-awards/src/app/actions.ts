@@ -3238,7 +3238,7 @@ export async function sendShippingAddressRequests(
       }
 
       // Use pre-fetched brand name or look up from suppliers table
-      let brandName = supplier.brandName
+      let brandName: string = supplier.brandName || ''
       if (!brandName) {
         const { data: supplierRecord } = await supabase
           .from('suppliers')
