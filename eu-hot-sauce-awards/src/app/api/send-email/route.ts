@@ -87,6 +87,15 @@ export async function POST(request: NextRequest) {
         break;
       }
 
+      case 'shipping_address_request': {
+        const { email, brandName, magicLink } = data;
+        await sendEmail({
+          to: email,
+          ...emailTemplates.shippingAddressRequest(brandName, magicLink)
+        });
+        break;
+      }
+
       default:
         return NextResponse.json({ error: 'Invalid email type' }, { status: 400 });
     }

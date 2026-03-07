@@ -18,6 +18,8 @@ import JudgeAnalysis from './JudgeAnalysis'
 import AdminTabs from './AdminTabs'
 import SendPaymentRemindersButton from './SendPaymentRemindersButton'
 import SendVatEmailButton from './SendVatEmailButton'
+import JudgeShippingManager from './JudgeShippingManager'
+import RequestShippingAddressButton from './RequestShippingAddressButton'
 
 const formatStatusLabel = (status: string) =>
   status
@@ -67,6 +69,14 @@ export default async function AdminDashboard() {
     )
     .order('package_status', { ascending: true }) as { data: any[] | null; error: any }
 
+  const { data: shippingJudges } = await supabase
+    .from('judges')
+    .select(
+      'id, name, email, type, address, address_line2, city, postal_code, country, dhl_tracking_number, dhl_label_url, label_generated_at, label_generation_error'
+    )
+    .in('type', ['pro', 'community', 'supplier'])
+    .order('type', { ascending: true }) as { data: any[] | null; error: any }
+
   if (error) {
     return <p className="text-red-400">Error loading sauces: {error.message}</p>
   }
@@ -92,6 +102,10 @@ export default async function AdminDashboard() {
     suppliers?.filter((supplier) => supplier.package_status !== 'received').length ?? 0
   const packagesReceived =
     suppliers?.filter((supplier) => supplier.package_status === 'received').length ?? 0
+
+  const suppliersMissingAddress = (shippingJudges || []).filter(
+    (j) => j.type === 'supplier' && (!j.address || !j.city || !j.postal_code || !j.country)
+  ).length
 
   const statusHighlights = (Object.entries(statusCounts) as Array<[string, number]>)
     .sort(([, countA], [, countB]) => countB - countA)
@@ -331,6 +345,25 @@ export default async function AdminDashboard() {
           </Card>
           <Card>
             <EventsManager />
+          </Card>
+        </div>
+      ),
+    },
+    {
+      id: 'shipping',
+      label: 'DHL Shipping',
+      icon: '🚚',
+      content: (
+        <div className="space-y-6">
+          <SectionHeading
+            title="DHL Shipping — Judge Boxes"
+            description="Generate DHL shipping labels for outgoing judging boxes. Labels print separately from judging labels."
+          />
+          {suppliersMissingAddress > 0 && (
+            <RequestShippingAddressButton missingCount={suppliersMissingAddress} />
+          )}
+          <Card>
+            <JudgeShippingManager judges={shippingJudges || []} />
           </Card>
         </div>
       ),

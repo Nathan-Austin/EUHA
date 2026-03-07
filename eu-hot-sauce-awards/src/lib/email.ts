@@ -522,6 +522,26 @@ export const emailTemplates = {
     text: `Dear ${name}, we'd love to have you back as a ${judgeType === 'pro' ? 'Professional' : 'Community'} Judge for the EU Hot Sauce Awards 2026! Register at https://heatawards.eu/apply/judge. Application deadline: February 15, 2026.`,
   }),
 
+  shippingAddressRequest: (brandName: string, magicLink: string) => ({
+    subject: 'Action Required: Add Your Shipping Address for Your EUHA Judging Box',
+    html: `
+      ${emailBanner}
+      <div style="padding: 20px; font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h1 style="color: #ff4d00;">Your Judging Box Is Coming!</h1>
+        <p>Hi ${brandName},</p>
+        <p>Great news — we're getting ready to ship out the judging boxes for the <strong>EU Hot Sauce Awards 2026</strong>.</p>
+        <p>As a participating supplier, you'll receive a judging set so you can taste and score the other entries. To make sure your box reaches you, we need your <strong>delivery address</strong>.</p>
+        <p style="margin: 30px 0; text-align: center;">
+          <a href="${magicLink}" style="background-color: #ff4d00; color: white; padding: 15px 40px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">Add My Shipping Address</a>
+        </p>
+        <p>This link will take you directly to your dashboard where you can enter your address. It expires in <strong>24 hours</strong> — if it has expired, just visit <a href="https://heatawards.eu/login">heatawards.eu/login</a> to get a fresh one.</p>
+        <p>If you have any questions, reply to this email and we'll get back to you.</p>
+        <p>Thanks,<br/>The EU Hot Sauce Awards Team</p>
+      </div>
+    `,
+    text: `Hi ${brandName}, we're shipping judging boxes for the EU Hot Sauce Awards 2026 and need your delivery address. Please log in to your dashboard to add it: ${magicLink}. This link expires in 24 hours. Need another? Visit https://heatawards.eu/login.`,
+  }),
+
   paymentReminder: (brandName: string, entryCount: number, amount: string, daysSinceRegistration: number, magicLink?: string) => ({
     subject: 'EU Hot Sauce Awards - Payment Pending for Your Entry',
     html: `

@@ -4,6 +4,7 @@ import { useState, useEffect, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { submitAllScores, getJudgeScoredSauces } from '@/app/actions';
+import JudgeShippingAddressForm from './JudgeShippingAddressForm';
 
 // The shape of our local storage data
 interface StoredScore {
@@ -18,7 +19,21 @@ interface ScoredSauce {
   sauceCode: string;
 }
 
-export default function CommunityJudgeDashboard() {
+interface ShippingAddress {
+  address: string | null;
+  address_line2: string | null;
+  city: string | null;
+  postal_code: string | null;
+  country: string | null;
+}
+
+interface Props {
+  shippingAddress: ShippingAddress;
+  trackingNumber: string | null;
+  labelUrl: string | null;
+}
+
+export default function CommunityJudgeDashboard({ shippingAddress, trackingNumber, labelUrl }: Props) {
   const router = useRouter();
   const [storedScores, setStoredScores] = useState<StoredScore[]>([]);
   const [scoredSauces, setScoredSauces] = useState<ScoredSauce[]>([]);
@@ -154,6 +169,34 @@ export default function CommunityJudgeDashboard() {
 
       {error && <p className="mt-4 text-sm text-center text-red-400">{error}</p>}
       {success && <p className="mt-4 text-sm text-center text-green-400">{success}</p>}
+
+      {/* DHL Tracking */}
+      {trackingNumber && (
+        <div className="pt-4 border-t border-gray-300">
+          <h3 className="text-lg font-semibold mb-2 text-white">Box Shipping</h3>
+          <div className="rounded-lg border border-green-300 bg-green-50 px-4 py-3 space-y-1">
+            <p className="text-sm font-medium text-green-800">Your judging box has been shipped!</p>
+            <p className="font-mono text-sm text-green-700">Tracking: {trackingNumber}</p>
+            {labelUrl && (
+              <a
+                href={`https://www.dhl.com/en/express/tracking.html?AWB=${trackingNumber}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block text-sm text-blue-600 hover:underline"
+              >
+                Track on DHL ↗
+              </a>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Shipping address form */}
+      <div className="pt-4 border-t border-gray-300">
+        <div className="rounded-lg border border-gray-200 bg-white p-4">
+          <JudgeShippingAddressForm current={shippingAddress} />
+        </div>
+      </div>
     </div>
   );
 }

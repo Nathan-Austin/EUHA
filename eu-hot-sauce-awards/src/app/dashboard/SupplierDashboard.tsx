@@ -5,6 +5,7 @@ import { submitTrackingInfo, updateSauceImage } from '@/app/actions';
 import { createClient } from '@/lib/supabase/client';
 import SupplierPaymentButton from './SupplierPaymentButton';
 import SupplierSauceManager from './SupplierSauceManager';
+import JudgeShippingAddressForm from './JudgeShippingAddressForm';
 
 interface PaymentQuote {
   id: string;
@@ -43,13 +44,22 @@ interface SupplierDashboardProps {
     packageStatus: string;
     packageReceivedAt: string | null;
   };
+  judgeData: {
+    address: string | null;
+    address_line2: string | null;
+    city: string | null;
+    postal_code: string | null;
+    country: string | null;
+    dhl_tracking_number: string | null;
+    dhl_label_url: string | null;
+  } | null;
   pendingPayment?: PaymentQuote | null;
   unpaidSauces: UnpaidSauce[];
   enteredSauces: EnteredSauce[];
   userEmail: string;
 }
 
-export default function SupplierDashboard({ supplierData, pendingPayment, unpaidSauces, enteredSauces, userEmail }: SupplierDashboardProps) {
+export default function SupplierDashboard({ supplierData, judgeData, pendingPayment, unpaidSauces, enteredSauces, userEmail }: SupplierDashboardProps) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const imageBucket = process.env.NEXT_PUBLIC_SAUCE_IMAGE_BUCKET || 'sauce-media';
 
@@ -343,6 +353,37 @@ export default function SupplierDashboard({ supplierData, pendingPayment, unpaid
           )}
         </>
       )}
+
+      {/* Judging box shipping address */}
+      <div className="border border-gray-300 rounded-lg p-6 bg-white">
+        {judgeData?.dhl_tracking_number ? (
+          <div className="space-y-3">
+            <h3 className="text-lg font-semibold text-gray-900">Judging Box Shipping</h3>
+            <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 space-y-1">
+              <p className="text-sm font-medium text-green-800">Your judging box has been shipped!</p>
+              <p className="font-mono text-sm text-green-700">Tracking: {judgeData.dhl_tracking_number}</p>
+              <a
+                href={`https://www.dhl.com/en/express/tracking.html?AWB=${judgeData.dhl_tracking_number}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block text-sm text-blue-600 hover:underline"
+              >
+                Track on DHL ↗
+              </a>
+            </div>
+          </div>
+        ) : (
+          <JudgeShippingAddressForm
+            current={{
+              address: judgeData?.address ?? null,
+              address_line2: judgeData?.address_line2 ?? null,
+              city: judgeData?.city ?? null,
+              postal_code: judgeData?.postal_code ?? null,
+              country: judgeData?.country ?? null,
+            }}
+          />
+        )}
+      </div>
     </div>
   );
 }

@@ -21,7 +21,7 @@ export default async function DashboardPage() {
   // Fetch judge details - use maybeSingle to handle cases where user might not be a judge
   const { data: judges, error: judgeQueryError } = await supabase
     .from('judges')
-    .select('id, type, stripe_payment_status')
+    .select('id, type, stripe_payment_status, address, address_line2, city, postal_code, country, dhl_tracking_number, dhl_label_url')
     .ilike('email', user.email)
 
   if (judgeQueryError) {
@@ -63,7 +63,17 @@ export default async function DashboardPage() {
       case 'admin':
         return <AdminDashboard />
       case 'pro':
-        return <CommunityJudgeDashboard />
+        return <CommunityJudgeDashboard
+          shippingAddress={{
+            address: judge.address,
+            address_line2: judge.address_line2,
+            city: judge.city,
+            postal_code: judge.postal_code,
+            country: judge.country,
+          }}
+          trackingNumber={judge.dhl_tracking_number}
+          labelUrl={judge.dhl_label_url}
+        />
       case 'supplier': {
         // Fetch supplier data for dashboard
         const { data: supplier } = await supabase
@@ -113,6 +123,15 @@ export default async function DashboardPage() {
             packageStatus: supplier.package_status || 'pending',
             packageReceivedAt: supplier.package_received_at,
           }}
+          judgeData={{
+            address: judge.address,
+            address_line2: judge.address_line2,
+            city: judge.city,
+            postal_code: judge.postal_code,
+            country: judge.country,
+            dhl_tracking_number: judge.dhl_tracking_number,
+            dhl_label_url: judge.dhl_label_url,
+          }}
           pendingPayment={pendingPayment}
           unpaidSauces={unpaidSauces || []}
           enteredSauces={enteredSauces || []}
@@ -121,7 +140,17 @@ export default async function DashboardPage() {
       }
       case 'community':
         if (judge.stripe_payment_status === 'succeeded') {
-          return <CommunityJudgeDashboard />
+          return <CommunityJudgeDashboard
+            shippingAddress={{
+              address: judge.address,
+              address_line2: judge.address_line2,
+              city: judge.city,
+              postal_code: judge.postal_code,
+              country: judge.country,
+            }}
+            trackingNumber={judge.dhl_tracking_number}
+            labelUrl={judge.dhl_label_url}
+          />
         }
         return (
           <div className="space-y-4">

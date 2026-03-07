@@ -2947,3 +2947,228 @@ export async function deleteSauce(sauceId: string) {
   revalidatePath('/dashboard');
   return { success: true };
 }
+
+// ==================== DHL SHIPPING ACTIONS ====================
+
+export async function generateJudgeShippingLabel(judgeId: string): Promise<{ success: boolean; trackingNumber?: string; labelUrl?: string; error?: string }> {
+  const cookieStore = cookies()
+  const supabase = createClient(cookieStore)
+
+  // Admin-only
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user?.email) return { success: false, error: 'Not authenticated' }
+
+  const { data: adminJudge } = await supabase
+    .from('judges')
+    .select('type')
+    .ilike('email', user.email)
+    .single()
+
+  if (adminJudge?.type !== 'admin') return { success: false, error: 'Admin access required' }
+
+  // Fetch judge details
+  const { data: judge, error: judgeError } = await supabase
+    .from('judges')
+    .select('id, name, email, address, address_line2, city, postal_code, country')
+    .eq('id', judgeId)
+    .single()
+
+  if (judgeError || !judge) return { success: false, error: 'Judge not found' }
+
+  // Validate address completeness
+  if (!judge.address || !judge.city || !judge.postal_code || !judge.country) {
+    return { success: false, error: 'Judge address is incomplete — street, city, postal code and country are required' }
+  }
+
+  const { parseStreetAddress, toISO3 } = await import('@/lib/dhl/countries')
+  const { generateShippingLabel, getShipperAddress, getBoxWeightKg, getBoxDimensions, validateAddress } = await import('@/lib/dhl/service')
+
+  // Parse the free-text address into street + house number
+  const { street, houseNumber } = parseStreetAddress(judge.address)
+
+  // Build the consignee address
+  const consignee = {
+    name1: judge.name,
+    name2: judge.address_line2 || undefined,
+    addressStreet: street,
+    addressHouse: houseNumber,
+    postalCode: judge.postal_code.trim(),
+    city: judge.city.trim(),
+    country: toISO3(judge.country),
+    email: judge.email,
+  }
+
+  // Validate before calling DHL
+  const validation = validateAddress(consignee)
+  if (!validation.isValid) {
+    return { success: false, error: `Address validation failed: ${validation.errors.join(', ')}` }
+  }
+
+  // Today's date as shipment date
+  const today = new Date().toISOString().split('T')[0]
+
+  const result = await generateShippingLabel({
+    judgeId: judge.id,
+    orderReference: `EUHA-${judge.name.replace(/\s+/g, '-').toUpperCase()}`,
+    shipper: getShipperAddress(),
+    consignee,
+    weight: getBoxWeightKg(),
+    dimensions: getBoxDimensions(),
+    shipmentDate: today,
+  })
+
+  const serviceSupabaseForShipping = createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+
+  if (result.success) {
+    await serviceSupabaseForShipping
+      .from('judges')
+      .update({
+        dhl_tracking_number: result.trackingNumber,
+        dhl_shipment_id: result.shipmentNumber,
+        dhl_label_url: result.labelUrl,
+        label_generated_at: new Date().toISOString(),
+        label_generation_error: null,
+      })
+      .eq('id', judgeId)
+  } else {
+    await serviceSupabaseForShipping
+      .from('judges')
+      .update({ label_generation_error: result.error })
+      .eq('id', judgeId)
+  }
+
+  revalidatePath('/dashboard')
+  return result
+}
+
+export async function updateJudgeShippingAddress(data: {
+  address: string
+  address_line2?: string
+  city: string
+  postal_code: string
+  country: string
+}): Promise<{ success?: boolean; error?: string }> {
+  const cookieStore = cookies()
+  const supabase = createClient(cookieStore)
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user?.email) return { error: 'Not authenticated' }
+
+  const { error } = await supabase
+    .from('judges')
+    .update({
+      address: data.address.trim(),
+      address_line2: data.address_line2?.trim() || null,
+      city: data.city.trim(),
+      postal_code: data.postal_code.trim(),
+      country: data.country,
+    })
+    .ilike('email', user.email)
+
+  if (error) return { error: error.message }
+
+  revalidatePath('/dashboard')
+  return { success: true }
+}
+
+export async function sendShippingAddressRequests(): Promise<{ sent: number; failed: number; alreadyHave: number; errors: string[] }> {
+  const cookieStore = cookies()
+  const supabase = createClient(cookieStore)
+
+  // Admin-only
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user?.email) return { sent: 0, failed: 0, alreadyHave: 0, errors: ['Not authenticated'] }
+
+  const { data: adminJudge } = await supabase
+    .from('judges')
+    .select('type')
+    .ilike('email', user.email)
+    .single()
+
+  if (adminJudge?.type !== 'admin') return { sent: 0, failed: 0, alreadyHave: 0, errors: ['Admin access required'] }
+
+  // Get all supplier judges missing a complete address
+  const { data: suppliers, error } = await supabase
+    .from('judges')
+    .select('id, name, email, address, city, postal_code, country')
+    .eq('type', 'supplier')
+
+  if (error || !suppliers) return { sent: 0, failed: 0, alreadyHave: 0, errors: [error?.message || 'Failed to fetch suppliers'] }
+
+  const missing = suppliers.filter(
+    (s) => !s.address || !s.city || !s.postal_code || !s.country
+  )
+  const alreadyHave = suppliers.length - missing.length
+
+  const adminClient = createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+
+  let sent = 0
+  let failed = 0
+  const errors: string[] = []
+
+  for (const supplier of missing) {
+    try {
+      // Generate magic link
+      const { data: linkData, error: linkError } = await adminClient.auth.admin.generateLink({
+        type: 'magiclink',
+        email: supplier.email,
+        options: {
+          redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'https://heatawards.eu'}/auth/callback`,
+          expiresIn: 86400,
+        } as any,
+      })
+
+      if (linkError || !linkData?.properties?.action_link) {
+        errors.push(`${supplier.email}: ${linkError?.message || 'Failed to generate link'}`)
+        failed++
+        continue
+      }
+
+      // Look up brand name from suppliers table
+      const { data: supplierRecord } = await supabase
+        .from('suppliers')
+        .select('brand_name')
+        .ilike('email', supplier.email)
+        .single()
+
+      const brandName = supplierRecord?.brand_name || supplier.name
+
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://heatawards.eu'
+      const actionLink = linkData.properties.action_link.replace(
+        /^https:\/\/[^/]+/,
+        appUrl
+      )
+
+      const response = await fetch(`${appUrl}/api/send-email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+        },
+        body: JSON.stringify({
+          type: 'shipping_address_request',
+          data: { email: supplier.email, brandName, magicLink: actionLink },
+        }),
+      })
+
+      if (!response.ok) {
+        const body = await response.text()
+        errors.push(`${supplier.email}: Email send failed - ${body}`)
+        failed++
+      } else {
+        sent++
+      }
+    } catch (err) {
+      errors.push(`${supplier.email}: ${err instanceof Error ? err.message : 'Unknown error'}`)
+      failed++
+    }
+  }
+
+  return { sent, failed, alreadyHave, errors }
+}
