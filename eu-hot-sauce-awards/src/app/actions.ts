@@ -2974,13 +2974,18 @@ export async function generateJudgeShippingLabel(judgeId: string): Promise<{ suc
 
   const { data: adminJudge } = await supabase
     .from('judges')
-    .select('type')
+    .select('type, name, email, address, address_line2, city, postal_code, country')
     .ilike('email', user.email)
     .limit(1)
 
   if (!adminJudge?.[0] || adminJudge[0].type !== 'admin') return { success: false, error: 'Admin access required' }
 
-  // Fetch judge details using service role to bypass RLS
+  const admin = adminJudge[0]
+  if (!admin.address || !admin.city || !admin.postal_code || !admin.country) {
+    return { success: false, error: 'Shipper address incomplete — update your address in the dashboard first' }
+  }
+
+  // Fetch target judge details using service role to bypass RLS
   const serviceForJudge = createServiceClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -2993,13 +2998,26 @@ export async function generateJudgeShippingLabel(judgeId: string): Promise<{ suc
 
   if (judgeError || !judge) return { success: false, error: 'Judge not found' }
 
-  // Validate address completeness
+  // Validate consignee address completeness
   if (!judge.address || !judge.city || !judge.postal_code || !judge.country) {
     return { success: false, error: 'Judge address is incomplete — street, city, postal code and country are required' }
   }
 
   const { parseStreetAddress, toISO3 } = await import('@/lib/dhl/countries')
-  const { generateShippingLabel, getShipperAddress, getBoxWeightKg, getBoxDimensions, validateAddress } = await import('@/lib/dhl/service')
+  const { generateShippingLabel, getBoxWeightKg, getBoxDimensions, validateAddress } = await import('@/lib/dhl/service')
+
+  // Build shipper from admin's DB record
+  const { street: shipperStreet, houseNumber: shipperHouse } = parseStreetAddress(admin.address)
+  const shipper = {
+    name1: process.env.DHL_SHIPPER_NAME1 || 'EU Hot Sauce Awards',
+    name2: admin.address_line2 || undefined,
+    addressStreet: shipperStreet,
+    addressHouse: shipperHouse,
+    postalCode: admin.postal_code.trim(),
+    city: admin.city.trim(),
+    country: toISO3(admin.country),
+    email: admin.email,
+  }
 
   // Parse the free-text address into street + house number
   const { street, houseNumber } = parseStreetAddress(judge.address)
@@ -3028,7 +3046,7 @@ export async function generateJudgeShippingLabel(judgeId: string): Promise<{ suc
   const result = await generateShippingLabel({
     judgeId: judge.id,
     orderReference: `EUHA-${judge.name.replace(/\s+/g, '-').toUpperCase()}`,
-    shipper: getShipperAddress(),
+    shipper,
     consignee,
     weight: getBoxWeightKg(),
     dimensions: getBoxDimensions(),
