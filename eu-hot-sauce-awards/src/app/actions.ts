@@ -3110,7 +3110,7 @@ export async function updateJudgeShippingAddress(data: {
   return { success: true }
 }
 
-export async function getSuppliersMissingAddressInfo(): Promise<{
+export async function getSuppliersMissingAddressInfo(includeAll = false): Promise<{
   suppliers?: { name: string; email: string; brandName: string }[]
   error?: string
 }> {
@@ -3135,13 +3135,13 @@ export async function getSuppliersMissingAddressInfo(): Promise<{
 
   if (error || !judgeSuppliers) return { error: error?.message || 'Failed to fetch suppliers' }
 
-  const missing = judgeSuppliers.filter(
-    (s) => !s.address || !s.city || !s.postal_code || !s.country
-  )
+  const targets = includeAll
+    ? judgeSuppliers
+    : judgeSuppliers.filter((s) => !s.address || !s.city || !s.postal_code || !s.country)
 
   // Look up brand names
   const result = await Promise.all(
-    missing.map(async (s) => {
+    targets.map(async (s) => {
       const { data: sup } = await supabase
         .from('suppliers')
         .select('brand_name')
@@ -3156,7 +3156,8 @@ export async function getSuppliersMissingAddressInfo(): Promise<{
 
 export async function sendShippingAddressRequests(
   customSubject?: string,
-  customBody?: string
+  customBody?: string,
+  sendToAll = false
 ): Promise<{ sent: number; failed: number; alreadyHave: number; errors: string[] }> {
   const cookieStore = cookies()
   const supabase = createClient(cookieStore)
@@ -3173,7 +3174,7 @@ export async function sendShippingAddressRequests(
 
   if (adminJudge?.type !== 'admin') return { sent: 0, failed: 0, alreadyHave: 0, errors: ['Admin access required'] }
 
-  // Get all supplier judges missing a complete address
+  // Get all supplier judges
   const { data: suppliers, error } = await supabase
     .from('judges')
     .select('id, name, email, address, city, postal_code, country')
@@ -3185,6 +3186,7 @@ export async function sendShippingAddressRequests(
     (s) => !s.address || !s.city || !s.postal_code || !s.country
   )
   const alreadyHave = suppliers.length - missing.length
+  const targets = sendToAll ? suppliers : missing
 
   const adminClient = createServiceClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -3195,7 +3197,7 @@ export async function sendShippingAddressRequests(
   let failed = 0
   const errors: string[] = []
 
-  for (const supplier of missing) {
+  for (const supplier of targets) {
     try {
       // Generate magic link
       const { data: linkData, error: linkError } = await adminClient.auth.admin.generateLink({

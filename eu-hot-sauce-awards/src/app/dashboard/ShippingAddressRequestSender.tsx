@@ -28,23 +28,25 @@ export default function ShippingAddressRequestSender() {
   const [body, setBody] = useState(DEFAULT_BODY);
   const [editMode, setEditMode] = useState(false);
   const [showRecipients, setShowRecipients] = useState(false);
+  const [sendToAll, setSendToAll] = useState(false);
   const [result, setResult] = useState<{ sent: number; failed: number; alreadyHave: number; errors: string[] } | null>(null);
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
-    getSuppliersMissingAddressInfo().then((res) => {
+    setLoading(true);
+    getSuppliersMissingAddressInfo(sendToAll).then((res) => {
       if (res.suppliers) setRecipients(res.suppliers);
       setLoading(false);
     });
-  }, []);
+  }, [sendToAll]);
 
   const handleSend = () => {
     if (!confirm(`Send shipping address request to ${recipients.length} supplier${recipients.length !== 1 ? 's' : ''}?`)) return;
     startTransition(async () => {
-      const res = await sendShippingAddressRequests(subject, body);
+      const res = await sendShippingAddressRequests(subject, body, sendToAll);
       setResult(res);
       // Refresh recipients
-      const info = await getSuppliersMissingAddressInfo();
+      const info = await getSuppliersMissingAddressInfo(sendToAll);
       if (info.suppliers) setRecipients(info.suppliers);
     });
   };
@@ -65,6 +67,22 @@ export default function ShippingAddressRequestSender() {
         </p>
       </div>
 
+      {/* Send to all toggle */}
+      <div className="flex items-center gap-3">
+        <label className="flex items-center gap-2 cursor-pointer select-none">
+          <div
+            onClick={() => setSendToAll(!sendToAll)}
+            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${sendToAll ? 'bg-orange-600' : 'bg-gray-300'}`}
+          >
+            <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${sendToAll ? 'translate-x-[18px]' : 'translate-x-[3px]'}`} />
+          </div>
+          <span className="text-sm font-medium text-gray-700">Send to all suppliers</span>
+        </label>
+        <span className="text-xs text-gray-500">
+          {sendToAll ? 'Including those who already have an address' : 'Only suppliers missing an address'}
+        </span>
+      </div>
+
       {/* Recipients summary */}
       <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 flex items-center justify-between gap-4">
         <div>
@@ -73,7 +91,7 @@ export default function ShippingAddressRequestSender() {
           ) : (
             <>
               <p className="text-sm font-medium text-gray-900">
-                {recipients.length} supplier{recipients.length !== 1 ? 's' : ''} missing an address
+                {recipients.length} supplier{recipients.length !== 1 ? 's' : ''}{sendToAll ? '' : ' missing an address'}
               </p>
               <button
                 onClick={() => setShowRecipients(!showRecipients)}
