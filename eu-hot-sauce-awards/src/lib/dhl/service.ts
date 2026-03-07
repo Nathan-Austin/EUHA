@@ -73,10 +73,6 @@ function validateConfig(): void {
   if (!DHL_CONFIG.apiSecret) missing.push('DHL_API_SECRET');
   if (!DHL_CONFIG.tokenUser) missing.push('DHL_USERNAME');
   if (!DHL_CONFIG.tokenPass) missing.push('DHL_PASSWORD');
-  if (!process.env.DHL_SHIPPER_STREET) missing.push('DHL_SHIPPER_STREET');
-  if (!process.env.DHL_SHIPPER_HOUSE)  missing.push('DHL_SHIPPER_HOUSE');
-  if (!process.env.DHL_SHIPPER_POSTAL) missing.push('DHL_SHIPPER_POSTAL');
-  if (!process.env.DHL_SHIPPER_CITY)   missing.push('DHL_SHIPPER_CITY');
 
   const hasBilling = Object.values(DHL_CONFIG.billingNumbers).some((n) => n?.length > 0);
   if (!hasBilling) missing.push('At least one DHL_BILLING_* variable');
