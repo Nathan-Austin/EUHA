@@ -2974,16 +2974,11 @@ export async function generateJudgeShippingLabel(judgeId: string): Promise<{ suc
 
   const { data: adminJudge } = await supabase
     .from('judges')
-    .select('type, name, email, address, address_line2, city, postal_code, country')
+    .select('type')
     .ilike('email', user.email)
     .limit(1)
 
   if (!adminJudge?.[0] || adminJudge[0].type !== 'admin') return { success: false, error: 'Admin access required' }
-
-  const admin = adminJudge[0]
-  if (!admin.address || !admin.city || !admin.postal_code || !admin.country) {
-    return { success: false, error: 'Shipper address incomplete — update your address in the dashboard first' }
-  }
 
   // Fetch target judge details using service role to bypass RLS
   const serviceForJudge = createServiceClient(
@@ -3006,17 +3001,15 @@ export async function generateJudgeShippingLabel(judgeId: string): Promise<{ suc
   const { parseStreetAddress, toISO3 } = await import('@/lib/dhl/countries')
   const { generateShippingLabel, getBoxWeightKg, getBoxDimensions, validateAddress } = await import('@/lib/dhl/service')
 
-  // Build shipper from admin's DB record
-  const { street: shipperStreet, houseNumber: shipperHouse } = parseStreetAddress(admin.address)
+  // Fixed shipper address — Chili Punk Berlin
   const shipper = {
-    name1: process.env.DHL_SHIPPER_NAME1 || 'EU Hot Sauce Awards',
-    name2: admin.address_line2 || undefined,
-    addressStreet: shipperStreet,
-    addressHouse: shipperHouse,
-    postalCode: admin.postal_code.trim(),
-    city: admin.city.trim(),
-    country: toISO3(admin.country),
-    email: admin.email,
+    name1: 'Chili Punk Berlin',
+    name2: 'c/o DUTTON',
+    addressStreet: 'Urbanstraße',
+    addressHouse: '96',
+    postalCode: '10967',
+    city: 'Berlin',
+    country: 'DEU',
   }
 
   // Parse the free-text address into street + house number
