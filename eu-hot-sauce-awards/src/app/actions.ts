@@ -3254,42 +3254,15 @@ export async function sendShippingAddressRequests(
         appUrl
       )
 
-      // If custom subject/body provided, interpolate variables and send directly
-      let emailPayload: object
-      if (customSubject && customBody) {
-        const interpolate = (str: string) =>
-          str.replace(/\{\{brandName\}\}/g, brandName).replace(/\{\{magicLink\}\}/g, actionLink)
-        emailPayload = {
-          type: 'custom',
-          data: {
-            email: supplier.email,
-            subject: interpolate(customSubject),
-            html: interpolate(customBody),
-          },
-        }
-      } else {
-        emailPayload = {
-          type: 'shipping_address_request',
-          data: { email: supplier.email, brandName, magicLink: actionLink },
-        }
-      }
+      const interpolate = (str: string) =>
+        str.replace(/\{\{brandName\}\}/g, brandName).replace(/\{\{magicLink\}\}/g, actionLink)
 
-      const response = await fetch(`${appUrl}/api/send-email`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
-        },
-        body: JSON.stringify(emailPayload),
-      })
+      const emailOptions = customSubject && customBody
+        ? { to: supplier.email, subject: interpolate(customSubject), html: interpolate(customBody) }
+        : { to: supplier.email, ...emailTemplates.shippingAddressRequest(brandName, actionLink) }
 
-      if (!response.ok) {
-        const body = await response.text()
-        errors.push(`${supplier.email}: Email send failed - ${body}`)
-        failed++
-      } else {
-        sent++
-      }
+      await sendEmail(emailOptions)
+      sent++
     } catch (err) {
       errors.push(`${supplier.email}: ${err instanceof Error ? err.message : 'Unknown error'}`)
       failed++
