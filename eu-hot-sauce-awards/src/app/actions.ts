@@ -2976,12 +2976,16 @@ export async function generateJudgeShippingLabel(judgeId: string): Promise<{ suc
     .from('judges')
     .select('type')
     .ilike('email', user.email)
-    .single()
+    .limit(1)
 
-  if (adminJudge?.type !== 'admin') return { success: false, error: 'Admin access required' }
+  if (!adminJudge?.[0] || adminJudge[0].type !== 'admin') return { success: false, error: 'Admin access required' }
 
-  // Fetch judge details
-  const { data: judge, error: judgeError } = await supabase
+  // Fetch judge details using service role to bypass RLS
+  const serviceForJudge = createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+  const { data: judge, error: judgeError } = await serviceForJudge
     .from('judges')
     .select('id, name, email, address, address_line2, city, postal_code, country')
     .eq('id', judgeId)
@@ -3215,17 +3219,21 @@ export async function getJudgeForShipping(judgeId: string): Promise<{
     .from('judges')
     .select('type')
     .ilike('email', user.email)
-    .single()
+    .limit(1)
 
-  if (adminJudge?.type !== 'admin') return { error: 'Admin access required' }
+  if (!adminJudge?.[0] || adminJudge[0].type !== 'admin') return { error: 'Admin access required' }
 
-  const { data: judge, error } = await supabase
+  // Use service role to bypass RLS when looking up any judge by ID
+  const serviceClientResult = getServiceSupabase()
+  if ('error' in serviceClientResult) return { error: serviceClientResult.error }
+
+  const { data: judge, error } = await serviceClientResult.client
     .from('judges')
     .select('id, name, email, type, address, address_line2, city, postal_code, country, dhl_tracking_number, dhl_label_url, label_generated_at, label_generation_error')
     .eq('id', judgeId)
     .single()
 
-  if (error || !judge) return { error: 'Judge not found' }
+  if (error || !judge) return { error: `Judge not found — make sure you're scanning a judge QR code (not a sauce QR)` }
 
   return { judge }
 }

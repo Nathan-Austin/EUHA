@@ -72,6 +72,12 @@ export default function DhlLabelScanner() {
     if (lastProcessedScan && lastProcessedScan.value === value && now - lastProcessedScan.timestamp < 1500) return;
     setLastProcessedScan({ value, timestamp: now });
 
+    // Reject sauce QR codes (they contain /judge/score/ URL)
+    if (/\/judge\/score\//i.test(value)) {
+      showTimedMessage('❌ That looks like a sauce QR code — please scan a judge label QR instead.', 6000);
+      return;
+    }
+
     // Extract UUID — judge QR codes are plain UUIDs
     const uuidMatch = value.match(/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/i);
     if (!uuidMatch) {

@@ -293,14 +293,23 @@ export default async function AdminDashboard() {
               />
             </Card>
           ) : null}
-          <div className="grid gap-6 lg:grid-cols-2">
-            <Card>
-              <AdminBoxPacker />
-            </Card>
-            <Card>
-              <BoxManagement />
-            </Card>
-          </div>
+          <Card>
+            <BoxManagement />
+          </Card>
+        </div>
+      ),
+    },
+    {
+      id: 'box-packing',
+      label: 'Box Packing',
+      icon: '📬',
+      content: (
+        <div className="space-y-6">
+          <SectionHeading
+            title="Box Packing Scanner"
+            description="Scan judge and sauce QR codes to assign sauces to judging boxes."
+          />
+          <AdminBoxPacker />
         </div>
       ),
     },
