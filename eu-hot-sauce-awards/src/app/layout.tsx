@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import Navigation from "@/components/Navigation";
+import GlobalNav from "@/components/GlobalNav";
 import Footer from "@/components/Footer";
-import Image from "next/image";
 import Script from "next/script";
 
 const inter = Inter({
@@ -68,16 +67,7 @@ export default function RootLayout({
         )}
       </head>
       <body className={`${inter.variable} antialiased bg-[#08040e] text-white`}>
-        <div className="relative w-full h-24 sm:h-32 md:h-40 lg:h-48 bg-[#fabf14] -mb-px">
-          <Image
-            src="/cropped-banner-website.png"
-            alt="European Hot Sauce Awards Banner"
-            fill
-            className="object-contain object-center"
-            priority
-          />
-        </div>
-        <Navigation />
+        <GlobalNav />
         <main>{children}</main>
         <Footer />
       </body>

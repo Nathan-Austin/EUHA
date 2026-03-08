@@ -22,6 +22,7 @@ import SendVatEmailButton from './SendVatEmailButton'
 import JudgeShippingManager from './JudgeShippingManager'
 import RequestShippingAddressButton from './RequestShippingAddressButton'
 import DhlLabelScanner from './DhlLabelScanner'
+import PackageReceiveScanner from './PackageReceiveScanner'
 
 const formatStatusLabel = (status: string) =>
   status
@@ -279,6 +280,9 @@ export default async function AdminDashboard() {
             title="Logistics & Packing"
             description="Stay on top of supplier shipments and keep judging boxes moving."
           />
+          <Card>
+            <PackageReceiveScanner />
+          </Card>
           {suppliers && suppliers.length > 0 ? (
             <Card>
               <PackageTracker

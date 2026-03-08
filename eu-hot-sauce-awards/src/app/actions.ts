@@ -1355,6 +1355,55 @@ export async function markPackageReceived(supplierId: string) {
   return { success: true, brandName: supplier.brand_name };
 }
 
+export async function lookupSupplierByTracking(scannedValue: string) {
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user?.email) return { error: 'You must be logged in.' };
+
+  const { data: adminCheck } = await supabase
+    .from('judges')
+    .select('type')
+    .ilike('email', user.email)
+    .single();
+
+  if (adminCheck?.type !== 'admin') {
+    return { error: 'You are not authorized.' };
+  }
+
+  const trimmed = scannedValue.trim();
+  if (!trimmed) return { error: 'No value scanned.' };
+
+  // Fetch all suppliers with tracking numbers to find substring match
+  const { data: suppliers, error } = await supabase
+    .from('suppliers')
+    .select('id, brand_name, email, tracking_number, postal_service_name, package_status, package_received_at')
+    .not('tracking_number', 'is', null);
+
+  if (error) return { error: `Database error: ${error.message}` };
+
+  const lowerScanned = trimmed.toLowerCase();
+  const match = suppliers?.find((s) => {
+    const t = s.tracking_number?.toLowerCase() ?? '';
+    return t && (lowerScanned.includes(t) || t.includes(lowerScanned));
+  });
+
+  if (!match) return { error: 'No supplier found matching that tracking number.' };
+
+  return {
+    supplier: {
+      id: match.id,
+      brandName: match.brand_name,
+      email: match.email,
+      trackingNumber: match.tracking_number,
+      postalServiceName: match.postal_service_name,
+      packageStatus: match.package_status,
+      packageReceivedAt: match.package_received_at,
+    },
+  };
+}
+
 export async function getJudgeScoredSauces() {
   const cookieStore = cookies();
   const supabase = createClient(cookieStore);
