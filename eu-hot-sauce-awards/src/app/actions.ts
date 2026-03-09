@@ -441,7 +441,7 @@ export async function generateStickerData() {
     return { error: `Failed to count judges: ${judgeError.message}` };
   }
 
-  // Fetch sauces that are ready for judging (arrived or boxed)
+  // Fetch all confirmed (paid) sauces
   const { data: sauces, error: sauceError } = await supabase
     .from('sauces')
     .select(`
@@ -450,19 +450,19 @@ export async function generateStickerData() {
       name,
       suppliers ( brand_name )
     `)
-    .in('status', ['arrived', 'boxed']);
+    .in('payment_status', ['paid', 'payment_waived']);
 
   if (sauceError) {
     return { error: `Failed to fetch sauces: ${sauceError.message}` };
   }
 
   if (!sauces || sauces.length === 0) {
-    return { error: 'No sauces ready for judging. Update sauce status to "arrived" or "boxed" first.' };
+    return { error: 'No confirmed sauce entries found.' };
   }
 
   const totalJudges = judgeCount || 0;
-  const boxesNeeded = Math.ceil(totalJudges / 12);
-  // Each sauce needs 7 bottles for packing verification
+  const boxesNeeded = totalJudges;
+  // Each sauce is split into 7 portions, one per box
   const stickersPerSauce = 7;
 
   const stickerData: StickerData[] = sauces.map((sauce: any) => ({

@@ -144,8 +144,8 @@ export default function StickerGenerator() {
           <ul className="text-sm text-blue-800 space-y-1">
             <li>Active Judges: <strong>{preview.totalJudges}</strong></li>
             <li>Judging Boxes Needed: <strong>{preview.boxesNeeded}</strong></li>
-            <li>Stickers per Sauce: <strong>{preview.stickersPerSauce}</strong> (7 bottles × {preview.boxesNeeded} boxes + 2 spares)</li>
-            <li>Total Stickers: <strong>{preview.totalStickers}</strong></li>
+            <li>Stickers per Sauce: <strong>{preview.stickersPerSauce}</strong> (7 portions per sauce)</li>
+            <li>Total Stickers: <strong>{preview.totalStickers}</strong> ({preview.stickersPerSauce} × {Math.round(preview.totalStickers / preview.stickersPerSauce)} sauces)</li>
             <li>Sheets Required: <strong>{Math.ceil(preview.totalStickers / 40)}</strong> (40 labels per sheet)</li>
           </ul>
         </div>
