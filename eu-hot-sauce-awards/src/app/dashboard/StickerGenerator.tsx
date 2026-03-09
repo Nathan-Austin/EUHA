@@ -77,11 +77,26 @@ export default function StickerGenerator() {
         }
       }
 
+      const totalPages = Math.ceil(allStickers.length / labelsPerPage);
+      let currentPage = 1;
+
+      const addPageNumber = (page: number) => {
+        pdf.setFontSize(8);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(150);
+        pdf.text(`Page ${page} of ${totalPages}`, pageWidth / 2, pageHeight - 5, { align: 'center' });
+        pdf.setTextColor(0);
+      };
+
+      addPageNumber(currentPage);
+
       for (const sticker of allStickers) {
         // Add new page if needed
         if (labelIndex >= labelsPerPage) {
           pdf.addPage();
           labelIndex = 0;
+          currentPage++;
+          addPageNumber(currentPage);
         }
 
         // Calculate position

@@ -9,6 +9,7 @@ import AddAdminUser from './AddAdminUser'
 import StickerGenerator from './StickerGenerator'
 import AdminBoxPacker from './AdminBoxPacker'
 import JudgeLabelGenerator from './JudgeLabelGenerator'
+import JarLabelGenerator from './JarLabelGenerator'
 import PackageTracker from './PackageTracker'
 import EventsManager from './EventsManager'
 import EmailCampaignManager from './EmailCampaignManager'
@@ -336,6 +337,9 @@ export default async function AdminDashboard() {
               <JudgeLabelGenerator />
             </Card>
           </div>
+          <Card>
+            <JarLabelGenerator />
+          </Card>
         </div>
       ),
     },
