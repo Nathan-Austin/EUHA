@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { submitAllScores, getJudgeScoredSauces } from '@/app/actions';
 import JudgeShippingAddressForm from './JudgeShippingAddressForm';
+import ShippingAddressDisplay from './ShippingAddressDisplay';
 
 // The shape of our local storage data
 interface StoredScore {
@@ -191,8 +192,9 @@ export default function CommunityJudgeDashboard({ shippingAddress, trackingNumbe
         </div>
       )}
 
-      {/* Shipping address form */}
-      <div className="pt-4 border-t border-gray-300">
+      {/* Shipping address */}
+      <div className="pt-4 border-t border-gray-300 space-y-4">
+        <ShippingAddressDisplay address={shippingAddress} />
         <div className="rounded-lg border border-gray-200 bg-white p-4">
           <JudgeShippingAddressForm current={shippingAddress} />
         </div>

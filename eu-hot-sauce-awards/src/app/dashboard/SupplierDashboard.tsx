@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client';
 import SupplierPaymentButton from './SupplierPaymentButton';
 import SupplierSauceManager from './SupplierSauceManager';
 import JudgeShippingAddressForm from './JudgeShippingAddressForm';
+import ShippingAddressDisplay from './ShippingAddressDisplay';
 
 interface PaymentQuote {
   id: string;
@@ -355,7 +356,16 @@ export default function SupplierDashboard({ supplierData, judgeData, pendingPaym
       )}
 
       {/* Judging box shipping address */}
-      <div className="border border-gray-300 rounded-lg p-6 bg-white">
+      <div className="border border-gray-300 rounded-lg p-6 bg-white space-y-4">
+        <ShippingAddressDisplay
+          address={{
+            address: judgeData?.address ?? null,
+            address_line2: judgeData?.address_line2 ?? null,
+            city: judgeData?.city ?? null,
+            postal_code: judgeData?.postal_code ?? null,
+            country: judgeData?.country ?? null,
+          }}
+        />
         {judgeData?.dhl_tracking_number ? (
           <div className="space-y-3">
             <h3 className="text-lg font-semibold text-gray-900">Judging Box Shipping</h3>
