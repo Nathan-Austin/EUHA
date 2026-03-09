@@ -336,7 +336,25 @@ Deno.serve(async (req) => {
 
         resolvedSauces[i] = existingUnpaid;
       } else {
-        // No existing unpaid sauce found - create a new one
+        // Also check if sauce is already paid (re-submission after payment succeeded)
+        currentStep = 'check-paid-sauce';
+        const { data: existingPaid } = await supabaseAdmin
+          .from('sauces')
+          .select('id, name, sauce_code')
+          .eq('supplier_id', supplier.id)
+          .eq('name', sauce.name)
+          .eq('category', sauce.category)
+          .eq('payment_status', 'paid')
+          .limit(1)
+          .single();
+
+        if (existingPaid) {
+          console.log(`Sauce already paid, skipping: ${existingPaid.sauce_code} - ${sauce.name}`);
+          resolvedSauces[i] = existingPaid;
+          continue;
+        }
+
+        // No existing sauce found - create a new one
         // Only query database once per category
         if (!(categoryCode in categoryCounters)) {
           // Get the highest existing code number for this category
@@ -420,35 +438,81 @@ Deno.serve(async (req) => {
     const qrError = qrUpdates.find((result) => result.error);
     if (qrError?.error) throw qrError.error;
 
-    const entryCount = sauceIds.length;
-    const discountRate = resolveDiscount(entryCount);
-    const subtotalCents = entryCount * BASE_PRICE_CENTS;
-    const discountCents = Math.round(subtotalCents * discountRate);
-    const amountDueCents = subtotalCents - discountCents;
+    // Only unpaid sauces need a payment record — collect ids of newly created sauces
+    const newSauceIds = saucesToCreate
+      .map((s) => resolvedSauces[s.index]?.id)
+      .filter((id): id is string => !!id);
 
-    currentStep = 'create-payment';
-    const { data: payment, error: paymentError } = await supabaseAdmin
-      .from('supplier_payments')
-      .insert({
-        supplier_id: supplier.id,
-        entry_count: entryCount,
-        discount_percent: Number((discountRate * 100).toFixed(2)),
-        subtotal_cents: subtotalCents,
-        discount_cents: discountCents,
-        amount_due_cents: amountDueCents,
-      })
-      .select('id, entry_count, discount_percent, subtotal_cents, discount_cents, amount_due_cents')
-      .single();
+    let payment: { id: string; entry_count: number; discount_percent: number; subtotal_cents: number; discount_cents: number; amount_due_cents: number } | null = null;
 
-    if (paymentError) throw paymentError;
+    if (newSauceIds.length > 0) {
+      // Delete any existing pending payments for this supplier before creating a fresh one.
+      // This prevents phantom records when the form is submitted twice.
+      currentStep = 'clear-pending-payments';
+      const { data: existingPending } = await supabaseAdmin
+        .from('supplier_payments')
+        .select('id')
+        .eq('supplier_id', supplier.id)
+        .eq('stripe_payment_status', 'pending');
 
-    currentStep = 'link-sauce-payment';
-    const { error: saucePaymentLinkError } = await supabaseAdmin
-      .from('sauces')
-      .update({ payment_id: payment.id })
-      .in('id', sauceIds);
+      if (existingPending && existingPending.length > 0) {
+        await supabaseAdmin
+          .from('supplier_payments')
+          .delete()
+          .in('id', existingPending.map((p) => p.id));
+        console.log(`Cleared ${existingPending.length} stale pending payment(s) for supplier ${supplier.id}`);
+      }
 
-    if (saucePaymentLinkError) throw saucePaymentLinkError;
+      // Count all unpaid sauces for this supplier (existing pending + newly created)
+      const { data: allUnpaidSauces } = await supabaseAdmin
+        .from('sauces')
+        .select('id')
+        .eq('supplier_id', supplier.id)
+        .eq('payment_status', 'pending_payment');
+
+      const allUnpaidIds = (allUnpaidSauces ?? []).map((s) => s.id);
+      const entryCount = allUnpaidIds.length;
+      const discountRate = resolveDiscount(entryCount);
+      const subtotalCents = entryCount * BASE_PRICE_CENTS;
+      const discountCents = Math.round(subtotalCents * discountRate);
+      const amountDueCents = subtotalCents - discountCents;
+
+      currentStep = 'create-payment';
+      const { data: insertedPayment, error: paymentError } = await supabaseAdmin
+        .from('supplier_payments')
+        .insert({
+          supplier_id: supplier.id,
+          entry_count: entryCount,
+          discount_percent: Number((discountRate * 100).toFixed(2)),
+          subtotal_cents: subtotalCents,
+          discount_cents: discountCents,
+          amount_due_cents: amountDueCents,
+        })
+        .select('id, entry_count, discount_percent, subtotal_cents, discount_cents, amount_due_cents')
+        .single();
+
+      if (paymentError) throw paymentError;
+      payment = insertedPayment;
+
+      currentStep = 'link-sauce-payment';
+      const { error: saucePaymentLinkError } = await supabaseAdmin
+        .from('sauces')
+        .update({ payment_id: payment.id })
+        .in('id', allUnpaidIds);
+
+      if (saucePaymentLinkError) throw saucePaymentLinkError;
+    } else {
+      // All sauces already paid — fetch the existing succeeded payment for the response
+      const { data: succeededPayment } = await supabaseAdmin
+        .from('supplier_payments')
+        .select('id, entry_count, discount_percent, subtotal_cents, discount_cents, amount_due_cents')
+        .eq('supplier_id', supplier.id)
+        .eq('stripe_payment_status', 'succeeded')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+      payment = succeededPayment;
+    }
 
     if (payload.sauces.length !== sauces.length) {
       throw new Error('Mismatch between submitted sauces and stored records.');
