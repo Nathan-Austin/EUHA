@@ -184,12 +184,15 @@ export default function SupplierSauceManager({ initialSauces, hasExistingPayment
             Add new sauce entries or remove unpaid entries
           </p>
         </div>
-        <button
-          onClick={() => setShowAddForm(!showAddForm)}
-          className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          {showAddForm ? 'Cancel' : '+ Add Sauce Entry'}
-        </button>
+        <div className="flex flex-col items-end gap-1">
+          <button
+            disabled
+            className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg opacity-50 cursor-not-allowed"
+          >
+            + Add Sauce Entry
+          </button>
+          <p className="text-xs text-gray-500">Entries are closed for the 2026 awards</p>
+        </div>
       </div>
 
       {error && (
@@ -204,8 +207,8 @@ export default function SupplierSauceManager({ initialSauces, hasExistingPayment
         </div>
       )}
 
-      {/* Add Sauce Form */}
-      {showAddForm && (
+      {/* Add Sauce Form — entries closed */}
+      {false && (
         <form onSubmit={handleAddSauce} className="bg-blue-50 border-2 border-blue-200 rounded-lg p-6 space-y-4">
           <h3 className="text-lg font-semibold text-blue-900">Add New Sauce Entry</h3>
 

@@ -65,9 +65,15 @@ export default function Home() {
             <h1 className="text-4xl font-semibold leading-tight sm:text-5xl text-white">European Hot Sauce Awards 2026</h1>
             <p className="mt-4 text-lg text-white/75 sm:text-xl">Honouring and acknowledging the innovative craft of Hot Sauce.</p>
             <div className="mt-8 flex flex-wrap justify-center gap-4">
-              <Link href="/apply/supplier" className="rounded-full bg-gradient-to-r from-[#ff4d00] to-[#f1b12e] px-6 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-black transition hover:from-[#ff7033] hover:to-[#ffd060]">
-                Enter Competition
-              </Link>
+              <div className="flex flex-col items-center gap-2">
+                <button
+                  disabled
+                  className="rounded-full bg-gradient-to-r from-[#ff4d00] to-[#f1b12e] px-6 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-black opacity-50 cursor-not-allowed"
+                >
+                  Enter Competition
+                </button>
+                <p className="text-xs text-white/60">Entries are closed for the 2026 awards — we look forward to seeing you for the 2027 awards!</p>
+              </div>
               <Link href="/apply/judge" className="rounded-full border border-white/20 px-6 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-white transition hover:border-white hover:bg-white/10">
                 Apply to Judge
               </Link>
