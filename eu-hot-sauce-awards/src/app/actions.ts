@@ -465,13 +465,15 @@ export async function generateStickerData() {
   // Each sauce is split into 7 portions, one per box
   const stickersPerSauce = 7;
 
-  const stickerData: StickerData[] = sauces.map((sauce: any) => ({
-    sauceId: sauce.id,
-    sauceCode: sauce.sauce_code || 'N/A',
-    sauceName: sauce.name,
-    brandName: sauce.suppliers?.brand_name || 'Unknown',
-    stickersNeeded: stickersPerSauce,
-  }));
+  const stickerData: StickerData[] = sauces
+    .map((sauce: any) => ({
+      sauceId: sauce.id,
+      sauceCode: sauce.sauce_code || 'N/A',
+      sauceName: sauce.name,
+      brandName: sauce.suppliers?.brand_name || 'Unknown',
+      stickersNeeded: stickersPerSauce,
+    }))
+    .sort((a: StickerData, b: StickerData) => a.sauceCode.localeCompare(b.sauceCode));
 
   return {
     stickerData,
