@@ -221,7 +221,7 @@ export async function generateShippingLabel(
 
     console.log('[DHL] Request payload:', JSON.stringify(payload, null, 2));
 
-    const response = await fetch(`${DHL_CONFIG.shippingUrl}/orders?validate=true&includeDocs=URL`, {
+    const response = await fetch(`${DHL_CONFIG.shippingUrl}/orders?includeDocs=URL`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
