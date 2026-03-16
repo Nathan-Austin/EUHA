@@ -3168,6 +3168,9 @@ export async function generateJudgeShippingLabel(judgeId: string): Promise<{ suc
   const destinationISO3 = toISO3(judge.country)
   const customsRequired = needsCustoms(destinationISO3)
 
+  // Use Paket International (V54EPAK) for non-EU destinations, domestic (V01PAK) for EU
+  const productCode = customsRequired ? 'V54EPAK' : 'V01PAK'
+
   const result = await generateShippingLabel({
     judgeId: judge.id,
     orderReference: `EUHA-${judge.name.replace(/\s+/g, '-').toUpperCase()}`,
@@ -3176,16 +3179,17 @@ export async function generateJudgeShippingLabel(judgeId: string): Promise<{ suc
     weight: getBoxWeightKg(),
     dimensions: getBoxDimensions(),
     shipmentDate: today,
+    productCode,
     ...(customsRequired && {
       customs: {
         exportType: 'OTHER',
-        exportDescription: 'Food samples – hot sauce tasting set. Not for resale.',
+        exportDescription: 'Food samples - hot sauce tasting set. Not for resale.',
         shippingConditions: 'DAP',
         customsAmount: 5,
         customsCurrency: 'EUR',
         items: [
           {
-            itemDescription: 'Hot sauce judging samples – 1 judging pack',
+            itemDescription: 'Hot sauce judging samples - 1 judging pack',
             packagedQuantity: 1,
             itemValue: 5,
             itemWeight: { uom: 'kg', value: getBoxWeightKg() },
