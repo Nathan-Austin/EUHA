@@ -3180,7 +3180,7 @@ export async function generateJudgeShippingLabel(judgeId: string): Promise<{ suc
     productCode,
     ...(customsRequired && {
       customs: {
-        exportType: 'OTHER',
+        exportType: 'COMMERCIAL_SAMPLE',
         exportDescription: 'Food samples - hot sauce tasting set. Not for resale.',
         shippingConditions: 'DAP',
         customsAmount: 5,
@@ -3192,7 +3192,7 @@ export async function generateJudgeShippingLabel(judgeId: string): Promise<{ suc
             itemValue: 5,
             itemWeight: { uom: 'kg', value: getBoxWeightKg() },
             countryOfOrigin: 'DE',
-            hsCode: '210390',
+            hsCode: '2103.90',
           },
         ],
       },
