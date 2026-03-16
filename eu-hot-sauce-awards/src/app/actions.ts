@@ -3175,19 +3175,18 @@ export async function generateJudgeShippingLabel(judgeId: string): Promise<{ suc
     shipper,
     consignee,
     weight: getBoxWeightKg(),
-    dimensions: getBoxDimensions(),
     shipmentDate: today,
     productCode,
     ...(customsRequired && {
       customs: {
-        exportType: 'COMMERCIAL_SAMPLE',
-        exportDescription: 'Food samples - hot sauce tasting set. Not for resale.',
+        exportType: 'OTHER',
+        exportDescription: 'Food samples for judging',
         customsAmount: 5,
         customsCurrency: 'EUR',
         postalCharges: 15,
         items: [
           {
-            itemDescription: 'Hot sauce judging samples - 1 judging pack',
+            itemDescription: 'Hot sauce samples',
             packagedQuantity: 1,
             itemValue: { value: 5, currency: 'EUR' },
             itemWeight: { uom: 'kg', value: getBoxWeightKg() },
