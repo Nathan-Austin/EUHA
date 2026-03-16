@@ -584,7 +584,7 @@ export async function getJudgeBoxAssignments(judgeId: string) {
 
   const { data: judge, error: judgeFetchError } = await adminSupabase
     .from('judges')
-    .select('name, email')
+    .select('name, email, type')
     .eq('id', judgeId)
     .single();
 
@@ -616,9 +616,11 @@ export async function getJudgeBoxAssignments(judgeId: string) {
   }));
 
   const judgeName = judge?.name || judge?.email?.split('@')[0] || 'Unknown judge';
+  const judgeType: string = (judge as any)?.type || 'unknown';
 
   return {
     judgeName,
+    judgeType,
     assignments: mappedAssignments,
   };
 }
@@ -1217,6 +1219,75 @@ export async function checkConflictOfInterest(judgeId: string, sauceId: string) 
     conflict: false,
     message: '✓ No conflict of interest detected',
   };
+}
+
+export async function checkProCoverage(judgeId: string, sauceId: string) {
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user?.email) return { error: 'You must be logged in.' };
+
+  const { data: adminCheck, error: adminError } = await supabase
+    .from('judges')
+    .select('type')
+    .ilike('email', user.email)
+    .single();
+
+  if (adminError || adminCheck?.type !== 'admin') {
+    return { error: 'You are not authorized.' };
+  }
+
+  const serviceClientResult = getServiceSupabase();
+  if ('error' in serviceClientResult) {
+    return { error: serviceClientResult.error };
+  }
+
+  const adminSupabase = serviceClientResult.client;
+
+  // Get the active judge's type
+  const { data: activeJudge, error: judgeError } = await adminSupabase
+    .from('judges')
+    .select('type, name')
+    .eq('id', judgeId)
+    .single();
+
+  if (judgeError || !activeJudge) {
+    return { warning: false };
+  }
+
+  // Only relevant when packing a community judge's box
+  if (activeJudge.type !== 'community') {
+    return { warning: false };
+  }
+
+  // Count existing assignments for this sauce, broken down by judge type
+  const { data: assignments, error: assignmentError } = await adminSupabase
+    .from('box_assignments')
+    .select('judges ( type )')
+    .eq('sauce_id', sauceId);
+
+  if (assignmentError || !assignments) {
+    return { warning: false };
+  }
+
+  let communityCount = 0;
+  let proCount = 0;
+
+  for (const a of assignments as any[]) {
+    const type = a.judges?.type;
+    if (type === 'community') communityCount++;
+    else if (type === 'pro' || type === 'supplier') proCount++;
+  }
+
+  if (communityCount >= 3 && proCount < 3) {
+    return {
+      warning: true,
+      message: `⚠️ PRO COVERAGE WARNING: This sauce already has ${communityCount} community judges. It only has ${proCount}/3 pro judges — set this jar aside for a pro judge box.`,
+    };
+  }
+
+  return { warning: false };
 }
 
 // Supplier tracking submission

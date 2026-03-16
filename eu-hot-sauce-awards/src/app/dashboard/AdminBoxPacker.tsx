@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { getPackingStatus, recordBottleScan, manuallyMarkAsBoxed, checkConflictOfInterest, getJudgeBoxAssignments, type SaucePackingStatus, type JudgeBoxAssignment } from "../actions";
+import { getPackingStatus, recordBottleScan, manuallyMarkAsBoxed, checkConflictOfInterest, checkProCoverage, getJudgeBoxAssignments, type SaucePackingStatus, type JudgeBoxAssignment } from "../actions";
 
 const QrScanner = dynamic(
   async () => (await import("@yudiel/react-qr-scanner")).QrScanner,
@@ -20,6 +20,7 @@ export default function AdminBoxPacker() {
   const [scannedInput, setScannedInput] = useState("");
   const [currentJudgeId, setCurrentJudgeId] = useState<string | null>(null);
   const [currentJudgeName, setCurrentJudgeName] = useState<string | null>(null);
+  const [currentJudgeType, setCurrentJudgeType] = useState<string | null>(null);
   const [boxSauces, setBoxSauces] = useState<JudgeBoxAssignment[]>([]);
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
@@ -61,31 +62,34 @@ export default function AdminBoxPacker() {
     }, duration);
   }, [clearScanMessage]);
 
-  const loadJudgeBoxAssignments = useCallback(async (judgeId: string): Promise<{ assignments: JudgeBoxAssignment[]; judgeName?: string; error?: string }> => {
+  const loadJudgeBoxAssignments = useCallback(async (judgeId: string): Promise<{ assignments: JudgeBoxAssignment[]; judgeName?: string; judgeType?: string; error?: string }> => {
     if (!judgeId) {
       setBoxSauces([]);
-      return { assignments: [], judgeName: undefined, error: 'No judge selected' };
+      return { assignments: [], judgeName: undefined, judgeType: undefined, error: 'No judge selected' };
     }
 
     const result = await getJudgeBoxAssignments(judgeId);
 
     if ('error' in result) {
       setBoxSauces([]);
-      return { assignments: [], judgeName: undefined, error: result.error || 'Unable to load box assignments' };
+      return { assignments: [], judgeName: undefined, judgeType: undefined, error: result.error || 'Unable to load box assignments' };
     }
 
     const assignments = result.assignments || [];
     const judgeLabel = result.judgeName || `Judge ${judgeId.substring(0, 8)}`;
+    const judgeType = result.judgeType || 'unknown';
     setBoxSauces(assignments);
     setCurrentJudgeName(judgeLabel);
+    setCurrentJudgeType(judgeType);
 
-    return { assignments, judgeName: judgeLabel };
+    return { assignments, judgeName: judgeLabel, judgeType };
   }, []);
 
   const resetJudgeContext = useCallback(() => {
     setCurrentJudgeId(null);
     currentJudgeIdRef.current = null;
     setCurrentJudgeName(null);
+    setCurrentJudgeType(null);
     setBoxSauces([]);
   }, []);
 
@@ -179,6 +183,18 @@ export default function AdminBoxPacker() {
 
     if (conflictCheck.conflict) {
       showTimedMessage(conflictCheck.message || '⚠️ Conflict of interest detected!', 8000);
+      return;
+    }
+
+    const coverageCheck = await checkProCoverage(activeJudgeId, sauceId);
+
+    if ('error' in coverageCheck) {
+      showTimedMessage(`❌ Error: ${coverageCheck.error}`, 6000);
+      return;
+    }
+
+    if (coverageCheck.warning) {
+      showTimedMessage(coverageCheck.message || '⚠️ Pro coverage warning!', 10000);
       return;
     }
 
@@ -356,7 +372,9 @@ export default function AdminBoxPacker() {
         {scanningEnabled && (
           <div className="rounded-lg border border-blue-300 bg-white p-3 text-sm">
             <div className="font-medium text-blue-900">
-              {currentJudgeId ? `📦 Packing box for ${currentJudgeName}` : '🔍 Scan judge QR code first'}
+              {currentJudgeId
+                ? `📦 Packing ${currentJudgeType ? `[${currentJudgeType}]` : ''} box for ${currentJudgeName}`
+                : '🔍 Scan judge QR code first'}
             </div>
             <div className="mt-1 text-xs text-blue-700">Scanned buffer: {scannedInput || '(waiting...)'}</div>
           </div>
@@ -419,7 +437,10 @@ export default function AdminBoxPacker() {
       {currentJudgeId && (
         <div className="p-4 bg-purple-50 border border-purple-300 rounded-lg">
           <div className="flex items-center justify-between mb-3">
-            <h4 className="font-semibold text-purple-900">Current Box: {currentJudgeName || 'Judge selected'}</h4>
+            <h4 className="font-semibold text-purple-900">
+              Current Box: {currentJudgeName || 'Judge selected'}
+              {currentJudgeType && <span className="ml-2 text-xs font-normal bg-purple-200 text-purple-800 px-2 py-0.5 rounded-full capitalize">{currentJudgeType}</span>}
+            </h4>
             <span className="text-sm font-semibold text-purple-900">{boxSauces.length}/{BOX_TARGET} sauces</span>
           </div>
           <div className="flex-1 bg-gray-200 rounded-full h-3">
