@@ -3127,7 +3127,7 @@ export async function generateJudgeShippingLabel(judgeId: string): Promise<{ suc
     return { success: false, error: 'Judge address is incomplete — street, city, postal code and country are required' }
   }
 
-  const { parseStreetAddress, toISO3 } = await import('@/lib/dhl/countries')
+  const { parseStreetAddress, toISO3, needsCustoms } = await import('@/lib/dhl/countries')
   const { generateShippingLabel, getBoxWeightKg, getBoxDimensions, validateAddress } = await import('@/lib/dhl/service')
 
   // Fixed shipper address — Chili Punk Berlin
@@ -3165,6 +3165,9 @@ export async function generateJudgeShippingLabel(judgeId: string): Promise<{ suc
   // Today's date as shipment date
   const today = new Date().toISOString().split('T')[0]
 
+  const destinationISO3 = toISO3(judge.country)
+  const customsRequired = needsCustoms(destinationISO3)
+
   const result = await generateShippingLabel({
     judgeId: judge.id,
     orderReference: `EUHA-${judge.name.replace(/\s+/g, '-').toUpperCase()}`,
@@ -3173,6 +3176,25 @@ export async function generateJudgeShippingLabel(judgeId: string): Promise<{ suc
     weight: getBoxWeightKg(),
     dimensions: getBoxDimensions(),
     shipmentDate: today,
+    ...(customsRequired && {
+      customs: {
+        exportType: 'OTHER',
+        exportDescription: 'Food samples – hot sauce tasting set. Not for resale.',
+        shippingConditions: 'DAP',
+        customsAmount: 5,
+        customsCurrency: 'EUR',
+        items: [
+          {
+            itemDescription: 'Hot sauce judging samples – 1 judging pack',
+            packagedQuantity: 1,
+            itemValue: 5,
+            itemWeight: { uom: 'kg', value: getBoxWeightKg() },
+            countryOfOrigin: 'DEU',
+            hsCode: '210390',
+          },
+        ],
+      },
+    }),
   })
 
   const serviceSupabaseForShipping = createServiceClient(

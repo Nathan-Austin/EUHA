@@ -11,6 +11,7 @@ import type {
   DHLAddressValidationResult,
   DHLTokenResponse,
   DHLOrderResponse,
+  DHLCustomsDetails,
 } from './types';
 
 // ==================== CONFIGURATION ====================
@@ -195,6 +196,24 @@ export async function generateShippingLabel(
               },
             }),
           },
+
+          ...(request.customs && {
+            customs: {
+              exportType: request.customs.exportType,
+              exportDescription: request.customs.exportDescription,
+              shippingConditions: request.customs.shippingConditions,
+              customsAmount: request.customs.customsAmount,
+              customsCurrency: request.customs.customsCurrency,
+              items: request.customs.items.map((item) => ({
+                itemDescription: item.itemDescription,
+                packagedQuantity: item.packagedQuantity,
+                itemValue: item.itemValue,
+                itemWeight: item.itemWeight,
+                countryOfOrigin: item.countryOfOrigin,
+                hsCode: item.hsCode,
+              })),
+            },
+          }),
         },
       ],
     };

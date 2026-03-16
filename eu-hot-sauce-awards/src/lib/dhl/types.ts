@@ -21,6 +21,24 @@ export interface DHLPackageDimensions {
   height: number; // cm
 }
 
+export interface DHLCustomsItem {
+  itemDescription: string;
+  packagedQuantity: number;
+  itemValue: number;       // EUR
+  itemWeight: { uom: 'kg'; value: number };
+  countryOfOrigin: string; // ISO 3166-1 alpha-3
+  hsCode: string;
+}
+
+export interface DHLCustomsDetails {
+  exportType: 'OTHER' | 'PRESENT' | 'COMMERCIAL_GOODS' | 'COMMERCIAL_SAMPLE' | 'DOCUMENTS' | 'RETURN_OF_GOODS';
+  exportDescription: string;
+  shippingConditions: 'DAP' | 'DDP' | 'DDU';
+  customsAmount: number;   // EUR
+  customsCurrency: string;
+  items: DHLCustomsItem[];
+}
+
 export interface DHLShipmentRequest {
   judgeId: string;
   orderReference: string; // e.g. judge name or box label
@@ -30,6 +48,7 @@ export interface DHLShipmentRequest {
   dimensions?: DHLPackageDimensions;
   shipmentDate: string; // YYYY-MM-DD
   productCode?: string; // V01PAK, V53WPAK, V54EPAK, V62WP, V07PAK
+  customs?: DHLCustomsDetails;
 }
 
 export interface DHLShipmentResponse {

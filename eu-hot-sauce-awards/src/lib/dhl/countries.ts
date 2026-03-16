@@ -139,6 +139,24 @@ export function parseStreetAddress(fullAddress: string): { street: string; house
   return { street: normalised, houseNumber: '1' };
 }
 
+/**
+ * EU member states (ISO 3166-1 alpha-3) that are in the EU customs union.
+ * Shipments to these countries from Germany do not require a customs declaration.
+ */
+export const EU_CUSTOMS_EXEMPT = new Set([
+  'AUT', 'BEL', 'BGR', 'HRV', 'CYP', 'CZE', 'DNK', 'EST', 'FIN', 'FRA',
+  'DEU', 'GRC', 'HUN', 'IRL', 'ITA', 'LVA', 'LTU', 'LUX', 'MLT', 'NLD',
+  'POL', 'PRT', 'ROU', 'SVK', 'SVN', 'ESP', 'SWE',
+]);
+
+/**
+ * Returns true if the destination country requires a customs declaration
+ * (i.e. it is outside the EU customs union).
+ */
+export function needsCustoms(iso3: string): boolean {
+  return !EU_CUSTOMS_EXEMPT.has(iso3.toUpperCase());
+}
+
 export const AVAILABLE_SHIPPING_COUNTRIES = [
   // Europe
   { code: 'AL', iso3: 'ALB', name: 'Albania' },
