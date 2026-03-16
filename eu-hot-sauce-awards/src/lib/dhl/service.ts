@@ -236,8 +236,15 @@ export async function generateShippingLabel(
         const json = JSON.parse(errorText);
         if (json.detail) message += ` - ${json.detail}`;
         if (json.title)  message += ` (${json.title})`;
+        // Capture validation detail from items array if present
+        if (json.items?.[0]?.validationMessages) {
+          const msgs = json.items[0].validationMessages.map((m: any) => `${m.property}: ${m.validationMessage}`).join('; ');
+          message += ` | ${msgs}`;
+        }
+        console.error('[DHL] Full error response:', JSON.stringify(json, null, 2));
       } catch {
         message += ` - ${errorText}`;
+        console.error('[DHL] Raw error response:', errorText);
       }
       return { success: false, error: message };
     }

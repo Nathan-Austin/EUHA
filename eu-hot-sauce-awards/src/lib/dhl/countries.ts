@@ -159,7 +159,7 @@ export function needsCustoms(iso3: string): boolean {
 
 /**
  * Returns the appropriate DHL product code for the destination country.
- *   Germany      → V62WP  (Kleinpaket)
+ *   Germany      → V62WP   (Kleinpaket)
  *   EU countries → V53WPAK (Warenpost International)
  *   Non-EU       → V54EPAK (Paket International)
  */

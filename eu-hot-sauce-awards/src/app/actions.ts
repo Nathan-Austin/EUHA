@@ -3191,7 +3191,7 @@ export async function generateJudgeShippingLabel(judgeId: string): Promise<{ suc
             packagedQuantity: 1,
             itemValue: 5,
             itemWeight: { uom: 'kg', value: getBoxWeightKg() },
-            countryOfOrigin: 'DEU',
+            countryOfOrigin: 'DE',
             hsCode: '210390',
           },
         ],
