@@ -157,6 +157,19 @@ export function needsCustoms(iso3: string): boolean {
   return !EU_CUSTOMS_EXEMPT.has(iso3.toUpperCase());
 }
 
+/**
+ * Returns the appropriate DHL product code for the destination country.
+ *   Germany      → V62WP  (Kleinpaket)
+ *   EU countries → V53WPAK (Warenpost International)
+ *   Non-EU       → V54EPAK (Paket International)
+ */
+export function getDhlProductCode(iso3: string): 'V62WP' | 'V53WPAK' | 'V54EPAK' {
+  const upper = iso3.toUpperCase();
+  if (upper === 'DEU') return 'V62WP';
+  if (EU_CUSTOMS_EXEMPT.has(upper)) return 'V53WPAK';
+  return 'V54EPAK';
+}
+
 export const AVAILABLE_SHIPPING_COUNTRIES = [
   // Europe
   { code: 'AL', iso3: 'ALB', name: 'Albania' },
