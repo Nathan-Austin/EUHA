@@ -3190,7 +3190,7 @@ export async function generateJudgeShippingLabel(judgeId: string): Promise<{ suc
             itemDescription: 'Hot sauce judging samples - 1 judging pack',
             packagedQuantity: 1,
             itemValue: { value: 5, currency: 'EUR' },
-            itemWeight: getBoxWeightKg(),
+            itemWeight: { uom: 'kg', value: getBoxWeightKg() },
             countryOfOrigin: 'DEU',
             hsCode: '21039090',
           },

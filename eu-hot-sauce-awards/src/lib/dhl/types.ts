@@ -25,7 +25,7 @@ export interface DHLCustomsItem {
   itemDescription: string;
   packagedQuantity: number;
   itemValue: { value: number; currency: string };
-  itemWeight: number;      // kg, plain number
+  itemWeight: { uom: string; value: number };
   countryOfOrigin: string; // ISO 3166-1 alpha-3 (e.g. 'DEU')
   hsCode: string;          // 6-11 digit HS tariff code
 }
