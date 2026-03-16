@@ -24,10 +24,10 @@ export interface DHLPackageDimensions {
 export interface DHLCustomsItem {
   itemDescription: string;
   packagedQuantity: number;
-  itemValue: number;       // EUR
-  itemWeight: { uom: 'kg'; value: number };
-  countryOfOrigin: string; // ISO 3166-1 alpha-3
-  hsCode: string;
+  itemValue: { value: number; currency: string };
+  itemWeight: number;      // kg, plain number
+  countryOfOrigin: string; // ISO 3166-1 alpha-3 (e.g. 'DEU')
+  hsCode: string;          // 6-11 digit HS tariff code
 }
 
 export interface DHLCustomsDetails {
@@ -36,6 +36,7 @@ export interface DHLCustomsDetails {
   shippingConditions: 'DAP' | 'DDP' | 'DDU';
   customsAmount: number;   // EUR
   customsCurrency: string;
+  postalCharges: number;   // Shipping cost in EUR (required by UPU since 2021)
   items: DHLCustomsItem[];
 }
 

@@ -204,6 +204,7 @@ export async function generateShippingLabel(
               shippingConditions: request.customs.shippingConditions,
               customsAmount: request.customs.customsAmount,
               customsCurrency: request.customs.customsCurrency,
+              postalCharges: request.customs.postalCharges,
               items: request.customs.items.map((item) => ({
                 itemDescription: item.itemDescription,
                 packagedQuantity: item.packagedQuantity,
