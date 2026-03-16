@@ -8,13 +8,6 @@ const routes = [
       "Submit your sauce for consideration and receive official EU Hot Sauce Awards QR codes and logistics guidance.",
     cta: "Enter a Sauce",
   },
-  {
-    href: "/apply/judge",
-    title: "Judge Application",
-    description:
-      "Join our panel of professionals and community tasters representing every corner of Europe’s heat culture.",
-    cta: "Apply to Judge",
-  },
 ];
 
 export default function ApplyLandingPage() {

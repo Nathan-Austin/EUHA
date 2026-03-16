@@ -74,9 +74,15 @@ export default function Home() {
                 </button>
                 <p className="text-xs text-white/60">Entries are closed for the 2026 awards — we look forward to seeing you for the 2027 awards!</p>
               </div>
-              <Link href="/apply/judge" className="rounded-full border border-white/20 px-6 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-white transition hover:border-white hover:bg-white/10">
-                Apply to Judge
-              </Link>
+              <div className="flex flex-col items-center gap-2">
+                <button
+                  disabled
+                  className="rounded-full border border-white/20 px-6 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-white opacity-50 cursor-not-allowed"
+                >
+                  Apply to Judge
+                </button>
+                <p className="text-xs text-white/60">Judge applications are now closed for 2026.</p>
+              </div>
             </div>
           </div>
         </SectionContainer>
