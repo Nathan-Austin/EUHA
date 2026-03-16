@@ -159,15 +159,15 @@ export function needsCustoms(iso3: string): boolean {
 
 /**
  * Returns the appropriate DHL product code for the destination country.
- *   Germany      → V62WP   (Kleinpaket)
- *   EU countries → V53WPAK (Warenpost International)
- *   Non-EU       → V54EPAK (Paket International)
+ *   Germany      → V62KP   (Kleinpaket)
+ *   EU countries → V66WPI  (Warenpost International)
+ *   Non-EU       → V53WPAK (Paket International)
  */
-export function getDhlProductCode(iso3: string): 'V62WP' | 'V53WPAK' | 'V54EPAK' {
+export function getDhlProductCode(iso3: string): 'V62KP' | 'V66WPI' | 'V53WPAK' {
   const upper = iso3.toUpperCase();
-  if (upper === 'DEU') return 'V62WP';
-  if (EU_CUSTOMS_EXEMPT.has(upper)) return 'V53WPAK';
-  return 'V54EPAK';
+  if (upper === 'DEU') return 'V62KP';
+  if (EU_CUSTOMS_EXEMPT.has(upper)) return 'V66WPI';
+  return 'V53WPAK';
 }
 
 export const AVAILABLE_SHIPPING_COUNTRIES = [

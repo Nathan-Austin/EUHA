@@ -27,10 +27,10 @@ const DHL_CONFIG = {
 
   billingNumbers: {
     'V01PAK':  process.env.DHL_BILLING_PAKET!,       // DHL Paket National
-    'V53WPAK': process.env.DHL_BILLING_WARENPOST!,    // Warenpost International
-    'V54EPAK': process.env.DHL_BILLING_PAKET_INT!,    // Paket International
-    'V62WP':   process.env.DHL_BILLING_KLEINPAKET!,   // Kleinpaket
-    'V07PAK':  process.env.DHL_BILLING_RETOURE!,      // Retoure
+    'V53WPAK': process.env.DHL_BILLING_PAKET_INT!,   // Paket International (non-EU)
+    'V66WPI':  process.env.DHL_BILLING_WARENPOST!,   // Warenpost International (EU)
+    'V62KP':   process.env.DHL_BILLING_KLEINPAKET!,  // Kleinpaket (Germany)
+    'V07PAK':  process.env.DHL_BILLING_RETOURE!,     // Retoure
   },
 } as const;
 
@@ -201,7 +201,7 @@ export async function generateShippingLabel(
             customs: {
               exportType: request.customs.exportType,
               exportDescription: request.customs.exportDescription,
-              shippingConditions: request.customs.shippingConditions,
+              ...(request.customs.shippingConditions && { shippingConditions: request.customs.shippingConditions }),
               customsAmount: request.customs.customsAmount,
               customsCurrency: request.customs.customsCurrency,
               postalCharges: request.customs.postalCharges,
@@ -221,7 +221,7 @@ export async function generateShippingLabel(
 
     console.log('[DHL] Request payload:', JSON.stringify(payload, null, 2));
 
-    const response = await fetch(`${DHL_CONFIG.shippingUrl}/orders?includeDocs=URL`, {
+    const response = await fetch(`${DHL_CONFIG.shippingUrl}/orders?validate=true&includeDocs=URL`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,

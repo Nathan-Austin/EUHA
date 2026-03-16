@@ -33,7 +33,7 @@ export interface DHLCustomsItem {
 export interface DHLCustomsDetails {
   exportType: 'OTHER' | 'PRESENT' | 'COMMERCIAL_GOODS' | 'COMMERCIAL_SAMPLE' | 'DOCUMENTS' | 'RETURN_OF_GOODS';
   exportDescription: string;
-  shippingConditions: 'DAP' | 'DDP' | 'DDU';
+  shippingConditions?: 'DAP' | 'DDP' | 'DDU';
   customsAmount: number;   // EUR
   customsCurrency: string;
   postalCharges: number;   // Shipping cost in EUR (required by UPU since 2021)
