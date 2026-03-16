@@ -40,8 +40,9 @@ const COUNTRY_CODE_MAP: Record<string, string> = {
   'UG': 'UGA', 'RW': 'RWA', 'SN': 'SEN', 'CI': 'CIV', 'CM': 'CMR',
   'ZM': 'ZMB', 'ZW': 'ZWE', 'MZ': 'MOZ', 'AO': 'AGO', 'MG': 'MDG',
 
-  // Full country names — Europe
-  'GERMANY': 'DEU', 'AUSTRIA': 'AUT', 'BELGIUM': 'BEL', 'BULGARIA': 'BGR',
+  // Full country names — Europe (including German-language variants)
+  'GERMANY': 'DEU', 'DEUTSCHLAND': 'DEU',
+  'AUSTRIA': 'AUT', 'ÖSTERREICH': 'AUT', 'OESTERREICH': 'AUT', 'BELGIUM': 'BEL', 'BULGARIA': 'BGR',
   'CROATIA': 'HRV', 'CYPRUS': 'CYP', 'CZECH REPUBLIC': 'CZE', 'CZECHIA': 'CZE',
   'DENMARK': 'DNK', 'ESTONIA': 'EST', 'FINLAND': 'FIN', 'FRANCE': 'FRA',
   'GREECE': 'GRC', 'HUNGARY': 'HUN', 'IRELAND': 'IRL', 'ITALY': 'ITA',
