@@ -3177,6 +3177,25 @@ export async function generateJudgeShippingLabel(judgeId: string): Promise<{ suc
     weight: getBoxWeightKg(),
     shipmentDate: today,
     productCode,
+    ...(customsRequired && {
+      customs: {
+        exportType: 'OTHER',
+        exportDescription: 'Food samples for judging',
+        customsAmount: 5,
+        customsCurrency: 'EUR',
+        postalCharges: { value: 15, currency: 'EUR' },
+        items: [
+          {
+            itemDescription: 'Hot sauce samples',
+            packagedQuantity: 1,
+            itemValue: { value: 5, currency: 'EUR' },
+            itemWeight: { uom: 'kg', value: getBoxWeightKg() },
+            countryOfOrigin: 'DE',
+            hsCode: '21039090',
+          },
+        ],
+      },
+    }),
   })
 
   const serviceSupabaseForShipping = createServiceClient(

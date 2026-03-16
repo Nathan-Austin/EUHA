@@ -36,7 +36,7 @@ export interface DHLCustomsDetails {
   shippingConditions?: 'DAP' | 'DDP' | 'DDU';
   customsAmount: number;   // EUR
   customsCurrency: string;
-  postalCharges: number;   // Shipping cost in EUR (required by UPU since 2021)
+  postalCharges: { value: number; currency: string };
   items: DHLCustomsItem[];
 }
 
