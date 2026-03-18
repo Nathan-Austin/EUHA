@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { createClient } from '@/lib/supabase/client';
+import { lookupSauceByCodeForJudge } from '@/app/actions';
 
 const QrScanner = dynamic(
   () => import('@yudiel/react-qr-scanner').then(mod => mod.QrScanner),
@@ -15,6 +16,8 @@ export default function ScanPage() {
   const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isCheckingSession, setIsCheckingSession] = useState(true);
+  const [manualCode, setManualCode] = useState('');
+  const [isManualSubmitting, setIsManualSubmitting] = useState(false);
 
   const handleDecode = useCallback(
     (value: string | null) => {
@@ -101,6 +104,22 @@ export default function ScanPage() {
     initializeSession();
   }, [router]);
 
+  const handleManualSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!manualCode.trim() || isManualSubmitting) return;
+    setIsManualSubmitting(true);
+    setError(null);
+
+    const result = await lookupSauceByCodeForJudge(manualCode.trim());
+    if ('error' in result) {
+      setError(result.error ?? 'Sauce not found');
+      setIsManualSubmitting(false);
+      return;
+    }
+
+    router.push(`/judge/score/${result.sauceId}`);
+  };
+
   if (isCheckingSession) {
     return (
       <div className="container mx-auto p-4 text-center">
@@ -126,6 +145,28 @@ export default function ScanPage() {
         </div>
       )}
       <p className="mt-4 text-gray-700 font-medium">Point your camera at the QR code on the sauce bottle.</p>
+
+      <div className="mt-8 max-w-md mx-auto">
+        <p className="text-sm text-gray-500 mb-2">Scanner not working? Enter the sauce code manually:</p>
+        <form onSubmit={(e) => void handleManualSubmit(e)} className="flex gap-2">
+          <input
+            type="text"
+            value={manualCode}
+            onChange={(e) => setManualCode(e.target.value.toUpperCase())}
+            placeholder="e.g. H027"
+            className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono uppercase placeholder:normal-case placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400"
+            disabled={isManualSubmitting}
+            autoComplete="off"
+          />
+          <button
+            type="submit"
+            disabled={!manualCode.trim() || isManualSubmitting}
+            className="rounded-lg bg-blue-600 px-5 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+          >
+            {isManualSubmitting ? 'Finding...' : 'Go'}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }

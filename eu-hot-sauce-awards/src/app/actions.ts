@@ -659,6 +659,24 @@ export async function lookupSauceByCode(sauceCode: string) {
   return { sauceId: sauce.id as string, sauceCode: sauce.sauce_code as string, sauceName: sauce.name as string };
 }
 
+export async function lookupSauceByCodeForJudge(sauceCode: string) {
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user?.email) return { error: 'You must be logged in.' };
+
+  const { data: sauce, error } = await supabase
+    .from('sauces')
+    .select('id, sauce_code, name')
+    .ilike('sauce_code', sauceCode.trim())
+    .single();
+
+  if (error || !sauce) return { error: `No sauce found with code "${sauceCode.trim().toUpperCase()}"` };
+
+  return { sauceId: sauce.id as string, sauceCode: sauce.sauce_code as string, sauceName: sauce.name as string };
+}
+
 export async function removeBoxAssignment(judgeId: string, sauceId: string) {
   const cookieStore = cookies();
   const supabase = createClient(cookieStore);
