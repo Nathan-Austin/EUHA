@@ -1,8 +1,9 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useCallback, useState, useEffect } from 'react';
+import { useCallback, useRef, useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
+import jsQR from 'jsqr';
 import { createClient } from '@/lib/supabase/client';
 import { lookupSauceByCodeForJudge } from '@/app/actions';
 
@@ -19,6 +20,7 @@ export default function ScanPage() {
   const [isCheckingSession, setIsCheckingSession] = useState(true);
   const [manualCode, setManualCode] = useState('');
   const [isManualSubmitting, setIsManualSubmitting] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement | null>(null);
 
   const handleDecode = useCallback(
     (value: string | null) => {
@@ -105,6 +107,36 @@ export default function ScanPage() {
     initializeSession();
   }, [router]);
 
+  const handlePhotoCapture = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (photoInputRef.current) photoInputRef.current.value = '';
+
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) { URL.revokeObjectURL(url); setError('Could not read image.'); return; }
+      ctx.drawImage(img, 0, 0);
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+
+      const code = jsQR(imageData.data, imageData.width, imageData.height);
+      if (code?.data) {
+        handleDecode(code.data);
+      } else {
+        setError('No QR code found in photo. Try again with better lighting or angle.');
+      }
+    };
+
+    img.onerror = () => { URL.revokeObjectURL(url); setError('Could not load image.'); };
+    img.src = url;
+  }, [handleDecode]);
+
   const handleManualSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!manualCode.trim() || isManualSubmitting) return;
@@ -147,7 +179,22 @@ export default function ScanPage() {
       )}
       <p className="mt-4 text-gray-700 font-medium">Point your camera at the QR code on the sauce bottle.</p>
 
-      <div className="mt-8 max-w-md mx-auto">
+      <div className="mt-4 max-w-md mx-auto">
+        <p className="text-sm text-gray-500 mb-2">Live scanner not working? Take a photo instead:</p>
+        <label className="cursor-pointer inline-block w-full rounded-lg border border-gray-300 bg-white px-5 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 text-center">
+          📸 Take Photo to Scan
+          <input
+            ref={photoInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            onChange={(e) => void handlePhotoCapture(e)}
+          />
+        </label>
+      </div>
+
+      <div className="mt-4 max-w-md mx-auto">
         <p className="text-sm text-gray-500 mb-2">Scanner not working? Enter the sauce code manually:</p>
         <form onSubmit={(e) => void handleManualSubmit(e)} className="flex gap-2">
           <input

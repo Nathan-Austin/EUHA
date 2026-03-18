@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef, useState } from "react";
+import jsQR from "jsqr";
 import { getPackingStatus, recordBottleScan, manuallyMarkAsBoxed, checkConflictOfInterest, checkProCoverage, getJudgeBoxAssignments, removeBoxAssignment, lookupSauceByCode, type SaucePackingStatus, type JudgeBoxAssignment } from "../actions";
 
 const QrScanner = dynamic(
@@ -32,6 +33,7 @@ export default function AdminBoxPacker() {
   const [isManualSubmitting, setIsManualSubmitting] = useState(false);
   const messageTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const currentJudgeIdRef = useRef<string | null>(null);
+  const photoInputRef = useRef<HTMLInputElement | null>(null);
 
   const loadPackingStatus = useCallback(async () => {
     setIsLoading(true);
@@ -313,6 +315,47 @@ export default function AdminBoxPacker() {
     }
   };
 
+  const handlePhotoCapture = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Reset input so the same photo can be retried
+    if (photoInputRef.current) photoInputRef.current.value = "";
+
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+
+    img.onload = async () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        URL.revokeObjectURL(url);
+        showTimedMessage("❌ Could not read image.", 5000);
+        return;
+      }
+      ctx.drawImage(img, 0, 0);
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+
+      const code = jsQR(imageData.data, imageData.width, imageData.height);
+      if (code?.data) {
+        clearScanMessage();
+        await handleScan(code.data);
+      } else {
+        showTimedMessage("❌ No QR code found in photo. Try again with better lighting or angle.", 5000);
+      }
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      showTimedMessage("❌ Could not load image.", 5000);
+    };
+
+    img.src = url;
+  }, [clearScanMessage, handleScan, showTimedMessage]);
+
   const handleManualCodeSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!manualCode.trim() || !currentJudgeId) return;
@@ -390,6 +433,17 @@ export default function AdminBoxPacker() {
             >
               {cameraActive ? '📷 Camera Scanner Active' : 'Use Camera QR Scanner'}
             </button>
+            <label className="cursor-pointer px-6 py-3 text-sm font-semibold transition rounded-lg bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 text-center">
+              📸 Take Photo to Scan
+              <input
+                ref={photoInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={(e) => void handlePhotoCapture(e)}
+              />
+            </label>
           </div>
 
           {currentJudgeId && (
