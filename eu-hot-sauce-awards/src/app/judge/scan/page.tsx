@@ -6,8 +6,6 @@ import dynamic from 'next/dynamic';
 import { createClient } from '@/lib/supabase/client';
 import { lookupSauceByCodeForJudge } from '@/app/actions';
 
-// DecodeHintType.TRY_HARDER = 3 — makes ZXing work harder on each frame (better for blurry/angled shots)
-const QR_HINTS = new Map([[3, true]]);
 
 const QrScanner = dynamic(
   () => import('@yudiel/react-qr-scanner').then(mod => mod.QrScanner),
@@ -138,13 +136,7 @@ export default function ScanPage() {
         <QrScanner
           onDecode={handleDecode}
           onError={handleError}
-          constraints={{
-            facingMode: { ideal: 'environment' },
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
-          }}
-          scanDelay={400}
-          hints={QR_HINTS}
+          constraints={{ facingMode: 'environment' }}
           containerStyle={{ width: '100%' }}
         />
       </div>

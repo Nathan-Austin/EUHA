@@ -10,8 +10,6 @@ const QrScanner = dynamic(
 );
 
 const BOX_TARGET = 12;
-// DecodeHintType.TRY_HARDER = 3 — makes ZXing work harder on each frame (better for blurry/angled shots)
-const QR_HINTS = new Map([[3, true]]);
 
 export default function AdminBoxPacker() {
   const [sauces, setSauces] = useState<SaucePackingStatus[]>([]);
@@ -422,13 +420,7 @@ export default function AdminBoxPacker() {
           <div className="flex flex-col gap-3">
             <div className="overflow-hidden rounded-xl border border-gray-300 bg-black">
               <QrScanner
-                constraints={{
-                  facingMode: { ideal: 'environment' },
-                  width: { ideal: 1280 },
-                  height: { ideal: 720 },
-                }}
-                scanDelay={400}
-                hints={QR_HINTS}
+                constraints={{ facingMode: { ideal: 'environment' } }}
                 onDecode={(result) => {
                   void handleScan(result);
                 }}
