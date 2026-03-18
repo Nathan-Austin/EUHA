@@ -116,20 +116,23 @@ export default function ScanPage() {
     const img = new Image();
 
     img.onload = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = img.width;
-      canvas.height = img.height;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) { URL.revokeObjectURL(url); setError('Could not read image.'); return; }
-      ctx.drawImage(img, 0, 0);
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       URL.revokeObjectURL(url);
+      const canvas = document.createElement('canvas');
+      const scale = Math.min(1, 3000 / Math.max(img.width, img.height));
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      const ctx = canvas.getContext('2d');
+      if (!ctx) { setError('Could not read image.'); return; }
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
-      const code = jsQR(imageData.data, imageData.width, imageData.height);
+      const code = jsQR(imageData.data, imageData.width, imageData.height, {
+        inversionAttempts: 'attemptBoth',
+      });
       if (code?.data) {
         handleDecode(code.data);
       } else {
-        setError('No QR code found in photo. Try again with better lighting or angle.');
+        setError('No QR code found in photo. Try moving closer to the QR code and retaking.');
       }
     };
 

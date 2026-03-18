@@ -326,25 +326,28 @@ export default function AdminBoxPacker() {
     const img = new Image();
 
     img.onload = async () => {
+      URL.revokeObjectURL(url);
       const canvas = document.createElement("canvas");
-      canvas.width = img.width;
-      canvas.height = img.height;
+      // Upscale to max 3000px on longest side — gives jsQR more pixels for dense QR codes
+      const scale = Math.min(1, 3000 / Math.max(img.width, img.height));
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
       const ctx = canvas.getContext("2d");
       if (!ctx) {
-        URL.revokeObjectURL(url);
         showTimedMessage("❌ Could not read image.", 5000);
         return;
       }
-      ctx.drawImage(img, 0, 0);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      URL.revokeObjectURL(url);
 
-      const code = jsQR(imageData.data, imageData.width, imageData.height);
+      const code = jsQR(imageData.data, imageData.width, imageData.height, {
+        inversionAttempts: "attemptBoth",
+      });
       if (code?.data) {
         clearScanMessage();
         await handleScan(code.data);
       } else {
-        showTimedMessage("❌ No QR code found in photo. Try again with better lighting or angle.", 5000);
+        showTimedMessage("❌ No QR code found in photo. Try moving closer to the QR code and retaking.", 5000);
       }
     };
 
