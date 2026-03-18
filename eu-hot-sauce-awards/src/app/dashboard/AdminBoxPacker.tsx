@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { getPackingStatus, recordBottleScan, manuallyMarkAsBoxed, checkConflictOfInterest, checkProCoverage, getJudgeBoxAssignments, type SaucePackingStatus, type JudgeBoxAssignment } from "../actions";
+import { getPackingStatus, recordBottleScan, manuallyMarkAsBoxed, checkConflictOfInterest, checkProCoverage, getJudgeBoxAssignments, removeBoxAssignment, lookupSauceByCode, type SaucePackingStatus, type JudgeBoxAssignment } from "../actions";
 
 const QrScanner = dynamic(
   async () => (await import("@yudiel/react-qr-scanner")).QrScanner,
@@ -26,6 +26,10 @@ export default function AdminBoxPacker() {
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [isCameraSupported, setIsCameraSupported] = useState(true);
   const [lastProcessedScan, setLastProcessedScan] = useState<{ value: string; timestamp: number } | null>(null);
+  const [removeModal, setRemoveModal] = useState<JudgeBoxAssignment | null>(null);
+  const [isRemoving, setIsRemoving] = useState(false);
+  const [manualCode, setManualCode] = useState("");
+  const [isManualSubmitting, setIsManualSubmitting] = useState(false);
   const messageTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const currentJudgeIdRef = useRef<string | null>(null);
 
@@ -309,6 +313,38 @@ export default function AdminBoxPacker() {
     }
   };
 
+  const handleManualCodeSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!manualCode.trim() || !currentJudgeId) return;
+    setIsManualSubmitting(true);
+    clearScanMessage();
+
+    const lookup = await lookupSauceByCode(manualCode.trim());
+    if ('error' in lookup) {
+      showTimedMessage(`❌ ${lookup.error}`, 6000);
+      setIsManualSubmitting(false);
+      return;
+    }
+
+    await handleScan(lookup.sauceId);
+    setManualCode("");
+    setIsManualSubmitting(false);
+  };
+
+  const handleRemoveFromBox = async () => {
+    if (!removeModal || !currentJudgeId) return;
+    setIsRemoving(true);
+    const result = await removeBoxAssignment(currentJudgeId, removeModal.sauceId);
+    setIsRemoving(false);
+    setRemoveModal(null);
+    if ('error' in result) {
+      setError(result.error || 'Failed to remove sauce from box');
+    } else {
+      await loadJudgeBoxAssignments(currentJudgeId);
+      showTimedMessage(`✓ ${removeModal.sauceCode} removed from box`, 4000);
+    }
+  };
+
   const completedSauces = sauces.filter(s => s.scanCount >= 7);
   const incompleteSauces = sauces.filter(s => s.scanCount < 7);
 
@@ -414,6 +450,31 @@ export default function AdminBoxPacker() {
         )}
       </div>
 
+      {/* Manual sauce code entry */}
+      {currentJudgeId && (
+        <form onSubmit={(e) => void handleManualCodeSubmit(e)} className="flex gap-2 items-center rounded-lg border border-orange-300 bg-orange-50 p-4">
+          <div className="flex-1">
+            <label className="block text-xs font-semibold text-orange-900 mb-1">Manual sauce entry</label>
+            <input
+              type="text"
+              value={manualCode}
+              onChange={(e) => setManualCode(e.target.value.toUpperCase())}
+              placeholder="e.g. H027"
+              className="w-full rounded-lg border border-orange-300 bg-white px-3 py-2 text-sm font-mono uppercase placeholder:normal-case placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-400"
+              disabled={isManualSubmitting}
+              autoComplete="off"
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={!manualCode.trim() || isManualSubmitting}
+            className="mt-5 px-5 py-2 rounded-lg bg-orange-500 text-white text-sm font-semibold hover:bg-orange-600 disabled:opacity-50"
+          >
+            {isManualSubmitting ? 'Adding...' : 'Add'}
+          </button>
+        </form>
+      )}
+
       {/* Scan Messages */}
       {scanMessage && (
         <div className={`p-4 rounded-lg border ${
@@ -466,10 +527,15 @@ export default function AdminBoxPacker() {
           {boxSauces.length > 0 ? (
             <ul className="mt-3 space-y-2 text-sm text-gray-700">
               {boxSauces.map((item) => (
-                <li key={item.sauceId} className="flex flex-wrap items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
+                <li
+                  key={item.sauceId}
+                  onClick={() => setRemoveModal(item)}
+                  className="flex flex-wrap items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 cursor-pointer hover:bg-red-50 hover:border-red-200 transition-colors"
+                >
                   <span className="font-mono text-xs font-semibold bg-white border border-gray-200 px-2 py-1 rounded text-gray-900">{item.sauceCode}</span>
                   <span className="font-medium text-gray-900">{item.sauceName}</span>
                   <span className="text-xs text-gray-600">by {item.brandName}</span>
+                  <span className="ml-auto text-xs text-gray-400">tap to remove</span>
                 </li>
               ))}
             </ul>
@@ -564,6 +630,35 @@ export default function AdminBoxPacker() {
       {sauces.length === 0 && !isLoading && (
         <div className="text-center py-8 text-gray-500">
           No sauces with status "arrived" found. Update sauce statuses in the Sauce Management section.
+        </div>
+      )}
+
+      {/* Remove from box modal */}
+      {removeModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="mx-4 w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Remove from box?</h3>
+            <p className="text-sm text-gray-600 mb-1">
+              <span className="font-mono font-semibold text-gray-900">{removeModal.sauceCode}</span> — {removeModal.sauceName}
+            </p>
+            <p className="text-xs text-gray-500 mb-6">by {removeModal.brandName}</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => void handleRemoveFromBox()}
+                disabled={isRemoving}
+                className="flex-1 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+              >
+                {isRemoving ? 'Removing...' : 'Remove from box'}
+              </button>
+              <button
+                onClick={() => setRemoveModal(null)}
+                disabled={isRemoving}
+                className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
