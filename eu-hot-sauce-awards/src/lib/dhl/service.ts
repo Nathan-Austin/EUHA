@@ -28,7 +28,7 @@ const DHL_CONFIG = {
   billingNumbers: {
     'V01PAK':  process.env.DHL_BILLING_PAKET!,       // DHL Paket National
     'V53WPAK': process.env.DHL_BILLING_PAKET_INT!,   // Paket International (non-EU)
-    'V66WPI':  process.env.DHL_BILLING_WARENPOST!,   // Warenpost International (EU)
+    'V66WPI':  process.env.DHL_BILLING_WARENPOST!,   // Warenpost International (EU + most non-EU)
     'V62KP':   process.env.DHL_BILLING_KLEINPAKET!,  // Kleinpaket (Germany)
     'V07PAK':  process.env.DHL_BILLING_RETOURE!,     // Retoure
   },
