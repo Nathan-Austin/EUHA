@@ -126,8 +126,14 @@ export function parseStreetAddress(fullAddress: string): { street: string; house
   // Normalise newlines/tabs to spaces
   const normalised = cleaned.replace(/[\r\n\t]+/g, ' ').trim();
 
-  // Standard format: "Street Name 123" or "Street Name 123a"
-  const trailingNumber = normalised.match(/^(.+?)\s+(\d+[a-zA-Z]*)$/);
+  // Romanian/similar format: "Str. Nerva Traian nr. 27-33" or "nr. 5"
+  const nrSuffix = normalised.match(/^(.+?)\s+nr\.?\s*(\d+[-\d]*)$/i);
+  if (nrSuffix) {
+    return { street: nrSuffix[1].trim(), houseNumber: nrSuffix[2].trim() };
+  }
+
+  // Standard format: "Street Name 123" or "Street Name 123a" or "Street Name 27-33"
+  const trailingNumber = normalised.match(/^(.+?)\s+(\d+[-\d]*[a-zA-Z]*)$/);
   if (trailingNumber) {
     return { street: trailingNumber[1].trim(), houseNumber: trailingNumber[2].trim() };
   }
