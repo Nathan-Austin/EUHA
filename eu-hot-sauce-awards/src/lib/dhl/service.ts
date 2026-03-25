@@ -201,6 +201,11 @@ export async function generateShippingLabel(
             }),
           },
 
+          // pDDP required for USA shipments under 800 USD / 680 EUR
+          ...(request.consignee.country === 'USA' && {
+            services: { postalDeliveryDutyPaid: {} },
+          }),
+
           ...(request.customs && {
             customs: {
               exportType: request.customs.exportType,
