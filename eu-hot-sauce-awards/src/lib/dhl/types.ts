@@ -10,6 +10,7 @@ export interface DHLAddress {
   addressHouse: string;
   postalCode: string;
   city: string;
+  state?: string;  // Required for USA and Canada (2-letter code, e.g. TX, ON)
   country: string; // ISO 3166-1 alpha-3 (e.g., 'DEU', 'GBR', 'NLD')
   email?: string;
   phone?: string;

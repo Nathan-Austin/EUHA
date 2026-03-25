@@ -18,6 +18,7 @@ interface JudgePreview {
   address_line2: string | null;
   city: string | null;
   postal_code: string | null;
+  state: string | null;
   country: string | null;
   dhl_tracking_number: string | null;
   dhl_label_url: string | null;
@@ -285,7 +286,7 @@ export default function DhlLabelScanner() {
               <div className="text-gray-800 space-y-0.5">
                 {judge.address_line2 && <p className="text-gray-500">{judge.address_line2}</p>}
                 <p>{judge.address}</p>
-                <p>{judge.postal_code} {judge.city}</p>
+                <p>{judge.postal_code} {judge.city}{judge.state ? `, ${judge.state}` : ''}</p>
                 <p>{judge.country}</p>
               </div>
             ) : (

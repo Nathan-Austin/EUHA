@@ -21,7 +21,7 @@ export default async function DashboardPage() {
   // Fetch judge details - use maybeSingle to handle cases where user might not be a judge
   const { data: judges, error: judgeQueryError } = await supabase
     .from('judges')
-    .select('id, type, stripe_payment_status, address, address_line2, city, postal_code, country, dhl_tracking_number, dhl_label_url')
+    .select('id, type, stripe_payment_status, address, address_line2, city, postal_code, state, country, dhl_tracking_number, dhl_label_url')
     .ilike('email', user.email)
 
   if (judgeQueryError) {
@@ -69,6 +69,7 @@ export default async function DashboardPage() {
             address_line2: judge.address_line2,
             city: judge.city,
             postal_code: judge.postal_code,
+            state: judge.state,
             country: judge.country,
           }}
           trackingNumber={judge.dhl_tracking_number}
@@ -128,6 +129,7 @@ export default async function DashboardPage() {
             address_line2: judge.address_line2,
             city: judge.city,
             postal_code: judge.postal_code,
+            state: judge.state,
             country: judge.country,
             dhl_tracking_number: judge.dhl_tracking_number,
             dhl_label_url: judge.dhl_label_url,
@@ -146,6 +148,7 @@ export default async function DashboardPage() {
               address_line2: judge.address_line2,
               city: judge.city,
               postal_code: judge.postal_code,
+              state: judge.state,
               country: judge.country,
             }}
             trackingNumber={judge.dhl_tracking_number}

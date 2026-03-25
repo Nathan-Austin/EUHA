@@ -138,6 +138,9 @@ export function validateAddress(address: DHLAddress): DHLAddressValidationResult
   if (!address.country || address.country.length !== 3) {
     errors.push('Country must be a 3-letter ISO code (e.g. DEU, GBR)');
   }
+  if (['USA', 'CAN'].includes(address.country?.toUpperCase()) && !address.state?.trim()) {
+    errors.push('State/province is required for USA and Canada');
+  }
 
   return { isValid: errors.length === 0, errors };
 }
@@ -181,6 +184,7 @@ export async function generateShippingLabel(
             addressHouse: request.consignee.addressHouse,
             postalCode: request.consignee.postalCode,
             city: request.consignee.city,
+            ...(request.consignee.state && { state: request.consignee.state }),
             country: request.consignee.country,
             email: request.consignee.email,
           },

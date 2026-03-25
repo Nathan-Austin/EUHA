@@ -50,6 +50,7 @@ interface SupplierDashboardProps {
     address_line2: string | null;
     city: string | null;
     postal_code: string | null;
+    state: string | null;
     country: string | null;
     dhl_tracking_number: string | null;
     dhl_label_url: string | null;
@@ -363,6 +364,7 @@ export default function SupplierDashboard({ supplierData, judgeData, pendingPaym
             address_line2: judgeData?.address_line2 ?? null,
             city: judgeData?.city ?? null,
             postal_code: judgeData?.postal_code ?? null,
+            state: judgeData?.state ?? null,
             country: judgeData?.country ?? null,
           }}
         />
@@ -389,6 +391,7 @@ export default function SupplierDashboard({ supplierData, judgeData, pendingPaym
               address_line2: judgeData?.address_line2 ?? null,
               city: judgeData?.city ?? null,
               postal_code: judgeData?.postal_code ?? null,
+              state: judgeData?.state ?? null,
               country: judgeData?.country ?? null,
             }}
           />

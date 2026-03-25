@@ -3202,7 +3202,7 @@ export async function generateJudgeShippingLabel(judgeId: string): Promise<{ suc
   )
   const { data: judge, error: judgeError } = await serviceForJudge
     .from('judges')
-    .select('id, name, email, address, address_line2, city, postal_code, country')
+    .select('id, name, email, address, address_line2, city, postal_code, state, country')
     .eq('id', judgeId)
     .single()
 
@@ -3238,6 +3238,7 @@ export async function generateJudgeShippingLabel(judgeId: string): Promise<{ suc
     addressHouse: houseNumber,
     postalCode: judge.postal_code.trim(),
     city: judge.city.trim(),
+    ...(judge.state?.trim() && { state: judge.state.trim() }),
     country: toISO3(judge.country),
     email: judge.email,
   }
@@ -3316,6 +3317,7 @@ export async function updateJudgeShippingAddress(data: {
   address_line2?: string
   city: string
   postal_code: string
+  state?: string
   country: string
 }): Promise<{ success?: boolean; error?: string }> {
   const cookieStore = cookies()
@@ -3331,6 +3333,7 @@ export async function updateJudgeShippingAddress(data: {
       address_line2: data.address_line2?.trim() || null,
       city: data.city.trim(),
       postal_code: data.postal_code.trim(),
+      state: data.state?.trim() || null,
       country: data.country,
     })
     .ilike('email', user.email)
@@ -3522,6 +3525,7 @@ export async function getJudgeForShipping(judgeId: string): Promise<{
     address_line2: string | null
     city: string | null
     postal_code: string | null
+    state: string | null
     country: string | null
     dhl_tracking_number: string | null
     dhl_label_url: string | null
@@ -3550,7 +3554,7 @@ export async function getJudgeForShipping(judgeId: string): Promise<{
 
   const { data: judge, error } = await serviceClientResult.client
     .from('judges')
-    .select('id, name, email, type, address, address_line2, city, postal_code, country, dhl_tracking_number, dhl_label_url, label_generated_at, label_generation_error')
+    .select('id, name, email, type, address, address_line2, city, postal_code, state, country, dhl_tracking_number, dhl_label_url, label_generated_at, label_generation_error')
     .eq('id', judgeId)
     .single()
 

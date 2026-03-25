@@ -3,6 +3,7 @@ interface ShippingAddress {
   address_line2: string | null;
   city: string | null;
   postal_code: string | null;
+  state: string | null;
   country: string | null;
 }
 
@@ -16,7 +17,7 @@ export default function ShippingAddressDisplay({ address }: { address: ShippingA
         <address className="not-italic text-sm text-gray-800 space-y-0.5">
           <p>{address!.address}</p>
           {address!.address_line2 && <p>{address!.address_line2}</p>}
-          <p>{address!.city}{address!.postal_code ? `, ${address!.postal_code}` : ''}</p>
+          <p>{address!.city}{address!.state ? `, ${address!.state}` : ''}{address!.postal_code ? ` ${address!.postal_code}` : ''}</p>
           <p>{address!.country}</p>
         </address>
       ) : (

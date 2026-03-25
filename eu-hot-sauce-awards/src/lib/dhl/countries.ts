@@ -162,9 +162,23 @@ export function needsCustoms(iso3: string): boolean {
 
 /**
  * Non-EU countries that use DHL Paket International (V53WPAK) instead of
- * Warenpost International due to unreliable customs processing times.
+ * Warenpost International. Includes countries where Warenpost is unavailable
+ * or unreliable.
  */
-const PAKET_INTERNATIONAL_COUNTRIES = new Set(['BLZ', 'CRI']);
+const PAKET_INTERNATIONAL_COUNTRIES = new Set(['BLZ', 'CRI', 'USA', 'CAN']);
+
+/**
+ * Countries that require a state/province field in the DHL consignee address.
+ */
+export const REQUIRES_STATE_COUNTRIES = new Set(['USA', 'CAN']);
+
+/**
+ * Returns true if the destination country requires a state/province field.
+ */
+export function requiresState(iso3OrName: string): boolean {
+  const iso3 = toISO3(iso3OrName);
+  return REQUIRES_STATE_COUNTRIES.has(iso3);
+}
 
 /**
  * Returns the appropriate DHL product code for the destination country.

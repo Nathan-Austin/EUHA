@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { updateJudgeShippingAddress } from '@/app/actions';
-import { AVAILABLE_SHIPPING_COUNTRIES } from '@/lib/dhl/countries';
+import { AVAILABLE_SHIPPING_COUNTRIES, requiresState } from '@/lib/dhl/countries';
 
 interface Props {
   current: {
@@ -10,6 +10,7 @@ interface Props {
     address_line2: string | null;
     city: string | null;
     postal_code: string | null;
+    state: string | null;
     country: string | null;
   };
 }
@@ -19,10 +20,13 @@ export default function JudgeShippingAddressForm({ current }: Props) {
   const [address_line2, setAddressLine2] = useState(current.address_line2 || '');
   const [city, setCity] = useState(current.city || '');
   const [postal_code, setPostalCode] = useState(current.postal_code || '');
+  const [state, setState] = useState(current.state || '');
   const [country, setCountry] = useState(current.country || 'Germany');
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+
+  const needsState = requiresState(country);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,6 +39,7 @@ export default function JudgeShippingAddressForm({ current }: Props) {
         address_line2,
         city,
         postal_code,
+        state: needsState ? state : undefined,
         country,
       });
 
@@ -46,7 +51,7 @@ export default function JudgeShippingAddressForm({ current }: Props) {
     });
   };
 
-  const isComplete = address.trim() && city.trim() && postal_code.trim() && country;
+  const isComplete = address.trim() && city.trim() && postal_code.trim() && country && (!needsState || state.trim());
 
   return (
     <div className="space-y-4">
@@ -133,7 +138,7 @@ export default function JudgeShippingAddressForm({ current }: Props) {
           </label>
           <select
             value={country}
-            onChange={(e) => setCountry(e.target.value)}
+            onChange={(e) => { setCountry(e.target.value); setState(''); }}
             required
             disabled={isPending}
             className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
@@ -146,6 +151,25 @@ export default function JudgeShippingAddressForm({ current }: Props) {
             ))}
           </select>
         </div>
+
+        {needsState && (
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              State / Province <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={state}
+              onChange={(e) => setState(e.target.value.toUpperCase())}
+              placeholder="e.g. TX, CA, ON"
+              required
+              maxLength={3}
+              disabled={isPending}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+            />
+            <p className="mt-1 text-xs text-gray-500">2-letter state/province code (e.g. TX, NY, ON, BC)</p>
+          </div>
+        )}
 
         {error && <p className="text-sm text-red-600">{error}</p>}
         {success && (

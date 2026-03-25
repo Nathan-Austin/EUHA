@@ -76,7 +76,7 @@ export default async function AdminDashboard() {
   const { data: shippingJudges } = await supabase
     .from('judges')
     .select(
-      'id, name, email, type, address, address_line2, city, postal_code, country, dhl_tracking_number, dhl_label_url, label_generated_at, label_generation_error'
+      'id, name, email, type, address, address_line2, city, postal_code, state, country, dhl_tracking_number, dhl_label_url, label_generated_at, label_generation_error'
     )
     .in('type', ['pro', 'community', 'supplier'])
     .order('type', { ascending: true }) as { data: any[] | null; error: any }
