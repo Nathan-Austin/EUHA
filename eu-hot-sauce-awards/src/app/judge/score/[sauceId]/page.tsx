@@ -22,7 +22,7 @@ export default async function ScorePage({ params }: ScorePageProps) {
 
   const { data: judge } = await supabase
     .from('judges')
-    .select('id')
+    .select('id, open_judging')
     .ilike('email', user.email)
     .single();
 
@@ -30,18 +30,24 @@ export default async function ScorePage({ params }: ScorePageProps) {
     notFound();
   }
 
+  const OPEN_JUDGING_LIMIT = 10;
+
   // Fetch sauce details, categories, and verify assignment in parallel
   // IMPORTANT: Only allow scoring of PAID sauces
   const [
     { data: sauce, error: sauceError },
     { data: categories, error: categoriesError },
     { data: existingScores },
-    { data: assignment, error: assignmentError }
+    { data: assignment, error: assignmentError },
+    { count: scoredSauceCount }
   ] = await Promise.all([
     supabase.from('sauces').select('id, name, sauce_code, payment_status, supplier_id, suppliers(brand_name)').eq('id', sauceId).eq('payment_status', 'paid').single(),
     supabase.from('judging_categories').select('*'),
     supabase.from('judging_scores').select('id').eq('judge_id', judge.id).eq('sauce_id', sauceId).limit(1),
-    supabase.from('box_assignments').select('id').eq('judge_id', judge.id).eq('sauce_id', sauceId).single()
+    supabase.from('box_assignments').select('id').eq('judge_id', judge.id).eq('sauce_id', sauceId).single(),
+    judge.open_judging
+      ? supabase.from('judging_scores').select('sauce_id', { count: 'exact', head: true }).eq('judge_id', judge.id)
+      : Promise.resolve({ count: 0 })
   ]);
 
   // Log errors for debugging
@@ -56,8 +62,34 @@ export default async function ScorePage({ params }: ScorePageProps) {
     notFound();
   }
 
-  // Check if this sauce is assigned to the judge
-  if (assignmentError || !assignment) {
+  // For open judging judges, check sauce limit instead of assignment
+  if (judge.open_judging) {
+    const alreadyScoredThis = existingScores && existingScores.length > 0;
+    if (!alreadyScoredThis && (scoredSauceCount ?? 0) >= OPEN_JUDGING_LIMIT) {
+      return (
+        <div className="container mx-auto p-4 md:p-8">
+          <div className="max-w-3xl mx-auto">
+            <div className="bg-red-50 border border-red-300 p-8 rounded-lg shadow-md">
+              <h1 className="text-2xl font-bold text-red-800 mb-4">Limit Reached</h1>
+              <p className="text-red-700 mb-4">
+                You have already scored {OPEN_JUDGING_LIMIT} sauces, which is the maximum for your judging box.
+              </p>
+              <p className="text-sm text-red-600 mb-6">
+                If you believe this is an error, please contact an administrator.
+              </p>
+              <a
+                href="/dashboard"
+                className="inline-block px-6 py-3 bg-red-600 text-white font-semibold rounded-md hover:bg-red-700"
+              >
+                Return to Dashboard
+              </a>
+            </div>
+          </div>
+        </div>
+      );
+    }
+  } else if (assignmentError || !assignment) {
+    // Check if this sauce is assigned to the judge
     return (
       <div className="container mx-auto p-4 md:p-8">
         <div className="max-w-3xl mx-auto">

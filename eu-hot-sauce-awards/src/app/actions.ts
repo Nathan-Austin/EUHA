@@ -666,6 +666,23 @@ export async function lookupSauceByCodeForJudge(sauceCode: string) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user?.email) return { error: 'You must be logged in.' };
 
+  const { data: judge } = await supabase
+    .from('judges')
+    .select('id, open_judging')
+    .ilike('email', user.email)
+    .single();
+
+  if (judge?.open_judging) {
+    const { count } = await supabase
+      .from('judging_scores')
+      .select('sauce_id', { count: 'exact', head: true })
+      .eq('judge_id', judge.id);
+
+    if ((count ?? 0) >= 10) {
+      return { error: 'You have already scored 10 sauces, which is the maximum for your judging box.' };
+    }
+  }
+
   const { data: sauce, error } = await supabase
     .from('sauces')
     .select('id, sauce_code, name')
