@@ -14,19 +14,92 @@ interface ScoringFormProps {
   sauceId: string;
   sauceCode: string;
   categories: Category[];
+  ingredients: string | null;
+  allergens: string | null;
 }
 
 export default function ScoringForm({
   sauceId,
   sauceCode,
   categories,
+  ingredients,
+  allergens,
 }: ScoringFormProps) {
   const router = useRouter();
   const { scores, comment, handleScoreChange, handleCommentChange } = useScoreStorage(sauceId, sauceCode);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [allergenModalOpen, setAllergenModalOpen] = useState(!!allergens);
+  const [ingredientsModalOpen, setIngredientsModalOpen] = useState(false);
 
   return (
+    <>
+      {/* Allergen Warning Modal */}
+      {allergenModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <div className="flex items-start gap-3 mb-4">
+              <span className="text-3xl">⚠️</span>
+              <div>
+                <h2 className="text-xl font-bold text-red-700">Warning: Contains Allergens</h2>
+                <p className="mt-2 text-gray-800 font-medium">{allergens}</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setAllergenModalOpen(false)}
+              className="mt-2 w-full px-4 py-3 bg-red-600 text-white font-semibold rounded-md hover:bg-red-700"
+            >
+              I understand, close warning
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Ingredients Modal */}
+      {ingredientsModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Ingredients &amp; Allergens</h2>
+            {ingredients && (
+              <div className="mb-4">
+                <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">Ingredients</h3>
+                <p className="text-gray-800">{ingredients}</p>
+              </div>
+            )}
+            {allergens && (
+              <div className="mb-4">
+                <h3 className="text-sm font-semibold text-red-600 uppercase tracking-wide mb-1">Allergens</h3>
+                <p className="text-gray-800 font-medium">{allergens}</p>
+              </div>
+            )}
+            {!ingredients && !allergens && (
+              <p className="text-gray-500">No ingredient information available.</p>
+            )}
+            <button
+              type="button"
+              onClick={() => setIngredientsModalOpen(false)}
+              className="mt-4 w-full px-4 py-3 bg-gray-800 text-white font-semibold rounded-md hover:bg-gray-900"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* See Ingredients button */}
+      {(ingredients || allergens) && (
+        <div className="mb-4">
+          <button
+            type="button"
+            onClick={() => setIngredientsModalOpen(true)}
+            className="px-4 py-2 border-2 border-gray-400 text-gray-700 font-medium rounded-md hover:bg-gray-50"
+          >
+            See Ingredients
+          </button>
+        </div>
+      )}
+
     <form className="space-y-6">
       {categories.map(category => (
         <div key={category.id}>
@@ -145,5 +218,6 @@ export default function ScoringForm({
         </p>
       </div>
     </form>
+    </>
   );
 }
