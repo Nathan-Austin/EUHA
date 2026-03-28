@@ -196,9 +196,11 @@ export default function CommunityJudgeDashboard({ shippingAddress, trackingNumbe
       {/* Shipping address */}
       <div className="pt-4 border-t border-gray-300 space-y-4">
         <ShippingAddressDisplay address={shippingAddress} />
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
-          <JudgeShippingAddressForm current={shippingAddress} />
-        </div>
+        {!trackingNumber && (
+          <div className="rounded-lg border border-gray-200 bg-white p-4">
+            <JudgeShippingAddressForm current={shippingAddress} />
+          </div>
+        )}
       </div>
     </div>
   );

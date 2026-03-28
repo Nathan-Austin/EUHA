@@ -2,55 +2,57 @@
 
 import { useEffect, useState } from 'react';
 
+const UTM = 'utm_source=euha&utm_medium=judging_app&utm_campaign=euha_2026';
+
 const SETS = [
   {
     name: 'Sweet & Savage',
     price: '€28.00',
     heat: '🌶️🌶️🌶️',
     image: 'https://rmegclfgfzilmouylpio.supabase.co/storage/v1/object/public/special-box-images/Sweet_Savage-1771871009985.webp',
-    url: 'https://republicofheat.com/en/hot-sauce-sets/sweet-savage',
+    url: `https://republicofheat.com/en/hot-sauce-sets/sweet-savage?${UTM}&utm_content=sweet-savage`,
   },
   {
     name: 'Daily Drizzle',
     price: '€19.95',
     heat: '🌶️',
     image: 'https://rmegclfgfzilmouylpio.supabase.co/storage/v1/object/public/special-box-images/Daily_Drizzle_Product_shot-1771869750332.webp',
-    url: 'https://republicofheat.com/en/hot-sauce-sets/daily-drizzle',
+    url: `https://republicofheat.com/en/hot-sauce-sets/daily-drizzle?${UTM}&utm_content=daily-drizzle`,
   },
   {
     name: 'The Everyday Heat Box',
     price: '€24.95',
     heat: '🌶️🌶️',
     image: 'https://rmegclfgfzilmouylpio.supabase.co/storage/v1/object/public/special-box-images/Everyday_Heat-1771870698972.webp',
-    url: 'https://republicofheat.com/en/hot-sauce-sets/the-everyday-heat-box',
+    url: `https://republicofheat.com/en/hot-sauce-sets/the-everyday-heat-box?${UTM}&utm_content=everyday-heat-box`,
   },
   {
     name: 'Ferment & Fire',
     price: '€28.00',
     heat: '🌶️🌶️🌶️',
     image: 'https://rmegclfgfzilmouylpio.supabase.co/storage/v1/object/public/special-box-images/Ferment_and_Fire-1771871813368.webp',
-    url: 'https://republicofheat.com/en/hot-sauce-sets/ferment-fire',
+    url: `https://republicofheat.com/en/hot-sauce-sets/ferment-fire?${UTM}&utm_content=ferment-fire`,
   },
   {
     name: 'Hot Discovery Set #06',
     price: '€35.00',
     heat: '🌶️🌶️🌶️',
     image: 'https://republicofheat.com/subscription_page_box.jpeg',
-    url: 'https://republicofheat.com/en/trial-box?heat=hot',
+    url: `https://republicofheat.com/en/trial-box?heat=hot&${UTM}&utm_content=discovery-hot`,
   },
   {
     name: 'Medium Discovery Set #04',
     price: '€35.00',
     heat: '🌶️🌶️',
     image: 'https://republicofheat.com/subscription_page_box.jpeg',
-    url: 'https://republicofheat.com/en/trial-box?heat=medium',
+    url: `https://republicofheat.com/en/trial-box?heat=medium&${UTM}&utm_content=discovery-medium`,
   },
   {
     name: 'Mild Discovery Set #03',
     price: '€35.00',
     heat: '🌶️',
     image: 'https://republicofheat.com/subscription_page_box.jpeg',
-    url: 'https://republicofheat.com/en/trial-box?heat=mild',
+    url: `https://republicofheat.com/en/trial-box?heat=mild&${UTM}&utm_content=discovery-mild`,
   },
 ];
 
