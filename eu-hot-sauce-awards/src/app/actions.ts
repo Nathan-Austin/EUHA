@@ -298,6 +298,147 @@ export async function exportResults() {
   return { csv: csvRows.join('\n') };
 }
 
+export type SauceResult = {
+  sauceId: string;
+  sauceCode: string;
+  sauceName: string;
+  brandName: string;
+  sauceCategory: string;
+  region: string;
+  country: string | null;
+  categoryScores: Record<string, number>;
+  finalScore: number;
+  judgeCount: number;
+};
+
+export async function getResultsData(): Promise<
+  { results: SauceResult[]; scoringCategories: string[] } | { error: string }
+> {
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user?.email) return { error: 'Not authenticated' };
+  const { data: adminCheck } = await supabase.from('judges').select('type').ilike('email', user.email).single();
+  if (adminCheck?.type !== 'admin') return { error: 'Not authorized' };
+
+  const [{ data: scores, error: scoresError }, { data: catRows }] = await Promise.all([
+    supabase
+      .from('judging_scores')
+      .select(`
+        score,
+        sauce_id,
+        judge_id,
+        sauces!inner ( name, sauce_code, category, payment_status, suppliers ( brand_name, country, region ) ),
+        judges ( type ),
+        judging_categories ( name )
+      `)
+      .eq('sauces.payment_status', 'paid'),
+    supabase.from('judging_categories').select('name').order('name'),
+  ]);
+
+  const scoringCategories = catRows?.map((c) => c.name) ?? [];
+
+  if (scoresError) return { error: scoresError.message };
+  if (!scores || scores.length === 0) return { results: [], scoringCategories };
+
+  const JUDGE_WEIGHTS: Record<string, number> = { pro: 2.0, community: 1.0, supplier: 1.0 };
+
+  interface SauceAcc {
+    sauceCode: string;
+    sauceName: string;
+    brandName: string;
+    sauceCategory: string;
+    region: string;
+    country: string | null;
+    catData: Record<string, { wSum: number; wDiv: number }>;
+    judgeIds: Set<string>;
+  }
+
+  const sauceMap = new Map<string, SauceAcc>();
+
+  for (const row of scores) {
+    const sauce = Array.isArray(row.sauces) ? row.sauces[0] : (row.sauces as any);
+    const judge = Array.isArray(row.judges) ? row.judges[0] : (row.judges as any);
+    const cat = Array.isArray(row.judging_categories) ? row.judging_categories[0] : (row.judging_categories as any);
+    const supplier = sauce ? (Array.isArray(sauce.suppliers) ? sauce.suppliers[0] : sauce.suppliers) : null;
+
+    if (!sauce || !judge || !cat || typeof row.score !== 'number') continue;
+
+    const weight = JUDGE_WEIGHTS[judge.type as string] ?? 1.0;
+
+    if (!sauceMap.has(row.sauce_id)) {
+      sauceMap.set(row.sauce_id, {
+        sauceCode: sauce.sauce_code || 'N/A',
+        sauceName: sauce.name || 'Unknown',
+        brandName: supplier?.brand_name || 'Unknown',
+        sauceCategory: sauce.category || 'Uncategorized',
+        region: supplier?.region || 'european',
+        country: supplier?.country ?? null,
+        catData: {},
+        judgeIds: new Set(),
+      });
+    }
+
+    const acc = sauceMap.get(row.sauce_id)!;
+    acc.judgeIds.add(row.judge_id);
+
+    if (!acc.catData[cat.name]) acc.catData[cat.name] = { wSum: 0, wDiv: 0 };
+    acc.catData[cat.name].wSum += row.score * weight;
+    acc.catData[cat.name].wDiv += weight;
+  }
+
+  const results: SauceResult[] = [];
+
+  for (const [sauceId, acc] of sauceMap.entries()) {
+    const categoryScores: Record<string, number> = {};
+    let totalWSum = 0;
+    let totalWDiv = 0;
+
+    for (const [catName, data] of Object.entries(acc.catData)) {
+      const avg = data.wDiv > 0 ? data.wSum / data.wDiv : 0;
+      categoryScores[catName] = avg;
+      totalWSum += data.wSum;
+      totalWDiv += data.wDiv;
+    }
+
+    results.push({
+      sauceId,
+      sauceCode: acc.sauceCode,
+      sauceName: acc.sauceName,
+      brandName: acc.brandName,
+      sauceCategory: acc.sauceCategory,
+      region: acc.region,
+      country: acc.country,
+      categoryScores,
+      finalScore: totalWDiv > 0 ? totalWSum / totalWDiv : 0,
+      judgeCount: acc.judgeIds.size,
+    });
+  }
+
+  results.sort((a, b) => b.finalScore - a.finalScore);
+  return { results, scoringCategories };
+}
+
+export async function updateSupplierCountryRegion(supplierId: string, country: string, region: string) {
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user?.email) return { error: 'Not authenticated' };
+  const { data: adminCheck } = await supabase.from('judges').select('type').ilike('email', user.email).single();
+  if (adminCheck?.type !== 'admin') return { error: 'Not authorized' };
+
+  const { error } = await supabase
+    .from('suppliers')
+    .update({ country: country || null, region })
+    .eq('id', supplierId);
+
+  if (error) return { error: error.message };
+  revalidatePath('/dashboard');
+  return { success: true };
+}
+
 export async function addAdminUser(email: string) {
   const cookieStore = cookies();
   const supabase = createClient(cookieStore);

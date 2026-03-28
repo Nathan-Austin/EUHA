@@ -18,6 +18,8 @@ import ShippingAddressRequestSender from './ShippingAddressRequestSender'
 import ProJudgeApproval from './ProJudgeApproval'
 import JudgeAnalysis from './JudgeAnalysis'
 import AdminTabs from './AdminTabs'
+import ResultsTable from './ResultsTable'
+import SupplierCountryManager from './SupplierCountryManager'
 import SendPaymentRemindersButton from './SendPaymentRemindersButton'
 import SendVatEmailButton from './SendVatEmailButton'
 import JudgeShippingManager from './JudgeShippingManager'
@@ -69,7 +71,7 @@ export default async function AdminDashboard() {
   const { data: suppliers } = await supabase
     .from('suppliers')
     .select(
-      'id, brand_name, email, tracking_number, postal_service_name, package_status, package_received_at'
+      'id, brand_name, email, tracking_number, postal_service_name, package_status, package_received_at, country, region'
     )
     .order('package_status', { ascending: true }) as { data: any[] | null; error: any }
 
@@ -344,6 +346,22 @@ export default async function AdminDashboard() {
       ),
     },
     {
+      id: 'results',
+      label: 'Results',
+      icon: '🏆',
+      content: (
+        <div className="space-y-6">
+          <SectionHeading
+            title="Judging Results"
+            description="Live weighted scores. Pro ×2.0 · Community ×1.0 · Supplier ×1.0. Paid sauces only."
+          />
+          <Card padding="p-6">
+            <ResultsTable />
+          </Card>
+        </div>
+      ),
+    },
+    {
       id: 'admin',
       label: 'Administration',
       icon: '⚙️',
@@ -364,6 +382,16 @@ export default async function AdminDashboard() {
           </Card>
           <Card>
             <EventsManager />
+          </Card>
+          <Card>
+            <SupplierCountryManager
+              suppliers={(suppliers || []).map((s) => ({
+                id: s.id,
+                brand_name: s.brand_name,
+                country: s.country ?? null,
+                region: s.region ?? 'european',
+              }))}
+            />
           </Card>
         </div>
       ),
