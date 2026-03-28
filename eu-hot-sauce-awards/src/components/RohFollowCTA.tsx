@@ -26,7 +26,7 @@ export default function RohFollowCTA() {
             YouTube
           </a>
           <a
-            href="https://republicofheat.com/en/about?utm_source=euha&utm_medium=judging_app&utm_campaign=euha_2026&utm_content=results_newsletter"
+            href="https://republicofheat.com?utm_source=euha&utm_medium=judging_app&utm_campaign=euha_2026&utm_content=results_newsletter"
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-gray-100 text-gray-800 text-xs font-semibold hover:bg-gray-200 transition-colors"
