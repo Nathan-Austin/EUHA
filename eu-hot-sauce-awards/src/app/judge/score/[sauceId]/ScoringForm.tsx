@@ -4,6 +4,7 @@ import { useScoreStorage } from '@/hooks/useScoreStorage';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { submitAllScores } from '@/app/actions';
+import RohAd from '@/components/RohAd';
 
 interface Category {
   id: string;
@@ -144,6 +145,8 @@ export default function ScoringForm({
           placeholder="Overall thoughts on the sauce..."
         />
       </div>
+
+      <RohAd />
 
       {submitError && (
         <div className="p-4 bg-red-100 border border-red-300 rounded-md text-red-700">
