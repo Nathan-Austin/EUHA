@@ -322,8 +322,14 @@ export async function getResultsData(): Promise<
   const { data: adminCheck } = await supabase.from('judges').select('type').ilike('email', user.email).single();
   if (adminCheck?.type !== 'admin') return { error: 'Not authorized' };
 
+  // Use service role client so RLS doesn't block reading other judges' records
+  const serviceClient = createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
   const [{ data: scores, error: scoresError }, { data: catRows }] = await Promise.all([
-    supabase
+    serviceClient
       .from('judging_scores')
       .select(`
         score,
@@ -334,7 +340,7 @@ export async function getResultsData(): Promise<
         judging_categories ( name )
       `)
       .eq('sauces.payment_status', 'paid'),
-    supabase.from('judging_categories').select('name').order('name'),
+    serviceClient.from('judging_categories').select('name').order('name'),
   ]);
 
   const scoringCategories = catRows?.map((c) => c.name) ?? [];
