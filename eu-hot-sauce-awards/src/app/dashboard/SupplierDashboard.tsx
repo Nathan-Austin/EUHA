@@ -7,6 +7,7 @@ import SupplierPaymentButton from './SupplierPaymentButton';
 import SupplierSauceManager from './SupplierSauceManager';
 import JudgeShippingAddressForm from './JudgeShippingAddressForm';
 import ShippingAddressDisplay from './ShippingAddressDisplay';
+import RohFollowCTA from '@/components/RohFollowCTA';
 
 interface PaymentQuote {
   id: string;
@@ -355,6 +356,8 @@ export default function SupplierDashboard({ supplierData, judgeData, pendingPaym
           )}
         </>
       )}
+
+      <RohFollowCTA />
 
       {/* Judging box shipping address */}
       <div className="border border-gray-300 rounded-lg p-6 bg-white space-y-4">
