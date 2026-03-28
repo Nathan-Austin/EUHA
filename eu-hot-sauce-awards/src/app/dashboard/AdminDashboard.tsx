@@ -20,6 +20,7 @@ import JudgeAnalysis from './JudgeAnalysis'
 import AdminTabs from './AdminTabs'
 import ResultsTable from './ResultsTable'
 import SupplierCountryManager from './SupplierCountryManager'
+import { getResultsData } from '@/app/actions'
 import SendPaymentRemindersButton from './SendPaymentRemindersButton'
 import SendVatEmailButton from './SendVatEmailButton'
 import JudgeShippingManager from './JudgeShippingManager'
@@ -82,6 +83,10 @@ export default async function AdminDashboard() {
     )
     .in('type', ['pro', 'community', 'supplier'])
     .order('type', { ascending: true }) as { data: any[] | null; error: any }
+
+  const resultsData = await getResultsData()
+  const resultsResults = 'results' in resultsData ? resultsData.results : []
+  const resultsScoringCategories = 'scoringCategories' in resultsData ? resultsData.scoringCategories : []
 
   if (error) {
     return <p className="text-red-400">Error loading sauces: {error.message}</p>
@@ -356,7 +361,7 @@ export default async function AdminDashboard() {
             description="Live weighted scores. Pro ×2.0 · Community ×1.0 · Supplier ×1.0. Paid sauces only."
           />
           <Card padding="p-6">
-            <ResultsTable />
+            <ResultsTable results={resultsResults} scoringCategories={resultsScoringCategories} />
           </Card>
         </div>
       ),

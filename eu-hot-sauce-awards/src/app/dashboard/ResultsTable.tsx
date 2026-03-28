@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { getResultsData, type SauceResult } from '@/app/actions';
+import { useState } from 'react';
+import type { SauceResult } from '@/app/actions';
 
 const CAT_SHORT: Record<string, string> = {
   'Aroma': 'Aroma',
@@ -148,24 +148,13 @@ function DetailTable({ results, scoringCategories }: { results: SauceResult[]; s
 
 type Tab = 'top20' | 'european' | 'international';
 
-export default function ResultsTable() {
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [results, setResults] = useState<SauceResult[]>([]);
-  const [scoringCategories, setScoringCategories] = useState<string[]>([]);
-  const [activeTab, setActiveTab] = useState<Tab>('top20');
+interface ResultsTableProps {
+  results: SauceResult[];
+  scoringCategories: string[];
+}
 
-  useEffect(() => {
-    getResultsData().then((data) => {
-      if ('error' in data) {
-        setError(data.error);
-      } else {
-        setResults(data.results);
-        setScoringCategories(data.scoringCategories);
-      }
-      setLoading(false);
-    });
-  }, []);
+export default function ResultsTable({ results, scoringCategories }: ResultsTableProps) {
+  const [activeTab, setActiveTab] = useState<Tab>('top20');
 
   const europeanResults = results.filter((r) => r.region === 'european');
   const internationalResults = results.filter((r) => r.region === 'international');
@@ -176,40 +165,12 @@ export default function ResultsTable() {
     { id: 'international', label: `🌎 International (${internationalResults.length})` },
   ];
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-16">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-orange-500 border-t-transparent" />
-        <span className="ml-3 text-gray-500">Loading results...</span>
-      </div>
-    );
-  }
-
-  if (error) {
-    return <p className="py-8 text-center text-red-600">{error}</p>;
-  }
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <p className="text-sm text-gray-500">
           {results.length} sauces scored · Weights: Pro ×2.0 · Community ×1.0 · Supplier ×1.0
         </p>
-        <button
-          onClick={() => {
-            setLoading(true);
-            getResultsData().then((data) => {
-              if (!('error' in data)) {
-                setResults(data.results);
-                setScoringCategories(data.scoringCategories);
-              }
-              setLoading(false);
-            });
-          }}
-          className="text-xs text-orange-600 hover:underline"
-        >
-          Refresh
-        </button>
       </div>
 
       {/* Tab bar */}
