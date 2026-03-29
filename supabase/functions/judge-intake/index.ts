@@ -6,8 +6,10 @@ interface JudgePayload {
   name: string;
   email: string;
   address: string;
-  zip: string;
+  addressLine2?: string;
   city: string;
+  state?: string;
+  zip: string;
   country: string;
   experience: string;
   industryAffiliation?: boolean;
@@ -139,7 +141,9 @@ Deno.serve(async (req) => {
         email: payload.email,
         name: payload.name,
         address: payload.address,
+        address_line2: payload.addressLine2 || null,
         city: payload.city,
+        state: payload.state || null,
         postal_code: payload.zip,
         country: payload.country,
         experience_level: payload.experience,

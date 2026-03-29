@@ -15,7 +15,12 @@ interface SaucePayload {
 interface SupplierIntakePayload {
   brand: string;
   contactName?: string;
-  address: string;
+  addressLine1: string;
+  addressLine2?: string;
+  city: string;
+  state?: string;
+  postalCode: string;
+  country: string;
   email: string;
   sauces: SaucePayload[];
   // Honeypot field: must be absent or empty. Bots fill it; humans never see it.
@@ -220,7 +225,12 @@ Deno.serve(async (req) => {
         email: trimmedEmail,
         brand_name: payload.brand,
         contact_name: payload.contactName,
-        address: payload.address,
+        address: payload.addressLine1,
+        address_line2: payload.addressLine2 || null,
+        city: payload.city,
+        state: payload.state || null,
+        postal_code: payload.postalCode,
+        country: payload.country,
       }, { onConflict: 'email' })
       .select()
       .single();

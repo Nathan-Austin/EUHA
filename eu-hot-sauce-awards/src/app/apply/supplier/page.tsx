@@ -165,7 +165,12 @@ export default function SupplierApplyPage() {
     brand: "",
     contactName: "",
     email: "",
-    address: "",
+    addressLine1: "",
+    addressLine2: "",
+    city: "",
+    state: "",
+    postalCode: "",
+    country: "",
     website: "", // honeypot
   });
   const [sauces, setSauces] = useState<SauceForm[]>([createEmptySauce()]);
@@ -198,7 +203,7 @@ export default function SupplierApplyPage() {
 
   const handleBrandFieldChange = (
     field: keyof typeof formValues
-  ) => (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  ) => (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const value = event.target.value;
     setFormValues((prev) => ({ ...prev, [field]: value }));
 
@@ -281,7 +286,7 @@ export default function SupplierApplyPage() {
       }
     });
 
-    setFormValues({ brand: "", contactName: "", email: "", address: "", website: "" });
+    setFormValues({ brand: "", contactName: "", email: "", addressLine1: "", addressLine2: "", city: "", state: "", postalCode: "", country: "", website: "" });
     setSauces([createEmptySauce()]);
     setIsSubmitting(false);
     setIsComplete(false);
@@ -299,9 +304,9 @@ export default function SupplierApplyPage() {
     setErrorMessage(null);
     setEmailError(null);
 
-    if (!formValues.brand.trim() || !formValues.email.trim() || !formValues.address.trim()) {
+    if (!formValues.brand.trim() || !formValues.email.trim() || !formValues.addressLine1.trim() || !formValues.city.trim() || !formValues.postalCode.trim() || !formValues.country) {
       setIsSubmitting(false);
-      setErrorMessage("Please complete the brand, email, and address fields.");
+      setErrorMessage("Please complete all required fields including your full address.");
       return;
     }
 
@@ -362,7 +367,12 @@ export default function SupplierApplyPage() {
         brand: formValues.brand.trim(),
         contactName: formValues.contactName.trim() || undefined,
         email: formValues.email.trim().toLowerCase(),
-        address: formValues.address.trim(),
+        addressLine1: formValues.addressLine1.trim(),
+        addressLine2: formValues.addressLine2.trim() || undefined,
+        city: formValues.city.trim(),
+        state: formValues.state.trim() || undefined,
+        postalCode: formValues.postalCode.trim(),
+        country: formValues.country,
         sauces: processedSauces,
         website: formValues.website, // honeypot: edge function rejects if non-empty
       };
@@ -544,18 +554,147 @@ export default function SupplierApplyPage() {
               </div>
             </div>
 
-            <label className="flex flex-col gap-2">
-              <span className="text-xs uppercase tracking-[0.2em] text-white/60">Business Address *</span>
-              <textarea
-                value={formValues.address}
-                onChange={handleBrandFieldChange("address")}
-                required
-                disabled={isComplete}
-                rows={3}
-                className="rounded-xl border border-white/20 bg-black/30 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:border-amber-300 focus:outline-none disabled:opacity-60"
-                placeholder="123 Scoville Street, 1010 Budapest, Hungary"
-              />
-            </label>
+            <div className="space-y-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-white/60">Business Address</p>
+              <div className="grid gap-4">
+                <label className="flex flex-col gap-2">
+                  <span className="text-xs text-white/50">Street address *</span>
+                  <input
+                    value={formValues.addressLine1}
+                    onChange={handleBrandFieldChange("addressLine1")}
+                    required
+                    disabled={isComplete}
+                    className="rounded-xl border border-white/20 bg-black/30 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:border-amber-300 focus:outline-none disabled:opacity-60"
+                    placeholder="123 Scoville Street"
+                  />
+                </label>
+                <label className="flex flex-col gap-2">
+                  <span className="text-xs text-white/50">Address line 2 <span className="text-white/30">(optional — apt, floor, c/o)</span></span>
+                  <input
+                    value={formValues.addressLine2}
+                    onChange={handleBrandFieldChange("addressLine2")}
+                    disabled={isComplete}
+                    className="rounded-xl border border-white/20 bg-black/30 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:border-amber-300 focus:outline-none disabled:opacity-60"
+                    placeholder="Unit 4B"
+                  />
+                </label>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <label className="flex flex-col gap-2">
+                    <span className="text-xs text-white/50">City *</span>
+                    <input
+                      value={formValues.city}
+                      onChange={handleBrandFieldChange("city")}
+                      required
+                      disabled={isComplete}
+                      className="rounded-xl border border-white/20 bg-black/30 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:border-amber-300 focus:outline-none disabled:opacity-60"
+                      placeholder="Budapest"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-2">
+                    <span className="text-xs text-white/50">Postal / ZIP code *</span>
+                    <input
+                      value={formValues.postalCode}
+                      onChange={handleBrandFieldChange("postalCode")}
+                      required
+                      disabled={isComplete}
+                      className="rounded-xl border border-white/20 bg-black/30 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:border-amber-300 focus:outline-none disabled:opacity-60"
+                      placeholder="1010"
+                    />
+                  </label>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <label className="flex flex-col gap-2">
+                    <span className="text-xs text-white/50">State / Province / Region <span className="text-white/30">(if applicable)</span></span>
+                    <input
+                      value={formValues.state}
+                      onChange={handleBrandFieldChange("state")}
+                      disabled={isComplete}
+                      className="rounded-xl border border-white/20 bg-black/30 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:border-amber-300 focus:outline-none disabled:opacity-60"
+                      placeholder="California"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-2">
+                    <span className="text-xs text-white/50">Country *</span>
+                    <select
+                      value={formValues.country}
+                      onChange={handleBrandFieldChange("country")}
+                      required
+                      disabled={isComplete}
+                      className="rounded-xl border border-white/20 bg-[#0d0818] px-4 py-3 text-sm text-white focus:border-amber-300 focus:outline-none disabled:opacity-60"
+                    >
+                      <option value="" disabled>Select country</option>
+                      <optgroup label="Europe">
+                        <option value="AT">Austria</option>
+                        <option value="BE">Belgium</option>
+                        <option value="BA">Bosnia &amp; Herzegovina</option>
+                        <option value="BG">Bulgaria</option>
+                        <option value="HR">Croatia</option>
+                        <option value="CY">Cyprus</option>
+                        <option value="CZ">Czech Republic</option>
+                        <option value="DK">Denmark</option>
+                        <option value="EE">Estonia</option>
+                        <option value="FI">Finland</option>
+                        <option value="FR">France</option>
+                        <option value="DE">Germany</option>
+                        <option value="GR">Greece</option>
+                        <option value="HU">Hungary</option>
+                        <option value="IS">Iceland</option>
+                        <option value="IE">Ireland</option>
+                        <option value="IT">Italy</option>
+                        <option value="XK">Kosovo</option>
+                        <option value="LV">Latvia</option>
+                        <option value="LI">Liechtenstein</option>
+                        <option value="LT">Lithuania</option>
+                        <option value="LU">Luxembourg</option>
+                        <option value="MT">Malta</option>
+                        <option value="MD">Moldova</option>
+                        <option value="ME">Montenegro</option>
+                        <option value="NL">Netherlands</option>
+                        <option value="MK">North Macedonia</option>
+                        <option value="NO">Norway</option>
+                        <option value="PL">Poland</option>
+                        <option value="PT">Portugal</option>
+                        <option value="RO">Romania</option>
+                        <option value="RS">Serbia</option>
+                        <option value="SK">Slovakia</option>
+                        <option value="SI">Slovenia</option>
+                        <option value="ES">Spain</option>
+                        <option value="SE">Sweden</option>
+                        <option value="CH">Switzerland</option>
+                        <option value="TR">Turkey</option>
+                        <option value="UA">Ukraine</option>
+                        <option value="GB">United Kingdom</option>
+                      </optgroup>
+                      <optgroup label="Americas">
+                        <option value="AR">Argentina</option>
+                        <option value="BR">Brazil</option>
+                        <option value="CA">Canada</option>
+                        <option value="CL">Chile</option>
+                        <option value="CO">Colombia</option>
+                        <option value="MX">Mexico</option>
+                        <option value="US">United States</option>
+                      </optgroup>
+                      <optgroup label="Asia Pacific">
+                        <option value="AU">Australia</option>
+                        <option value="CN">China</option>
+                        <option value="IN">India</option>
+                        <option value="JP">Japan</option>
+                        <option value="NZ">New Zealand</option>
+                        <option value="SG">Singapore</option>
+                        <option value="KR">South Korea</option>
+                        <option value="TW">Taiwan</option>
+                        <option value="TH">Thailand</option>
+                      </optgroup>
+                      <optgroup label="Middle East &amp; Africa">
+                        <option value="IL">Israel</option>
+                        <option value="ZA">South Africa</option>
+                        <option value="AE">United Arab Emirates</option>
+                      </optgroup>
+                    </select>
+                  </label>
+                </div>
+              </div>
+            </div>
 
             <div className="space-y-6">
               {sauces.map((sauce, index) => (
