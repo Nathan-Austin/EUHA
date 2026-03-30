@@ -27,7 +27,7 @@ export default function ScoringForm({
   allergens,
 }: ScoringFormProps) {
   const router = useRouter();
-  const { scores, comment, handleScoreChange, handleCommentChange } = useScoreStorage(sauceId, sauceCode);
+  const { scores, comment, handleScoreChange, handleCommentChange } = useScoreStorage(sauceId, sauceCode, categories.map(c => c.id));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [allergenModalOpen, setAllergenModalOpen] = useState(!!allergens);

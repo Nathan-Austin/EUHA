@@ -13,7 +13,7 @@ export interface StoredScoreData {
 
 type ScoreStorage = Record<string, StoredScoreData>;
 
-export function useScoreStorage(sauceId: string, sauceCode: string) {
+export function useScoreStorage(sauceId: string, sauceCode: string, categoryIds: string[] = []) {
   const [scores, setScores] = useState<Record<string, number>>({});
   const [comment, setComment] = useState('');
 
@@ -32,14 +32,36 @@ export function useScoreStorage(sauceId: string, sauceCode: string) {
     }
   }, []);
 
-  // Load initial data from localStorage
+  // Load initial data from localStorage, seeding any unset categories to 1
   useEffect(() => {
     const allScores = readAllScores();
     const savedData = allScores[sauceId];
-    if (savedData) {
-      setScores(savedData.scores || {});
-      setComment(savedData.comment || '');
+    const existingScores = savedData?.scores || {};
+
+    // Seed missing categories to 1 (the slider minimum/default)
+    const seededScores = { ...existingScores };
+    let needsWrite = false;
+    for (const categoryId of categoryIds) {
+      if (seededScores[categoryId] === undefined) {
+        seededScores[categoryId] = 1;
+        needsWrite = true;
+      }
     }
+
+    if (needsWrite) {
+      const updatedData = {
+        ...(savedData || { sauceId, sauceCode, comment: '' }),
+        scores: seededScores,
+      };
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...allScores, [sauceId]: updatedData }));
+      } catch (writeError) {
+        console.warn('Unable to persist judge scores', writeError);
+      }
+    }
+
+    setScores(seededScores);
+    setComment(savedData?.comment || '');
   }, [readAllScores, sauceId]);
 
   const updateStorage = useCallback((key: 'scores' | 'comment', value: Record<string, number> | string) => {
