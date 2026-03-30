@@ -1736,10 +1736,10 @@ export async function getJudgeScoredSauces() {
     return { error: 'Not authenticated' };
   }
 
-  // Get judge ID
+  // Get judge ID and open_judging flag
   const { data: judge } = await supabase
     .from('judges')
-    .select('id')
+    .select('id, open_judging')
     .ilike('email', user.email)
     .single();
 
@@ -1767,13 +1767,19 @@ export async function getJudgeScoredSauces() {
     return acc;
   }, []) || [];
 
-  // Get total assigned sauces count
-  const { count: assignedCount } = await supabase
-    .from('box_assignments')
-    .select('*', { count: 'exact', head: true })
-    .eq('judge_id', judge.id);
+  // For open judging judges, use the limit as the total; otherwise count box assignments
+  let totalAssigned: number;
+  if (judge.open_judging) {
+    totalAssigned = 10;
+  } else {
+    const { count: assignedCount } = await supabase
+      .from('box_assignments')
+      .select('*', { count: 'exact', head: true })
+      .eq('judge_id', judge.id);
+    totalAssigned = assignedCount || 0;
+  }
 
-  return { scoredSauces: uniqueSauces, totalAssigned: assignedCount || 0 };
+  return { scoredSauces: uniqueSauces, totalAssigned };
 }
 
 // Email Campaign Actions for 2026 Invitations
