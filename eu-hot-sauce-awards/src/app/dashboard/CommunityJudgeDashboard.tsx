@@ -99,7 +99,7 @@ export default function CommunityJudgeDashboard({ shippingAddress, trackingNumbe
             )}
           </p>
         </div>
-        {totalAssigned > 0 && scoredSauces.length < totalAssigned && (
+        {totalAssigned > 0 && (
           <button
             onClick={handleStartJudging}
             className="w-full sm:w-auto px-4 py-3 font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700 text-center"
@@ -157,12 +157,13 @@ export default function CommunityJudgeDashboard({ shippingAddress, trackingNumbe
         {scoredSauces.length > 0 ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
             {scoredSauces.map((sauce) => (
-              <div
+              <Link
                 key={sauce.sauceId}
-                className="px-3 py-2 bg-green-50 border border-green-300 rounded-lg text-center"
+                href={`/judge/score/${sauce.sauceId}`}
+                className="px-3 py-2 bg-green-50 border border-green-300 rounded-lg text-center hover:bg-green-100"
               >
                 <p className="text-sm font-semibold text-green-800">{sauce.sauceCode}</p>
-              </div>
+              </Link>
             ))}
           </div>
         ) : (
