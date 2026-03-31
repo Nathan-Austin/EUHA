@@ -76,14 +76,11 @@ export async function POST(request: Request) {
       console.warn('Name lookup for email link failed', nameLookupError);
     }
 
-    // Magic links use hash-based tokens that need client-side handling
-    // Redirect directly to the client-side auth handler instead of server callback
-    const redirectTo = `${SITE_URL}/auth/auth-code-error`;
     const generateLinkPayload = {
       type: 'magiclink',
       email,
       options: {
-        redirectTo,
+        redirectTo: `${SITE_URL}/auth/callback`,
         expiresIn: LINK_EXPIRY_SECONDS,
       },
     } as any;
@@ -91,17 +88,14 @@ export async function POST(request: Request) {
     const { data: linkData, error: linkError } =
       await adminSupabase.auth.admin.generateLink(generateLinkPayload);
 
-    if (linkError || !linkData?.properties?.action_link) {
-      const message = linkError?.message ?? 'Unable to generate email link.';
+    if (linkError || !linkData?.properties?.email_otp) {
+      const message = linkError?.message ?? 'Unable to generate login code.';
       const status = message.toLowerCase().includes('not found') ? 404 : 400;
       return NextResponse.json({ error: message }, { status });
     }
 
-    const magicLink = linkData.properties.action_link;
-    const template =
-      reason === 'confirmation'
-        ? emailTemplates.authConfirmationLink(displayName, magicLink, LINK_EXPIRY_HOURS)
-        : emailTemplates.authMagicLink(displayName, magicLink, LINK_EXPIRY_HOURS);
+    const otpCode = linkData.properties.email_otp;
+    const template = emailTemplates.authOtpCode(displayName, otpCode, LINK_EXPIRY_HOURS);
 
     await sendEmail({
       to: email,

@@ -337,6 +337,31 @@ export const emailTemplates = {
     `,
     text: `Welcome to the judge panel! Click this link to access: ${magicLink}. This link expires in 24 hours. Need another link later? Visit https://heatawards.eu/login and enter your email for a fresh one.`,
   }),
+  authOtpCode: (name: string, code: string, expiryHours: number) => ({
+    subject: 'EU Hot Sauce Awards - Your Login Code',
+    html: `
+      ${emailBanner}
+      <div style="padding: 20px; font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h1 style="color: #ff4d00;">Your Login Code</h1>
+        <p>Hi ${name},</p>
+        <p>Use the code below to sign in to your EU Hot Sauce Awards dashboard. Enter it on the login page where you requested it.</p>
+
+        <div style="text-align: center; margin: 30px 0;">
+          <div style="background-color: #f8f9fa; border: 2px solid #ff4d00; border-radius: 8px; display: inline-block; padding: 20px 40px;">
+            <span style="font-size: 36px; font-weight: bold; letter-spacing: 8px; color: #ff4d00; font-family: monospace;">${code}</span>
+          </div>
+        </div>
+
+        <p style="color: #666; font-size: 14px;">
+          This code expires in ${expiryHours} hours. If you didn't request this, you can safely ignore it.
+        </p>
+
+        <p>Need help? Reach us at heataward@gmail.com.</p>
+      </div>
+    `,
+    text: `Hi ${name}, your EU Hot Sauce Awards login code is: ${code}. Enter it on the login page. It expires in ${expiryHours} hours.`,
+  }),
+
   authMagicLink: (name: string, magicLink: string, expiryHours: number) => ({
     subject: 'EU Hot Sauce Awards - Secure Login Link',
     html: `
