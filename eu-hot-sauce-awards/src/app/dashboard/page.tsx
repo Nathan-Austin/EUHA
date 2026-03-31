@@ -79,32 +79,13 @@ export default async function DashboardPage() {
         // Fetch supplier data for dashboard
         const { data: supplier } = await supabase
           .from('suppliers')
-          .select('id, brand_name, tracking_number, postal_service_name, package_status, package_received_at')
+          .select('id, brand_name, package_status, package_received_at')
           .ilike('email', user.email!)
           .single();
 
         if (!supplier) {
           return <p>Supplier profile not found. Please contact support.</p>;
         }
-
-        // Check for pending payments
-        const { data: pendingPayments } = await supabase
-          .from('supplier_payments')
-          .select('id, entry_count, discount_percent, subtotal_cents, discount_cents, amount_due_cents, stripe_payment_status')
-          .eq('supplier_id', supplier.id)
-          .neq('stripe_payment_status', 'succeeded')
-          .order('created_at', { ascending: false })
-          .limit(1);
-
-        const pendingPayment = pendingPayments && pendingPayments.length > 0 ? pendingPayments[0] : null;
-
-        // Fetch unpaid sauces for sauce management
-        const { data: unpaidSauces } = await supabase
-          .from('sauces')
-          .select('id, name, category, sauce_code, ingredients, allergens, webshop_link, created_at')
-          .eq('supplier_id', supplier.id)
-          .eq('payment_status', 'pending_payment')
-          .order('created_at', { ascending: false });
 
         // Fetch entered (paid) sauces for current competition year
         const { data: enteredSauces } = await supabase
@@ -119,8 +100,6 @@ export default async function DashboardPage() {
         return <SupplierDashboard
           supplierData={{
             brandName: supplier.brand_name,
-            trackingNumber: supplier.tracking_number,
-            postalServiceName: supplier.postal_service_name,
             packageStatus: supplier.package_status || 'pending',
             packageReceivedAt: supplier.package_received_at,
           }}
@@ -134,10 +113,7 @@ export default async function DashboardPage() {
             dhl_tracking_number: judge.dhl_tracking_number,
             dhl_label_url: judge.dhl_label_url,
           }}
-          pendingPayment={pendingPayment}
-          unpaidSauces={unpaidSauces || []}
           enteredSauces={enteredSauces || []}
-          userEmail={user.email!}
         />;
       }
       case 'community':
