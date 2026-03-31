@@ -106,10 +106,18 @@ export default function LoginPage() {
     }
   };
 
-  const handleBack = () => {
-    setStep('email');
-    setCode('');
+  const handleResend = async () => {
+    setLoading(true);
     setError('');
+    setCode('');
+    try {
+      await requestOtpCode(email);
+      setError('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to resend code. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -195,10 +203,11 @@ export default function LoginPage() {
                 Didn&apos;t get the code?{' '}
                 <button
                   type="button"
-                  onClick={handleBack}
-                  className="text-indigo-600 hover:text-indigo-500 font-medium"
+                  onClick={handleResend}
+                  disabled={loading}
+                  className="text-indigo-600 hover:text-indigo-500 font-medium disabled:opacity-50"
                 >
-                  Send a new one
+                  {loading ? 'Sending...' : 'Send a new one'}
                 </button>
               </p>
             </div>
