@@ -934,7 +934,7 @@ export async function recordBottleScan(judgeId: string, sauceId: string) {
   // Check sauce exists and is in 'arrived' status
   const { data: sauce, error: sauceError } = await adminSupabase
     .from('sauces')
-    .select('id, status, sauce_code, name, suppliers ( brand_name )')
+    .select('id, status, sauce_code, name, max_assignments, suppliers ( brand_name )')
     .eq('id', sauceId)
     .single();
 
@@ -985,8 +985,9 @@ export async function recordBottleScan(judgeId: string, sauceId: string) {
     return { error: `Failed to count assignments: ${countError.message}` };
   }
 
-  if ((totalAssignments || 0) >= 7) {
-    return { error: 'This sauce has already been assigned to 7 judges (maximum reached).' };
+  const maxAssignments = sauce.max_assignments ?? 7;
+  if ((totalAssignments || 0) >= maxAssignments) {
+    return { error: `This sauce has already been assigned to ${maxAssignments} judges (maximum reached).` };
   }
 
   // Record the scan
