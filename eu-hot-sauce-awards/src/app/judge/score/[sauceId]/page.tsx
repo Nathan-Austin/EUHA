@@ -38,12 +38,14 @@ export default async function ScorePage({ params }: ScorePageProps) {
     { data: sauce, error: sauceError },
     { data: categories, error: categoriesError },
     { data: existingScores },
+    { data: existingScoreValues },
     { data: assignment, error: assignmentError },
     { count: scoredSauceCount }
   ] = await Promise.all([
     supabase.from('sauces').select('id, name, sauce_code, payment_status, supplier_id, ingredients, allergens, suppliers(brand_name)').eq('id', sauceId).eq('payment_status', 'paid').single(),
     supabase.from('judging_categories').select('*'),
     supabase.from('judging_scores').select('id').eq('judge_id', judge.id).eq('sauce_id', sauceId).limit(1),
+    supabase.from('judging_scores').select('category_id, score, comments').eq('judge_id', judge.id).eq('sauce_id', sauceId),
     supabase.from('box_assignments').select('id').eq('judge_id', judge.id).eq('sauce_id', sauceId).single(),
     judge.open_judging
       ? supabase.from('judging_scores').select('sauce_id', { count: 'exact', head: true }).eq('judge_id', judge.id)
@@ -116,34 +118,20 @@ export default async function ScorePage({ params }: ScorePageProps) {
   // Check if judge has already scored this sauce
   const alreadyScored = existingScores && existingScores.length > 0;
 
+  // Build initial scores map from DB values (used when re-editing)
+  const initialScores: Record<string, number> = {};
+  let initialComment = '';
+  if (alreadyScored && existingScoreValues) {
+    for (const row of existingScoreValues) {
+      initialScores[row.category_id] = row.score;
+    }
+    initialComment = existingScoreValues[0]?.comments || '';
+  }
+
   // Get brand name safely
   const brandName = Array.isArray(sauce.suppliers) && sauce.suppliers.length > 0
     ? sauce.suppliers[0]?.brand_name
     : (sauce.suppliers as any)?.brand_name || 'Unknown Brand';
-
-  if (alreadyScored) {
-    return (
-      <div className="container mx-auto p-4 md:p-8">
-        <div className="max-w-3xl mx-auto">
-          <div className="bg-yellow-50 border border-yellow-300 p-8 rounded-lg shadow-md">
-            <h1 className="text-2xl font-bold text-yellow-800 mb-4">Already Scored</h1>
-            <p className="text-yellow-700 mb-4">
-              You have already submitted scores for sauce code <strong>{sauce.sauce_code || 'N/A'}</strong> by {brandName}.
-            </p>
-            <p className="text-sm text-yellow-600 mb-6">
-              Each sauce can only be scored once. If you need to update your score, please contact an administrator.
-            </p>
-            <a
-              href="/judge/scan"
-              className="inline-block px-6 py-3 bg-yellow-600 text-white font-semibold rounded-md hover:bg-yellow-700"
-            >
-              Scan Next Sauce
-            </a>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="container mx-auto p-4 md:p-8">
@@ -156,13 +144,23 @@ export default async function ScorePage({ params }: ScorePageProps) {
             <p className="text-lg text-gray-700">by {brandName}</p>
           </div>
           <div className="mt-4 pt-4 border-t border-gray-300">
-            <h2 className="text-2xl font-semibold mb-4 text-gray-900">Submit Your Scores</h2>
+            <h2 className="text-2xl font-semibold mb-4 text-gray-900">
+              {alreadyScored ? 'Edit Your Scores' : 'Submit Your Scores'}
+            </h2>
+            {alreadyScored && (
+              <div className="mb-4 p-3 bg-yellow-50 border border-yellow-300 rounded-md text-yellow-800 text-sm">
+                You have already submitted scores for this sauce. You can update them below.
+              </div>
+            )}
             <ScoringForm
               sauceId={sauce.id}
               sauceCode={sauce.sauce_code || 'N/A'}
               categories={categories}
               ingredients={sauce.ingredients || null}
               allergens={sauce.allergens || null}
+              initialScores={alreadyScored ? initialScores : undefined}
+              initialComment={alreadyScored ? initialComment : undefined}
+              isEdit={alreadyScored ?? false}
             />
           </div>
         </div>

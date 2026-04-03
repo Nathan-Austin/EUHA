@@ -153,7 +153,8 @@ export default function CommunityJudgeDashboard({ shippingAddress, trackingNumbe
 
       {/* Scored Sauces Section */}
       <div className="pt-4 border-t border-gray-300">
-        <h3 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4 text-white">Completed Scores</h3>
+        <h3 className="text-lg sm:text-xl font-semibold mb-1 text-white">Completed Scores</h3>
+        <p className="text-sm text-gray-400 mb-3">Need to change a score? Just rescan the sauce QR code.</p>
         {scoredSauces.length > 0 ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
             {scoredSauces.map((sauce) => (

@@ -13,7 +13,7 @@ export interface StoredScoreData {
 
 type ScoreStorage = Record<string, StoredScoreData>;
 
-export function useScoreStorage(sauceId: string, sauceCode: string, categoryIds: string[] = []) {
+export function useScoreStorage(sauceId: string, sauceCode: string, categoryIds: string[] = [], initialScores?: Record<string, number>, initialComment?: string) {
   const [scores, setScores] = useState<Record<string, number>>({});
   const [comment, setComment] = useState('');
 
@@ -32,18 +32,18 @@ export function useScoreStorage(sauceId: string, sauceCode: string, categoryIds:
     }
   }, []);
 
-  // Load initial data from localStorage, seeding any unset categories to 1
+  // Load initial data from localStorage, seeding any unset categories to 1 (or DB value if editing)
   useEffect(() => {
     const allScores = readAllScores();
     const savedData = allScores[sauceId];
     const existingScores = savedData?.scores || {};
 
-    // Seed missing categories to 1 (the slider minimum/default)
+    // Seed missing categories from DB initial values, then fall back to 1
     const seededScores = { ...existingScores };
     let needsWrite = false;
     for (const categoryId of categoryIds) {
       if (seededScores[categoryId] === undefined) {
-        seededScores[categoryId] = 1;
+        seededScores[categoryId] = initialScores?.[categoryId] ?? 1;
         needsWrite = true;
       }
     }
@@ -61,7 +61,7 @@ export function useScoreStorage(sauceId: string, sauceCode: string, categoryIds:
     }
 
     setScores(seededScores);
-    setComment(savedData?.comment || '');
+    setComment(savedData?.comment ?? initialComment ?? '');
   }, [readAllScores, sauceId]);
 
   const updateStorage = useCallback((key: 'scores' | 'comment', value: Record<string, number> | string) => {

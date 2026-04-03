@@ -17,6 +17,9 @@ interface ScoringFormProps {
   categories: Category[];
   ingredients: string | null;
   allergens: string | null;
+  initialScores?: Record<string, number>;
+  initialComment?: string;
+  isEdit?: boolean;
 }
 
 export default function ScoringForm({
@@ -25,9 +28,12 @@ export default function ScoringForm({
   categories,
   ingredients,
   allergens,
+  initialScores,
+  initialComment,
+  isEdit = false,
 }: ScoringFormProps) {
   const router = useRouter();
-  const { scores, comment, handleScoreChange, handleCommentChange } = useScoreStorage(sauceId, sauceCode, categories.map(c => c.id));
+  const { scores, comment, handleScoreChange, handleCommentChange } = useScoreStorage(sauceId, sauceCode, categories.map(c => c.id), initialScores, initialComment);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [allergenModalOpen, setAllergenModalOpen] = useState(!!allergens);
@@ -213,7 +219,7 @@ export default function ScoringForm({
           className="w-full flex justify-center px-4 py-3 font-medium text-white bg-green-600 rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
           disabled={isSubmitting}
         >
-          {isSubmitting ? 'Submitting...' : 'Save & Continue Later'}
+          {isSubmitting ? 'Submitting...' : isEdit ? 'Update Scores' : 'Save & Continue Later'}
         </button>
 
         <p className="text-sm text-center text-gray-700">

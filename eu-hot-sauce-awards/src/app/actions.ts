@@ -154,12 +154,9 @@ export async function submitAllScores(scoresJSON: string) {
 
   const { error } = await supabase
     .from('judging_scores')
-    .insert(scoresToInsert);
+    .upsert(scoresToInsert, { onConflict: 'judge_id,sauce_id,category_id' });
 
   if (error) {
-    if (error.code === '23505') {
-      return { error: 'One or more of these sauces have already been scored by you. Your pending scores have not been cleared.' };
-    }
     return { error: `Failed to submit scores: ${error.message}` };
   }
 

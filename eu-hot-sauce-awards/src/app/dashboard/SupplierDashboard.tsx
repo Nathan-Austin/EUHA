@@ -106,6 +106,13 @@ export default function SupplierDashboard({ supplierData, judgeData, enteredSauc
             Your scores are in and judging is complete. We&apos;ll be in touch with the results.
             2027 entries will open late September.
           </p>
+          <p className="text-sm text-gray-500">Need to change a score? Just rescan the sauce QR code.</p>
+          <button
+            onClick={() => router.push('/judge/scan')}
+            className="w-full px-4 py-3 font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700"
+          >
+            Scan Sauce QR Code
+          </button>
         </div>
 
         <RohFollowCTA />
@@ -220,7 +227,8 @@ export default function SupplierDashboard({ supplierData, judgeData, enteredSauc
         {/* Completed scores */}
         {scoredSauces.length > 0 && (
           <div className="pt-4 border-t border-gray-600">
-            <h4 className="text-base font-semibold text-white mb-3">Completed Scores</h4>
+            <h4 className="text-base font-semibold text-white mb-1">Completed Scores</h4>
+            <p className="text-sm text-gray-400 mb-3">Need to change a score? Just rescan the sauce QR code.</p>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
               {scoredSauces.map((sauce) => (
                 <Link
