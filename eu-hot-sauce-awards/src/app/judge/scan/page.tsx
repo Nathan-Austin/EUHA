@@ -123,17 +123,19 @@ export default function ScanPage() {
           }));
         }
 
-        setIsCheckingSession(false);
-
-        // After session is ready, enumerate cameras and pick the best one.
-        // We do this after the QrScanner has already triggered a getUserMedia
-        // prompt, so labels will be populated.
+        // Request camera permission before mounting the scanner so that
+        // enumerateDevices() returns populated labels (browsers hide labels
+        // until permission is granted).
         try {
+          const tempStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+          tempStream.getTracks().forEach(t => t.stop());
           const devices = await navigator.mediaDevices.enumerateDevices();
           setCameraConstraints(pickBestCamera(devices));
         } catch {
-          // enumerateDevices failed — keep the default facingMode constraint
+          // Permission denied or enumeration failed — keep the default facingMode constraint
         }
+
+        setIsCheckingSession(false);
       } catch (err) {
         console.error('Session initialization error:', err);
         setError(err instanceof Error ? err.message : 'Failed to initialize session');
