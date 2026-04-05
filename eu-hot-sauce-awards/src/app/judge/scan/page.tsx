@@ -13,6 +13,32 @@ const QrScanner = dynamic(
   { ssr: false }
 );
 
+function pickBestCamera(devices: MediaDeviceInfo[]): MediaTrackConstraints {
+  const videoCameras = devices.filter(d => d.kind === 'videoinput');
+
+  // Labels indicating non-RGB sensors to avoid
+  const badLabels = /thermal|ir\b|infrared|night.?vision|flir|thermovue/i;
+  // Labels that strongly suggest the main rear RGB camera
+  const goodLabels = /back|rear|main|environment/i;
+  // Labels indicating front-facing cameras
+  const frontLabels = /front|selfie|user|face/i;
+
+  const filtered = videoCameras.filter(d => !badLabels.test(d.label));
+
+  // Prefer one explicitly labelled as main/back/rear, then first non-front,
+  // then any non-thermal camera as last resort
+  const preferred = filtered.find(d => goodLabels.test(d.label));
+  const rearFiltered = filtered.filter(d => !frontLabels.test(d.label));
+  const chosen = preferred ?? rearFiltered[0] ?? filtered[0];
+
+  if (chosen?.deviceId) {
+    return { deviceId: { exact: chosen.deviceId } };
+  }
+
+  // Fallback: let the browser pick via facingMode
+  return { facingMode: 'environment' };
+}
+
 export default function ScanPage() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -20,6 +46,7 @@ export default function ScanPage() {
   const [isCheckingSession, setIsCheckingSession] = useState(true);
   const [manualCode, setManualCode] = useState('');
   const [isManualSubmitting, setIsManualSubmitting] = useState(false);
+  const [cameraConstraints, setCameraConstraints] = useState<MediaTrackConstraints>({ facingMode: 'environment' });
   const photoInputRef = useRef<HTMLInputElement | null>(null);
 
   const handleDecode = useCallback(
@@ -97,6 +124,16 @@ export default function ScanPage() {
         }
 
         setIsCheckingSession(false);
+
+        // After session is ready, enumerate cameras and pick the best one.
+        // We do this after the QrScanner has already triggered a getUserMedia
+        // prompt, so labels will be populated.
+        try {
+          const devices = await navigator.mediaDevices.enumerateDevices();
+          setCameraConstraints(pickBestCamera(devices));
+        } catch {
+          // enumerateDevices failed — keep the default facingMode constraint
+        }
       } catch (err) {
         console.error('Session initialization error:', err);
         setError(err instanceof Error ? err.message : 'Failed to initialize session');
@@ -171,7 +208,7 @@ export default function ScanPage() {
         <QrScanner
           onDecode={handleDecode}
           onError={handleError}
-          constraints={{ facingMode: 'environment' }}
+          constraints={cameraConstraints}
           containerStyle={{ width: '100%' }}
         />
       </div>
