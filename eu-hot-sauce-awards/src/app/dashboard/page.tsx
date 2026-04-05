@@ -93,7 +93,7 @@ export default async function DashboardPage() {
           .select('id, name, category, image_path, status')
           .eq('supplier_id', supplier.id)
           .in('payment_status', ['paid', 'payment_waived'])
-          .gte('created_at', `${COMPETITION_YEAR}-01-01`)
+          .gte('created_at', `${COMPETITION_YEAR - 1}-09-01`)
           .lt('created_at', `${COMPETITION_YEAR + 1}-01-01`)
           .order('created_at', { ascending: false });
 
