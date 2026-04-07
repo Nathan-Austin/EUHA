@@ -8,6 +8,8 @@ import CommunityJudgeDashboard from './CommunityJudgeDashboard'
 import SupplierDashboard from './SupplierDashboard'
 import StripeCheckoutButton from './StripeCheckoutButton'
 
+export const dynamic = 'force-dynamic'
+
 export default async function DashboardPage() {
   const cookieStore = cookies()
   const supabase = createClient(cookieStore)
