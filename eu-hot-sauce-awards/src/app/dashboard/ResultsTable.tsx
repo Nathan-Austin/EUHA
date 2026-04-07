@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import type { SauceResult } from '@/app/actions';
 
 const CAT_SHORT: Record<string, string> = {
@@ -155,6 +156,12 @@ interface ResultsTableProps {
 
 export default function ResultsTable({ results, scoringCategories }: ResultsTableProps) {
   const [activeTab, setActiveTab] = useState<Tab>('top20');
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+
+  function handleRefresh() {
+    startTransition(() => { router.refresh(); });
+  }
 
   const europeanResults = results.filter((r) => r.region === 'european');
   const internationalResults = results.filter((r) => r.region === 'international');
@@ -171,6 +178,14 @@ export default function ResultsTable({ results, scoringCategories }: ResultsTabl
         <p className="text-sm text-gray-500">
           {results.length} sauces scored · Weights: Pro ×2.0 · Community ×1.0 · Supplier ×1.0
         </p>
+        <button
+          onClick={handleRefresh}
+          disabled={isPending}
+          className="flex items-center gap-1.5 rounded-lg bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-200 disabled:opacity-50"
+        >
+          <span className={isPending ? 'animate-spin' : ''}>↻</span>
+          {isPending ? 'Refreshing…' : 'Refresh'}
+        </button>
       </div>
 
       {/* Tab bar */}
