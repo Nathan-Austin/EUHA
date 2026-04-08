@@ -21,6 +21,7 @@ import AdminTabs from './AdminTabs'
 import ResultsTable from './ResultsTable'
 import SupplierCountryManager from './SupplierCountryManager'
 import { getResultsData } from '@/app/actions'
+import { COMPETITION_YEAR } from '@/lib/config'
 import SendPaymentRemindersButton from './SendPaymentRemindersButton'
 import SendVatEmailButton from './SendVatEmailButton'
 import JudgeShippingManager from './JudgeShippingManager'
@@ -69,11 +70,14 @@ export default async function AdminDashboard() {
     )
     .order('created_at', { ascending: false }) as { data: any[] | null; error: any }
 
+  const cycleStart = `${COMPETITION_YEAR - 1}-09-01`
+
   const { data: suppliers } = await supabase
     .from('suppliers')
     .select(
       'id, brand_name, email, tracking_number, postal_service_name, package_status, package_received_at, country, region'
     )
+    .gte('created_at', cycleStart)
     .order('package_status', { ascending: true }) as { data: any[] | null; error: any }
 
   const { data: shippingJudges } = await supabase
