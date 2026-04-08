@@ -93,6 +93,21 @@ export async function assignSaucesToBox(formData: FormData) {
     return { error: `Failed to update sauce status: ${updateError.message}` };
   }
 
+  // Auto-mark supplier packages as received if not already
+  const { data: saucesWithSuppliers } = await supabase
+    .from('sauces')
+    .select('supplier_id')
+    .in('id', sauceIds);
+
+  if (saucesWithSuppliers && saucesWithSuppliers.length > 0) {
+    const supplierIds = [...new Set(saucesWithSuppliers.map(s => s.supplier_id))];
+    await supabase
+      .from('suppliers')
+      .update({ package_status: 'received', package_received_at: new Date().toISOString() })
+      .in('id', supplierIds)
+      .neq('package_status', 'received');
+  }
+
   revalidatePath('/dashboard');
   return { success: true };
 }
@@ -931,7 +946,7 @@ export async function recordBottleScan(judgeId: string, sauceId: string) {
   // Check sauce exists and is in 'arrived' status
   const { data: sauce, error: sauceError } = await adminSupabase
     .from('sauces')
-    .select('id, status, sauce_code, name, max_assignments, suppliers ( brand_name )')
+    .select('id, status, sauce_code, name, max_assignments, supplier_id, suppliers ( brand_name )')
     .eq('id', sauceId)
     .single();
 
@@ -1025,6 +1040,15 @@ export async function recordBottleScan(judgeId: string, sauceId: string) {
 
   if (assignmentInsertError) {
     return { error: `Failed to assign sauce to judge box: ${assignmentInsertError.message}` };
+  }
+
+  // Auto-mark supplier package as received if not already
+  if ((sauce as any).supplier_id) {
+    await adminSupabase
+      .from('suppliers')
+      .update({ package_status: 'received', package_received_at: new Date().toISOString() })
+      .eq('id', (sauce as any).supplier_id)
+      .neq('package_status', 'received');
   }
 
   const { count: assignedCount, error: assignedCountError } = await adminSupabase
