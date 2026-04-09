@@ -167,6 +167,18 @@ export function needsCustoms(iso3: string): boolean {
 }
 
 /**
+ * Returns true if the postal code indicates the Canary Islands (Spain).
+ * Despite being part of Spain (ESP), the Canary Islands are outside the EU
+ * customs union — DHL requires a customs declaration for shipments there.
+ * Canary Islands postal codes: 35000–35999 (Las Palmas) and 38000–38999 (Tenerife).
+ */
+export function isCanaryIslands(iso3: string, postalCode: string): boolean {
+  if (iso3.toUpperCase() !== 'ESP') return false;
+  const prefix = postalCode.trim().slice(0, 2);
+  return prefix === '35' || prefix === '38';
+}
+
+/**
  * Non-EU countries that use DHL Paket International (V53WPAK) instead of
  * Warenpost International. Includes countries where Warenpost is unavailable
  * or unreliable.

@@ -3405,7 +3405,7 @@ export async function generateJudgeShippingLabel(judgeId: string): Promise<{ suc
     return { success: false, error: 'Judge address is incomplete — street, city, postal code and country are required' }
   }
 
-  const { parseStreetAddress, toISO3, needsCustoms, getDhlProductCode } = await import('@/lib/dhl/countries')
+  const { parseStreetAddress, toISO3, needsCustoms, getDhlProductCode, isCanaryIslands } = await import('@/lib/dhl/countries')
   const { generateShippingLabel, getBoxWeightKg, getBoxDimensions, validateAddress } = await import('@/lib/dhl/service')
 
   // Fixed shipper address — Chili Punk Berlin
@@ -3445,7 +3445,7 @@ export async function generateJudgeShippingLabel(judgeId: string): Promise<{ suc
   const today = new Date().toISOString().split('T')[0]
 
   const destinationISO3 = toISO3(judge.country)
-  const customsRequired = needsCustoms(destinationISO3)
+  const customsRequired = needsCustoms(destinationISO3) || isCanaryIslands(destinationISO3, judge.postal_code)
   const productCode = getDhlProductCode(destinationISO3)
 
   const result = await generateShippingLabel({
