@@ -5,8 +5,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import jsQR from "jsqr";
 import { getPackingStatus, recordBottleScan, manuallyMarkAsBoxed, checkConflictOfInterest, checkProCoverage, getJudgeBoxAssignments, removeBoxAssignment, lookupSauceByCode, type SaucePackingStatus, type JudgeBoxAssignment } from "../actions";
 
-const QrScanner = dynamic(
-  async () => (await import("@yudiel/react-qr-scanner")).QrScanner,
+const Scanner = dynamic(
+  async () => (await import("@yudiel/react-qr-scanner")).Scanner,
   { ssr: false }
 );
 
@@ -476,10 +476,11 @@ export default function AdminBoxPacker() {
         {cameraActive && (
           <div className="flex flex-col gap-3">
             <div className="overflow-hidden rounded-xl border border-gray-300 bg-black">
-              <QrScanner
+              <Scanner
                 constraints={{ facingMode: { ideal: 'environment' } }}
-                onDecode={(result) => {
-                  void handleScan(result);
+                onScan={(detectedCodes) => {
+                  const value = detectedCodes[0]?.rawValue;
+                  if (value) void handleScan(value);
                 }}
                 onError={(error) => {
                   if (!error) {
@@ -492,6 +493,8 @@ export default function AdminBoxPacker() {
                       : 'Camera error encountered.';
                   setCameraError(message);
                 }}
+                components={{ finder: true }}
+                styles={{ container: { width: '100%' } }}
               />
             </div>
             <p className="text-xs text-blue-900">

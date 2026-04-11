@@ -4,8 +4,8 @@ import dynamic from 'next/dynamic';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getJudgeForShipping, generateJudgeShippingLabel } from '@/app/actions';
 
-const QrScanner = dynamic(
-  async () => (await import('@yudiel/react-qr-scanner')).QrScanner,
+const Scanner = dynamic(
+  async () => (await import('@yudiel/react-qr-scanner')).Scanner,
   { ssr: false }
 );
 
@@ -226,13 +226,15 @@ export default function DhlLabelScanner() {
 
         {cameraActive && (
           <div className="overflow-hidden rounded-xl border border-gray-300 bg-black">
-            <QrScanner
+            <Scanner
               constraints={{ facingMode: { ideal: 'environment' } }}
-              onDecode={(result) => { void handleScan(result); }}
+              onScan={(detectedCodes) => { const v = detectedCodes[0]?.rawValue; if (v) void handleScan(v); }}
               onError={(err) => {
                 if (!err) return;
                 setCameraError(err instanceof Error ? err.message : typeof err === 'string' ? err : 'Camera error');
               }}
+              components={{ finder: true }}
+              styles={{ container: { width: '100%' } }}
             />
           </div>
         )}

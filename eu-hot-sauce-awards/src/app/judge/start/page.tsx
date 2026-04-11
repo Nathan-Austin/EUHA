@@ -5,8 +5,8 @@ import { useCallback, useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { createClient } from '@/lib/supabase/client';
 
-const QrScanner = dynamic(
-  () => import('@yudiel/react-qr-scanner').then(mod => mod.QrScanner),
+const Scanner = dynamic(
+  () => import('@yudiel/react-qr-scanner').then(mod => mod.Scanner),
   { ssr: false }
 );
 
@@ -128,11 +128,12 @@ export default function JudgeStartPage() {
         Logged in as: <span className="font-semibold text-gray-900">{currentUser?.email}</span>
       </p>
       <div className="max-w-md mx-auto bg-gray-200 rounded-lg overflow-hidden shadow-lg">
-        <QrScanner
-          onDecode={handleDecode}
+        <Scanner
+          onScan={(detectedCodes) => { void handleDecode(detectedCodes[0]?.rawValue ?? null); }}
           onError={handleError}
-          constraints={{ facingMode: 'environment' }}
-          containerStyle={{ width: '100%' }}
+          constraints={{ facingMode: { ideal: 'environment' } }}
+          components={{ finder: true }}
+          styles={{ container: { width: '100%' } }}
         />
       </div>
       {error && (

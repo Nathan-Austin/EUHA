@@ -8,15 +8,18 @@ import { createClient } from '@/lib/supabase/client';
 import { lookupSauceByCodeForJudge } from '@/app/actions';
 
 
-const QrScanner = dynamic(
-  () => import('@yudiel/react-qr-scanner').then(mod => mod.QrScanner),
+const Scanner = dynamic(
+  () => import('@yudiel/react-qr-scanner').then(mod => mod.Scanner),
   { ssr: false }
 );
 
 const cameraConstraints: MediaTrackConstraints = {
   facingMode: { ideal: 'environment' },
-  width: { ideal: 1280 },
-  height: { ideal: 720 },
+  // height 1281 is a known trick to prefer the main sensor over ultra-wide
+  // on multi-camera Android/iPhone setups
+  height: { ideal: 1281 },
+  width: { ideal: 1920 },
+  aspectRatio: { ideal: 1 },
 };
 
 function isInAppBrowser(): boolean {
@@ -67,6 +70,14 @@ export default function ScanPage() {
     [isProcessing, router]
   );
 
+  const handleScan = useCallback(
+    (detectedCodes: { rawValue: string }[]) => {
+      const value = detectedCodes[0]?.rawValue ?? null;
+      handleDecode(value);
+    },
+    [handleDecode]
+  );
+
   const handleError = useCallback((scanError: unknown) => {
     if (scanError instanceof Error && scanError.name !== 'NotFoundException') {
       setError(scanError.message);
@@ -108,14 +119,6 @@ export default function ScanPage() {
             email: user.email,
             timestamp: Date.now()
           }));
-        }
-
-        // Request camera permission before mounting the scanner.
-        try {
-          const tempStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-          tempStream.getTracks().forEach(t => t.stop());
-        } catch {
-          // Permission denied — scanner will surface its own error
         }
 
         setIsCheckingSession(false);
@@ -196,11 +199,12 @@ export default function ScanPage() {
         </div>
       )}
       <div className="max-w-md mx-auto bg-gray-200 rounded-lg overflow-hidden shadow-lg">
-        <QrScanner
-          onDecode={handleDecode}
+        <Scanner
+          onScan={handleScan}
           onError={handleError}
-          constraints={{ ...cameraConstraints, aspectRatio: 1 }}
-          containerStyle={{ width: '100%' }}
+          constraints={cameraConstraints}
+          components={{ torch: true, zoom: true, finder: true }}
+          styles={{ container: { width: '100%' } }}
         />
       </div>
       {error && (
