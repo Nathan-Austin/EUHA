@@ -13,30 +13,15 @@ const QrScanner = dynamic(
   { ssr: false }
 );
 
-function pickBestCamera(devices: MediaDeviceInfo[]): MediaTrackConstraints {
-  const videoCameras = devices.filter(d => d.kind === 'videoinput');
+const cameraConstraints: MediaTrackConstraints = {
+  facingMode: { ideal: 'environment' },
+  width: { ideal: 1280 },
+  height: { ideal: 720 },
+};
 
-  // Labels indicating non-RGB sensors to avoid
-  const badLabels = /thermal|ir\b|infrared|night.?vision|flir|thermovue/i;
-  // Labels that strongly suggest the main rear RGB camera
-  const goodLabels = /back|rear|main|environment/i;
-  // Labels indicating front-facing cameras
-  const frontLabels = /front|selfie|user|face/i;
-
-  const filtered = videoCameras.filter(d => !badLabels.test(d.label));
-
-  // Prefer one explicitly labelled as main/back/rear, then first non-front,
-  // then any non-thermal camera as last resort
-  const preferred = filtered.find(d => goodLabels.test(d.label));
-  const rearFiltered = filtered.filter(d => !frontLabels.test(d.label));
-  const chosen = preferred ?? rearFiltered[0] ?? filtered[0];
-
-  if (chosen?.deviceId) {
-    return { deviceId: { exact: chosen.deviceId } };
-  }
-
-  // Fallback: let the browser pick via facingMode
-  return { facingMode: 'environment' };
+function isInAppBrowser(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  return /Instagram|FBAN|FBAV|Twitter|LinkedInApp/i.test(navigator.userAgent);
 }
 
 export default function ScanPage() {
@@ -46,7 +31,7 @@ export default function ScanPage() {
   const [isCheckingSession, setIsCheckingSession] = useState(true);
   const [manualCode, setManualCode] = useState('');
   const [isManualSubmitting, setIsManualSubmitting] = useState(false);
-  const [cameraConstraints, setCameraConstraints] = useState<MediaTrackConstraints>({ facingMode: 'environment' });
+  const [inAppBrowser, setInAppBrowser] = useState(false);
   const photoInputRef = useRef<HTMLInputElement | null>(null);
 
   const handleDecode = useCallback(
@@ -89,6 +74,8 @@ export default function ScanPage() {
   }, []);
 
   useEffect(() => {
+    setInAppBrowser(isInAppBrowser());
+
     // Auto-create session from logged-in user
     const initializeSession = async () => {
       try {
@@ -123,16 +110,12 @@ export default function ScanPage() {
           }));
         }
 
-        // Request camera permission before mounting the scanner so that
-        // enumerateDevices() returns populated labels (browsers hide labels
-        // until permission is granted).
+        // Request camera permission before mounting the scanner.
         try {
           const tempStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
           tempStream.getTracks().forEach(t => t.stop());
-          const devices = await navigator.mediaDevices.enumerateDevices();
-          setCameraConstraints(pickBestCamera(devices));
         } catch {
-          // Permission denied or enumeration failed — keep the default facingMode constraint
+          // Permission denied — scanner will surface its own error
         }
 
         setIsCheckingSession(false);
@@ -206,11 +189,17 @@ export default function ScanPage() {
   return (
     <div className="container mx-auto p-4 text-center">
       <h1 className="text-2xl font-bold mb-4 text-gray-900">Scan Sauce QR Code</h1>
+      {inAppBrowser && (
+        <div className="mb-4 max-w-md mx-auto p-3 bg-yellow-100 text-yellow-800 rounded-md border border-yellow-300 text-sm">
+          <p className="font-semibold">Open in your browser for best results</p>
+          <p>In-app browsers (Instagram, Facebook, etc.) have limited camera support. Tap the menu and choose &ldquo;Open in Safari&rdquo; or &ldquo;Open in Chrome&rdquo;.</p>
+        </div>
+      )}
       <div className="max-w-md mx-auto bg-gray-200 rounded-lg overflow-hidden shadow-lg">
         <QrScanner
           onDecode={handleDecode}
           onError={handleError}
-          constraints={cameraConstraints}
+          constraints={{ ...cameraConstraints, aspectRatio: 1 }}
           containerStyle={{ width: '100%' }}
         />
       </div>
