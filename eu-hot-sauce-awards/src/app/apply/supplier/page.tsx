@@ -5,6 +5,9 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { validateEmail } from "@/lib/validation";
 
+// Toggle this to reopen entries
+const ENTRIES_OPEN = false;
+
 const categoryGroups = [
   {
     label: "Chili Sauce Categories",
@@ -478,6 +481,21 @@ export default function SupplierApplyPage() {
           </p>
         </header>
 
+        {!ENTRIES_OPEN ? (
+          <div className="rounded-3xl border border-white/15 bg-white/[0.07] p-8 backdrop-blur text-center space-y-4">
+            <p className="text-2xl">🌶️</p>
+            <h2 className="text-xl font-semibold text-white">Entries are now closed</h2>
+            <p className="text-white/70">
+              Sauce entries for the 2026 EU Hot Sauce Awards have closed. We look forward to welcoming your products for the 2027 awards.
+            </p>
+            <Link
+              href="/"
+              className="inline-block mt-4 rounded-full border border-white/20 px-6 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-white transition hover:border-white hover:bg-white/10"
+            >
+              Back to Home
+            </Link>
+          </div>
+        ) : (
         <section className="space-y-6 rounded-3xl border border-white/15 bg-white/[0.07] p-8 backdrop-blur">
           <form onSubmit={handleSubmit} className="space-y-8">
             {/* Honeypot: hidden from humans via off-screen positioning, filled by bots */}
@@ -937,6 +955,7 @@ export default function SupplierApplyPage() {
             </div>
           )}
         </section>
+        )}
 
         <section className="space-y-4 rounded-3xl border border-white/15 bg-white/[0.05] p-8 backdrop-blur">
           <h2 className="text-sm font-semibold uppercase tracking-[0.25em] text-amber-200/80">Discount Overview</h2>
