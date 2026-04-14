@@ -12,6 +12,7 @@ import JudgeLabelGenerator from './JudgeLabelGenerator'
 import JarLabelGenerator from './JarLabelGenerator'
 import PackageTracker from './PackageTracker'
 import EventsManager from './EventsManager'
+import EventJudgingManager from './EventJudgingManager'
 import EmailCampaignManager from './EmailCampaignManager'
 import EmailTemplateEditor from './EmailTemplateEditor'
 import ShippingAddressRequestSender from './ShippingAddressRequestSender'
@@ -87,6 +88,11 @@ export default async function AdminDashboard() {
     )
     .in('type', ['pro', 'community', 'supplier'])
     .order('type', { ascending: true }) as { data: any[] | null; error: any }
+
+  const { count: eventOpenCount } = await supabase
+    .from('sauces')
+    .select('*', { count: 'exact', head: true })
+    .eq('event_open', true)
 
   const resultsData = await getResultsData()
   const resultsResults = 'results' in resultsData ? resultsData.results : []
@@ -388,6 +394,12 @@ export default async function AdminDashboard() {
           </Card>
           <Card>
             <AddAdminUser />
+          </Card>
+          <Card>
+            <EventJudgingManager
+              eventOpenCount={eventOpenCount ?? 0}
+              totalSauceCount={totalSauces}
+            />
           </Card>
           <Card>
             <EventsManager />

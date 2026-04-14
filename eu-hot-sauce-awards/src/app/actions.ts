@@ -827,11 +827,11 @@ export async function lookupSauceByCodeForJudge(sauceCode: string) {
 
   const { data: judge } = await supabase
     .from('judges')
-    .select('id, open_judging')
+    .select('id, type, open_judging')
     .ilike('email', user.email)
     .single();
 
-  if (judge?.open_judging) {
+  if (judge?.open_judging && judge.type !== 'event') {
     const { count } = await supabase
       .from('judging_scores')
       .select('sauce_id', { count: 'exact', head: true })
@@ -846,6 +846,7 @@ export async function lookupSauceByCodeForJudge(sauceCode: string) {
     .from('sauces')
     .select('id, sauce_code, name')
     .ilike('sauce_code', sauceCode.trim())
+    .or('payment_status.eq.paid,event_open.eq.true')
     .single();
 
   if (error || !sauce) return { error: `No sauce found with code "${sauceCode.trim().toUpperCase()}"` };
@@ -1758,10 +1759,10 @@ export async function getJudgeScoredSauces() {
     return { error: 'Not authenticated' };
   }
 
-  // Get judge ID and open_judging flag
+  // Get judge ID, type, and open_judging flag
   const { data: judge } = await supabase
     .from('judges')
-    .select('id, open_judging')
+    .select('id, type, open_judging')
     .ilike('email', user.email)
     .single();
 
@@ -1789,9 +1790,12 @@ export async function getJudgeScoredSauces() {
     return acc;
   }, []) || [];
 
-  // For open judging judges, use the limit as the total; otherwise count box assignments
+  // For open judging judges, use the limit as the total; otherwise count box assignments.
+  // Event judges have no limit — use a high sentinel so the scan button always shows.
   let totalAssigned: number;
-  if (judge.open_judging) {
+  if (judge.type === 'event') {
+    totalAssigned = 999;
+  } else if (judge.open_judging) {
     totalAssigned = 10;
   } else {
     const { count: assignedCount } = await supabase
@@ -1802,6 +1806,84 @@ export async function getJudgeScoredSauces() {
   }
 
   return { scoredSauces: uniqueSauces, totalAssigned };
+}
+
+// Admin-only: close event judging by setting event_open = false on all sauces.
+// Use this on Thursday after the event to revert sauce availability without touching payment_status.
+export async function closeEventJudging() {
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user?.email) return { error: 'Not authenticated.' };
+
+  const { data: adminCheck, error: adminError } = await supabase
+    .from('judges')
+    .select('type')
+    .ilike('email', user.email)
+    .single();
+
+  if (adminError || adminCheck?.type !== 'admin') {
+    return { error: 'Not authorized.' };
+  }
+
+  const serviceClientResult = getServiceSupabase();
+  if ('error' in serviceClientResult) {
+    return { error: serviceClientResult.error };
+  }
+  const serviceClient = serviceClientResult.client;
+
+  const { count: openCount } = await serviceClient
+    .from('sauces')
+    .select('*', { count: 'exact', head: true })
+    .eq('event_open', true);
+
+  const { error } = await serviceClient
+    .from('sauces')
+    .update({ event_open: false })
+    .eq('event_open', true);
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  return { success: true, closedCount: openCount ?? 0 };
+}
+
+// Admin-only: re-open event judging on all sauces (event_open = true).
+export async function openEventJudging() {
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user?.email) return { error: 'Not authenticated.' };
+
+  const { data: adminCheck, error: adminError } = await supabase
+    .from('judges')
+    .select('type')
+    .ilike('email', user.email)
+    .single();
+
+  if (adminError || adminCheck?.type !== 'admin') {
+    return { error: 'Not authorized.' };
+  }
+
+  const serviceClientResult = getServiceSupabase();
+  if ('error' in serviceClientResult) {
+    return { error: serviceClientResult.error };
+  }
+  const serviceClient = serviceClientResult.client;
+
+  const { error } = await serviceClient
+    .from('sauces')
+    .update({ event_open: true })
+    .neq('event_open', true);
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  return { success: true };
 }
 
 // Email Campaign Actions for 2026 Invitations

@@ -99,10 +99,10 @@ export default function LoginPage() {
     try {
       await verifyOtpCode(email, code);
       router.replace('/dashboard');
+      // Keep loading=true so the button stays disabled until navigation unmounts this page
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Invalid or expired code. Please try again.');
-    } finally {
       setLoading(false);
+      setError(err instanceof Error ? err.message : 'Invalid or expired code. Please try again.');
     }
   };
 

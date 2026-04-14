@@ -22,7 +22,7 @@ export default async function ScorePage({ params }: ScorePageProps) {
 
   const { data: judge } = await supabase
     .from('judges')
-    .select('id, open_judging')
+    .select('id, type, open_judging')
     .ilike('email', user.email)
     .single();
 
@@ -42,7 +42,7 @@ export default async function ScorePage({ params }: ScorePageProps) {
     { data: assignment, error: assignmentError },
     { count: scoredSauceCount }
   ] = await Promise.all([
-    supabase.from('sauces').select('id, name, sauce_code, payment_status, supplier_id, ingredients, allergens, suppliers(brand_name)').eq('id', sauceId).eq('payment_status', 'paid').single(),
+    supabase.from('sauces').select('id, name, sauce_code, payment_status, event_open, supplier_id, ingredients, allergens, suppliers(brand_name)').eq('id', sauceId).or('payment_status.eq.paid,event_open.eq.true').single(),
     supabase.from('judging_categories').select('*'),
     supabase.from('judging_scores').select('id').eq('judge_id', judge.id).eq('sauce_id', sauceId).limit(1),
     supabase.from('judging_scores').select('category_id, score, comments').eq('judge_id', judge.id).eq('sauce_id', sauceId),
@@ -65,9 +65,10 @@ export default async function ScorePage({ params }: ScorePageProps) {
   }
 
   // For open judging judges, check sauce limit instead of assignment
+  // Event judges (type === 'event') have no limit — they score all sauces at the live event
   if (judge.open_judging) {
     const alreadyScoredThis = existingScores && existingScores.length > 0;
-    if (!alreadyScoredThis && (scoredSauceCount ?? 0) >= OPEN_JUDGING_LIMIT) {
+    if (!alreadyScoredThis && judge.type !== 'event' && (scoredSauceCount ?? 0) >= OPEN_JUDGING_LIMIT) {
       return (
         <div className="container mx-auto p-4 md:p-8">
           <div className="max-w-3xl mx-auto">

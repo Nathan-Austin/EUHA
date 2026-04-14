@@ -42,7 +42,7 @@ export default async function DashboardPage() {
   // Take the first judge record (in case of duplicates, prioritize by type)
   const judge = judges && judges.length > 0
     ? judges.sort((a, b) => {
-        const priority = { admin: 0, pro: 1, supplier: 2, community: 3 };
+        const priority = { admin: 0, pro: 1, supplier: 2, community: 3, event: 4 };
         return (priority[a.type as keyof typeof priority] || 99) - (priority[b.type as keyof typeof priority] || 99);
       })[0]
     : null;
@@ -140,6 +140,13 @@ export default async function DashboardPage() {
             <StripeCheckoutButton judgeId={judge.id} email={user.email!} />
           </div>
         )
+      case 'event':
+        return <CommunityJudgeDashboard
+          isEventJudge={true}
+          shippingAddress={{ address: null, address_line2: null, city: null, postal_code: null, state: null, country: null }}
+          trackingNumber={null}
+          labelUrl={null}
+        />
       default:
         return <p>Unknown user type. Please contact support.</p>
     }
