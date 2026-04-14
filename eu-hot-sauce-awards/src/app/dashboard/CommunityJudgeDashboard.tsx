@@ -35,9 +35,10 @@ interface Props {
   trackingNumber: string | null;
   labelUrl: string | null;
   isEventJudge?: boolean;
+  openJudging?: boolean;
 }
 
-export default function CommunityJudgeDashboard({ shippingAddress, trackingNumber, labelUrl, isEventJudge }: Props) {
+export default function CommunityJudgeDashboard({ shippingAddress, trackingNumber, labelUrl, isEventJudge, openJudging }: Props) {
   const router = useRouter();
   const [storedScores, setStoredScores] = useState<StoredScore[]>([]);
   const [scoredSauces, setScoredSauces] = useState<ScoredSauce[]>([]);
@@ -95,7 +96,7 @@ export default function CommunityJudgeDashboard({ shippingAddress, trackingNumbe
         <div>
           <h2 className="text-xl sm:text-2xl font-bold text-white">Judge Dashboard</h2>
           <p className="text-sm text-gray-300 mt-1">
-            {(isEventJudge || isEventJudgeFromServer) ? (
+            {(isEventJudge || isEventJudgeFromServer || openJudging) ? (
               <span className="font-semibold text-orange-400">{scoredSauces.length} sauces judged</span>
             ) : totalAssigned === 0 ? (
               <span className="font-semibold text-yellow-400">Check back here once your judging box arrives</span>
@@ -104,7 +105,7 @@ export default function CommunityJudgeDashboard({ shippingAddress, trackingNumbe
             )}
           </p>
         </div>
-        {(isEventJudge || isEventJudgeFromServer || totalAssigned > 0) && (
+        {(isEventJudge || isEventJudgeFromServer || openJudging || totalAssigned > 0) && (
           <button
             onClick={handleStartJudging}
             className="w-full sm:w-auto px-4 py-3 font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700 text-center"
@@ -183,7 +184,7 @@ export default function CommunityJudgeDashboard({ shippingAddress, trackingNumbe
       <RohFollowCTA />
 
       {/* DHL Tracking */}
-      {!(isEventJudge || isEventJudgeFromServer) && trackingNumber && (
+      {!(isEventJudge || isEventJudgeFromServer || openJudging) && trackingNumber && (
         <div className="pt-4 border-t border-gray-300">
           <h3 className="text-lg font-semibold mb-2 text-white">Box Shipping</h3>
           <div className="rounded-lg border border-green-300 bg-green-50 px-4 py-3 space-y-1">
@@ -204,7 +205,7 @@ export default function CommunityJudgeDashboard({ shippingAddress, trackingNumbe
       )}
 
       {/* Shipping address — not relevant for event judges */}
-      {!(isEventJudge || isEventJudgeFromServer) && (
+      {!(isEventJudge || isEventJudgeFromServer || openJudging) && (
         <div className="pt-4 border-t border-gray-300 space-y-4">
           <ShippingAddressDisplay address={shippingAddress} />
           {!trackingNumber && (

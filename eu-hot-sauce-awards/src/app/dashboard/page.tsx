@@ -23,7 +23,7 @@ export default async function DashboardPage() {
   // Fetch judge details - use maybeSingle to handle cases where user might not be a judge
   const { data: judges, error: judgeQueryError } = await supabase
     .from('judges')
-    .select('id, type, stripe_payment_status, address, address_line2, city, postal_code, state, country, dhl_tracking_number, dhl_label_url')
+    .select('id, type, open_judging, stripe_payment_status, address, address_line2, city, postal_code, state, country, dhl_tracking_number, dhl_label_url')
     .ilike('email', user.email)
 
   if (judgeQueryError) {
@@ -66,6 +66,7 @@ export default async function DashboardPage() {
         return <AdminDashboard />
       case 'pro':
         return <CommunityJudgeDashboard
+          openJudging={judge.open_judging ?? false}
           shippingAddress={{
             address: judge.address,
             address_line2: judge.address_line2,
@@ -121,6 +122,7 @@ export default async function DashboardPage() {
       case 'community':
         if (judge.stripe_payment_status === 'succeeded') {
           return <CommunityJudgeDashboard
+            openJudging={judge.open_judging ?? false}
             shippingAddress={{
               address: judge.address,
               address_line2: judge.address_line2,
@@ -143,6 +145,7 @@ export default async function DashboardPage() {
       case 'event':
         return <CommunityJudgeDashboard
           isEventJudge={true}
+          openJudging={true}
           shippingAddress={{ address: null, address_line2: null, city: null, postal_code: null, state: null, country: null }}
           trackingNumber={null}
           labelUrl={null}
