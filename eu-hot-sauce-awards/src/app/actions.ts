@@ -1805,7 +1805,7 @@ export async function getJudgeScoredSauces() {
     totalAssigned = assignedCount || 0;
   }
 
-  return { scoredSauces: uniqueSauces, totalAssigned };
+  return { scoredSauces: uniqueSauces, totalAssigned, isEventJudge: judge.type === 'event' };
 }
 
 // Admin-only: close event judging by setting event_open = false on all sauces.
