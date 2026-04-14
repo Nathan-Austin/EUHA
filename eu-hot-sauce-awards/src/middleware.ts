@@ -105,7 +105,8 @@ export async function middleware(request: NextRequest) {
 
       // CRITICAL: Check year-specific participation for /judge routes
       // This prevents judges from previous years accessing current year judging
-      if (request.nextUrl.pathname.startsWith('/judge') && !isAdmin) {
+      // Event judges bypass this check — they register on the day and have no participation record
+      if (request.nextUrl.pathname.startsWith('/judge') && !isAdmin && judge.type !== 'event') {
         const { data: participation } = await supabase
           .from('judge_participations')
           .select('accepted')
