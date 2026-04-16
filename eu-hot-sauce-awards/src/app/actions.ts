@@ -351,7 +351,8 @@ export async function getResultsData(): Promise<
         judges ( type ),
         judging_categories ( name )
       `)
-      .eq('sauces.payment_status', 'paid'),
+      .eq('sauces.payment_status', 'paid')
+      .limit(50000),
     serviceClient.from('judging_categories').select('name').order('name'),
   ]);
 
