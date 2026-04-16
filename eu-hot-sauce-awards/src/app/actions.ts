@@ -340,102 +340,29 @@ export async function getResultsData(): Promise<
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-  const [{ data: scores, error: scoresError }, { data: catRows }] = await Promise.all([
-    serviceClient
-      .from('judging_scores')
-      .select(`
-        score,
-        sauce_id,
-        judge_id,
-        sauces!inner ( name, sauce_code, category, payment_status, suppliers ( brand_name, country, region ) ),
-        judges ( type ),
-        judging_categories ( name )
-      `)
-      .eq('sauces.payment_status', 'paid')
-      .limit(50000),
+  const [{ data: rows, error: rpcError }, { data: catRows }] = await Promise.all([
+    serviceClient.rpc('get_results_data'),
     serviceClient.from('judging_categories').select('name').order('name'),
   ]);
 
   const scoringCategories = catRows?.map((c) => c.name) ?? [];
 
-  if (scoresError) return { error: scoresError.message };
-  if (!scores || scores.length === 0) return { results: [], scoringCategories };
+  if (rpcError) return { error: rpcError.message };
+  if (!rows || rows.length === 0) return { results: [], scoringCategories };
 
-  const JUDGE_WEIGHTS: Record<string, number> = { pro: 2.0, community: 1.0, supplier: 1.0 };
+  const results: SauceResult[] = (rows as any[]).map((row) => ({
+    sauceId: row.sauce_id,
+    sauceCode: row.sauce_code ?? 'N/A',
+    sauceName: row.sauce_name ?? 'Unknown',
+    brandName: row.brand_name ?? 'Unknown',
+    sauceCategory: row.sauce_category ?? 'Uncategorized',
+    region: row.region ?? 'european',
+    country: row.country ?? null,
+    categoryScores: row.category_scores ?? {},
+    finalScore: Number(row.final_score ?? 0),
+    judgeCount: Number(row.judge_count ?? 0),
+  }));
 
-  interface SauceAcc {
-    sauceCode: string;
-    sauceName: string;
-    brandName: string;
-    sauceCategory: string;
-    region: string;
-    country: string | null;
-    catData: Record<string, { wSum: number; wDiv: number }>;
-    judgeIds: Set<string>;
-  }
-
-  const sauceMap = new Map<string, SauceAcc>();
-
-  for (const row of scores) {
-    const sauce = Array.isArray(row.sauces) ? row.sauces[0] : (row.sauces as any);
-    const judge = Array.isArray(row.judges) ? row.judges[0] : (row.judges as any);
-    const cat = Array.isArray(row.judging_categories) ? row.judging_categories[0] : (row.judging_categories as any);
-    const supplier = sauce ? (Array.isArray(sauce.suppliers) ? sauce.suppliers[0] : sauce.suppliers) : null;
-
-    if (!sauce || !judge || !cat || typeof row.score !== 'number') continue;
-
-    const weight = JUDGE_WEIGHTS[judge.type as string] ?? 1.0;
-
-    if (!sauceMap.has(row.sauce_id)) {
-      sauceMap.set(row.sauce_id, {
-        sauceCode: sauce.sauce_code || 'N/A',
-        sauceName: sauce.name || 'Unknown',
-        brandName: supplier?.brand_name || 'Unknown',
-        sauceCategory: sauce.category || 'Uncategorized',
-        region: supplier?.region || 'european',
-        country: supplier?.country ?? null,
-        catData: {},
-        judgeIds: new Set(),
-      });
-    }
-
-    const acc = sauceMap.get(row.sauce_id)!;
-    acc.judgeIds.add(row.judge_id);
-
-    if (!acc.catData[cat.name]) acc.catData[cat.name] = { wSum: 0, wDiv: 0 };
-    acc.catData[cat.name].wSum += row.score * weight;
-    acc.catData[cat.name].wDiv += weight;
-  }
-
-  const results: SauceResult[] = [];
-
-  for (const [sauceId, acc] of sauceMap.entries()) {
-    const categoryScores: Record<string, number> = {};
-    let totalWSum = 0;
-    let totalWDiv = 0;
-
-    for (const [catName, data] of Object.entries(acc.catData)) {
-      const avg = data.wDiv > 0 ? data.wSum / data.wDiv : 0;
-      categoryScores[catName] = avg;
-      totalWSum += data.wSum;
-      totalWDiv += data.wDiv;
-    }
-
-    results.push({
-      sauceId,
-      sauceCode: acc.sauceCode,
-      sauceName: acc.sauceName,
-      brandName: acc.brandName,
-      sauceCategory: acc.sauceCategory,
-      region: acc.region,
-      country: acc.country,
-      categoryScores,
-      finalScore: totalWDiv > 0 ? totalWSum / totalWDiv : 0,
-      judgeCount: acc.judgeIds.size,
-    });
-  }
-
-  results.sort((a, b) => b.finalScore - a.finalScore);
   return { results, scoringCategories };
 }
 
