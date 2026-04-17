@@ -40,6 +40,8 @@ function getTransporter(): Transporter {
     }
 
     transporter = nodemailer.createTransport({
+      pool: true,        // reuse single authenticated connection across all sends
+      maxConnections: 1, // one connection avoids concurrent auth issues with Gmail
       host: SMTP_HOST,
       port: portNumber,
       secure: portNumber === 465,
