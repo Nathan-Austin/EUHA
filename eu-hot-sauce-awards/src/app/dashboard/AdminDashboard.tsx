@@ -16,6 +16,7 @@ import EventJudgingManager from './EventJudgingManager'
 import EmailCampaignManager from './EmailCampaignManager'
 import EmailTemplateEditor from './EmailTemplateEditor'
 import ShippingAddressRequestSender from './ShippingAddressRequestSender'
+import JudgingReminderSender from './JudgingReminderSender'
 import ProJudgeApproval from './ProJudgeApproval'
 import JudgeAnalysis from './JudgeAnalysis'
 import AdminTabs from './AdminTabs'
@@ -449,6 +450,9 @@ export default async function AdminDashboard() {
             title="Marketing & Outreach"
             description="Manage email campaigns and customize email templates."
           />
+          <Card>
+            <JudgingReminderSender />
+          </Card>
           <Card>
             <ShippingAddressRequestSender />
           </Card>

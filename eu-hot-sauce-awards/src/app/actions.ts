@@ -2398,6 +2398,194 @@ export async function sendTestJudgeEmail(testEmail: string, judgeName: string, j
   }
 }
 
+// Judging Reminder Actions
+
+export interface JudgeForReminder {
+  id: string;
+  name: string;
+  email: string;
+  type: string;
+  hasScores: boolean;
+}
+
+export async function getJudgesForReminder() {
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user?.email) return { error: 'You must be logged in.' };
+
+  const { data: adminCheck, error: adminError } = await supabase
+    .from('judges')
+    .select('type')
+    .ilike('email', user.email)
+    .single();
+
+  if (adminError || adminCheck?.type !== 'admin') {
+    return { error: 'You are not authorized.' };
+  }
+
+  const adminSupabase = createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
+  // Get all active judges (excluding admin and event_judge types)
+  const { data: judges, error: judgesError } = await adminSupabase
+    .from('judges')
+    .select('id, name, email, type')
+    .in('type', ['pro', 'community', 'supplier'])
+    .eq('active', true)
+    .order('name', { ascending: true });
+
+  if (judgesError) {
+    return { error: `Failed to fetch judges: ${judgesError.message}` };
+  }
+
+  // Use RPC to get distinct judge_ids that have submitted scores (avoids PostgREST row cap)
+  const { data: scoredRows, error: scoresError } = await adminSupabase
+    .rpc('get_judge_ids_with_scores');
+
+  if (scoresError) {
+    return { error: `Failed to fetch scores: ${scoresError.message}` };
+  }
+
+  const scoredJudgeIds = new Set((scoredRows || []).map((r: { judge_id: string }) => r.judge_id));
+
+  const judgesWithStatus: JudgeForReminder[] = (judges || []).map((j: any) => ({
+    id: j.id,
+    name: j.name,
+    email: j.email,
+    type: j.type,
+    hasScores: scoredJudgeIds.has(j.id),
+  }));
+
+  return { judges: judgesWithStatus };
+}
+
+export async function sendJudgingReminders(judgeIds: string[]) {
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user?.email) return { error: 'You must be logged in.' };
+
+  const { data: adminCheck, error: adminError } = await supabase
+    .from('judges')
+    .select('type')
+    .ilike('email', user.email)
+    .single();
+
+  if (adminError || adminCheck?.type !== 'admin') {
+    return { error: 'You are not authorized.' };
+  }
+
+  if (!judgeIds || judgeIds.length === 0) {
+    return { error: 'No judges provided.' };
+  }
+
+  const adminSupabase = createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
+  const { data: judges, error: judgesError } = await adminSupabase
+    .from('judges')
+    .select('id, name, email, type')
+    .in('id', judgeIds);
+
+  if (judgesError) {
+    return { error: `Failed to fetch judge details: ${judgesError.message}` };
+  }
+
+  const { data: template, error: templateError } = await supabase
+    .from('email_templates')
+    .select('*')
+    .eq('template_key', 'judging_reminder_2026')
+    .eq('is_active', true)
+    .single();
+
+  if (templateError || !template) {
+    return { error: 'Judging reminder template not found. Please configure it in the template editor first.' };
+  }
+
+  const results = {
+    sent: [] as string[],
+    failed: [] as { email: string; error: string }[],
+  };
+
+  for (const judge of (judges || [])) {
+    try {
+      const name = judge.name || judge.email.split('@')[0];
+      const judgeType = judge.type;
+
+      const emailContent = {
+        subject: replaceTemplateVariables(template.subject, { name, judgeType }),
+        html: replaceTemplateVariables(template.html_body, { name, judgeType }),
+        text: template.text_body ? replaceTemplateVariables(template.text_body, { name, judgeType }) : undefined,
+      };
+
+      await sendEmail({ to: judge.email, ...emailContent });
+      results.sent.push(judge.email);
+    } catch (error: any) {
+      results.failed.push({ email: judge.email, error: error.message });
+    }
+  }
+
+  return {
+    success: true,
+    sent: results.sent.length,
+    failed: results.failed.length,
+    failedEmails: results.failed,
+  };
+}
+
+export async function sendTestJudgingReminderEmail(testEmail: string, name: string, judgeType: string) {
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user?.email) return { error: 'You must be logged in.' };
+
+  const { data: adminCheck, error: adminError } = await supabase
+    .from('judges')
+    .select('type')
+    .ilike('email', user.email)
+    .single();
+
+  if (adminError || adminCheck?.type !== 'admin') {
+    return { error: 'You are not authorized.' };
+  }
+
+  if (!testEmail || !testEmail.includes('@')) {
+    return { error: 'Please provide a valid email address.' };
+  }
+
+  const { data: template, error: templateError } = await supabase
+    .from('email_templates')
+    .select('*')
+    .eq('template_key', 'judging_reminder_2026')
+    .eq('is_active', true)
+    .single();
+
+  if (templateError || !template) {
+    return { error: 'Judging reminder template not found. Please configure it in the template editor first.' };
+  }
+
+  try {
+    const emailContent = {
+      subject: replaceTemplateVariables(template.subject, { name, judgeType }),
+      html: replaceTemplateVariables(template.html_body, { name, judgeType }),
+      text: template.text_body ? replaceTemplateVariables(template.text_body, { name, judgeType }) : undefined,
+    };
+
+    await sendEmail({ to: testEmail, ...emailContent });
+    return { success: true, message: `Test reminder sent to ${testEmail}` };
+  } catch (error: any) {
+    return { error: `Failed to send test email: ${error.message}` };
+  }
+}
+
 // Pro Judge Approval Actions
 
 export interface PendingProJudge {
