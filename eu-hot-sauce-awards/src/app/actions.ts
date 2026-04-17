@@ -2527,6 +2527,8 @@ export async function sendJudgingReminders(judgeIds: string[]) {
 
       await sendEmail({ to: judge.email, ...emailContent });
       results.sent.push(judge.email);
+      // Small delay to avoid SMTP rate limiting
+      await new Promise((resolve) => setTimeout(resolve, 150));
     } catch (error: any) {
       results.failed.push({ email: judge.email, error: error.message });
     }

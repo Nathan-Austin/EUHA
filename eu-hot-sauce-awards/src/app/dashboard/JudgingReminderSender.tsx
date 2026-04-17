@@ -15,6 +15,8 @@ export default function JudgingReminderSender() {
   const [showList, setShowList] = useState(false)
   const [showTest, setShowTest] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [failedEmails, setFailedEmails] = useState<{ email: string; error: string }[]>([])
+  const [showFailed, setShowFailed] = useState(false)
 
   const [testEmail, setTestEmail] = useState('')
   const [testName, setTestName] = useState('Test Judge')
@@ -40,24 +42,25 @@ export default function JudgingReminderSender() {
     }
   }
 
-  async function handleSendReminders() {
-    const pending = judges.filter((j) => !j.hasScores)
-    if (!confirm(`Send judging deadline reminders to ${pending.length} judges who haven't scored yet?`)) {
-      return
-    }
+  async function handleSendReminders(judgeIds?: string[]) {
+    const targets = judgeIds ?? judges.filter((j) => !j.hasScores).map((j) => j.id)
+    if (!confirm(`Send judging deadline reminders to ${targets.length} judges?`)) return
 
     setSending(true)
     setMessage(null)
+    setFailedEmails([])
 
     try {
-      const result = await sendJudgingReminders(pending.map((j) => j.id))
+      const result = await sendJudgingReminders(targets)
       if ('error' in result) {
         setMessage({ type: 'error', text: result.error || 'Failed to send reminders' })
       } else {
+        setFailedEmails(result.failedEmails || [])
         setMessage({
-          type: 'success',
-          text: `Sent ${result.sent} reminder${result.sent !== 1 ? 's' : ''}!${result.failed > 0 ? ` Failed: ${result.failed}` : ''}`,
+          type: result.failed > 0 ? 'error' : 'success',
+          text: `Sent ${result.sent} reminder${result.sent !== 1 ? 's' : ''}${result.failed > 0 ? `. ${result.failed} failed — see details below.` : '!'}`,
         })
+        if (result.failed > 0) setShowFailed(true)
         await loadJudges()
       }
     } catch (error: any) {
@@ -65,6 +68,14 @@ export default function JudgingReminderSender() {
     } finally {
       setSending(false)
     }
+  }
+
+  async function handleRetryFailed() {
+    const retryIds = judges
+      .filter((j) => failedEmails.some((f) => f.email === j.email))
+      .map((j) => j.id)
+    if (retryIds.length === 0) return
+    await handleSendReminders(retryIds)
   }
 
   async function handleSendTest() {
@@ -133,6 +144,51 @@ export default function JudgingReminderSender() {
         </div>
       )}
 
+      {failedEmails.length > 0 && (
+        <div className="border border-red-200 rounded-xl p-4 bg-red-50">
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="text-sm font-semibold text-red-800">
+              {failedEmails.length} failed sends
+            </h4>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowFailed(!showFailed)}
+                className="text-sm text-red-600 hover:text-red-700 font-medium"
+              >
+                {showFailed ? '▼ Hide' : '▶ Show'} details
+              </button>
+              <button
+                onClick={handleRetryFailed}
+                disabled={sending}
+                className="px-3 py-1 bg-red-600 text-white rounded-lg text-xs font-medium hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {sending ? 'Retrying...' : `Retry ${failedEmails.length}`}
+              </button>
+            </div>
+          </div>
+          {showFailed && (
+            <div className="bg-white rounded-lg border border-red-200 max-h-48 overflow-y-auto">
+              <table className="min-w-full text-sm">
+                <thead className="bg-red-50 sticky top-0">
+                  <tr>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-red-700">Email</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-red-700">Error</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-red-100">
+                  {failedEmails.map((f) => (
+                    <tr key={f.email}>
+                      <td className="px-3 py-2 text-gray-900">{f.email}</td>
+                      <td className="px-3 py-2 text-red-700 text-xs">{f.error}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="border border-orange-200 rounded-xl p-6 bg-orange-50">
         <div className="flex items-center justify-between mb-4">
           <div>
@@ -143,7 +199,7 @@ export default function JudgingReminderSender() {
             </p>
           </div>
           <button
-            onClick={handleSendReminders}
+            onClick={() => handleSendReminders()}
             disabled={sending || pendingJudges.length === 0}
             className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
               pendingJudges.length === 0 || sending
