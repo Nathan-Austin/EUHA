@@ -48,7 +48,7 @@ VALUES (
               <table cellpadding="0" cellspacing="0" style="margin: 0 auto 32px;">
                 <tr>
                   <td style="background-color: #c2410c; border-radius: 6px; text-align: center;">
-                    <a href="https://awards.euhotsauce.com/dashboard" style="display: inline-block; padding: 14px 32px; color: #ffffff; font-size: 16px; font-weight: bold; text-decoration: none;">
+                    <a href="https://heatawards.eu/login" style="display: inline-block; padding: 14px 32px; color: #ffffff; font-size: 16px; font-weight: bold; text-decoration: none;">
                       Submit My Scores
                     </a>
                   </td>
@@ -85,7 +85,7 @@ Just a quick reminder that judging for the EU Hot Sauce Awards 2026 closes on Th
 
 If you have already submitted your scores, thank you — you can safely ignore this email.
 
-To submit your scores, visit: https://awards.euhotsauce.com/dashboard
+To submit your scores, visit: https://heatawards.eu/login
 
 If you need any help, just reply to this email.
 
