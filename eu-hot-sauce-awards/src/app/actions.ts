@@ -2430,12 +2430,28 @@ export async function getJudgesForReminder() {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-  // Get all active judges (excluding admin and event_judge types)
+  // Get judge IDs that have sauces assigned
+  const { data: assignedRows, error: assignedError } = await adminSupabase
+    .from('box_assignments')
+    .select('judge_id');
+
+  if (assignedError) {
+    return { error: `Failed to fetch assignments: ${assignedError.message}` };
+  }
+
+  const assignedJudgeIds = [...new Set((assignedRows || []).map((r: { judge_id: string }) => r.judge_id))];
+
+  if (assignedJudgeIds.length === 0) {
+    return { judges: [] };
+  }
+
+  // Get active judges with box assignments (excluding admin and event_judge types)
   const { data: judges, error: judgesError } = await adminSupabase
     .from('judges')
     .select('id, name, email, type')
     .in('type', ['pro', 'community', 'supplier'])
     .eq('active', true)
+    .in('id', assignedJudgeIds)
     .order('name', { ascending: true });
 
   if (judgesError) {
