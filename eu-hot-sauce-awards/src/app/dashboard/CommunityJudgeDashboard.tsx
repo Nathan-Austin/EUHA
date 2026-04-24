@@ -7,6 +7,7 @@ import { submitAllScores, getJudgeScoredSauces } from '@/app/actions';
 import JudgeShippingAddressForm from './JudgeShippingAddressForm';
 import ShippingAddressDisplay from './ShippingAddressDisplay';
 import RohFollowCTA from '@/components/RohFollowCTA';
+import { JUDGING_OPEN } from '@/lib/config';
 
 // The shape of our local storage data
 interface StoredScore {
@@ -105,7 +106,7 @@ export default function CommunityJudgeDashboard({ shippingAddress, trackingNumbe
             )}
           </p>
         </div>
-        {(isEventJudge || isEventJudgeFromServer || openJudging || totalAssigned > 0) && (
+        {JUDGING_OPEN && (isEventJudge || isEventJudgeFromServer || openJudging || totalAssigned > 0) && (
           <button
             onClick={handleStartJudging}
             className="w-full sm:w-auto px-4 py-3 font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700 text-center"
@@ -115,71 +116,85 @@ export default function CommunityJudgeDashboard({ shippingAddress, trackingNumbe
         )}
       </div>
 
-      <div>
-        <h3 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4 text-white">Sauces Pending Submission</h3>
-        {storedScores.length > 0 ? (
-          <div className="space-y-4">
-            {/* Mobile: Card layout, Desktop: Table */}
-            <div className="space-y-3 sm:space-y-0 sm:border sm:border-gray-300 sm:rounded-md sm:bg-white">
-              {storedScores.map((score) => (
-                <div
-                  key={score.sauceId}
-                  className="border border-gray-300 rounded-lg p-4 bg-white sm:border-0 sm:rounded-none sm:border-t sm:first:border-t-0 sm:p-0"
-                >
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-0">
-                    <div className="flex-1 sm:px-4 sm:py-3">
-                      <p className="font-medium text-gray-900">Code: {score.sauceCode}</p>
+      {!JUDGING_OPEN && (
+        <div className="rounded-lg bg-white border border-gray-200 px-6 py-5 text-center space-y-2">
+          <p className="text-3xl">🌶️🏆</p>
+          <h3 className="text-lg font-bold text-gray-900">Judging is now closed</h3>
+          <p className="text-sm text-gray-600">
+            Thank you for taking part in the 2026 EU Hot Sauce Awards. Winners will be announced on Republic of Heat&apos;s social media channels — follow along so you don&apos;t miss the reveal!
+          </p>
+        </div>
+      )}
+
+      {JUDGING_OPEN && (
+        <>
+          <div>
+            <h3 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4 text-white">Sauces Pending Submission</h3>
+            {storedScores.length > 0 ? (
+              <div className="space-y-4">
+                {/* Mobile: Card layout, Desktop: Table */}
+                <div className="space-y-3 sm:space-y-0 sm:border sm:border-gray-300 sm:rounded-md sm:bg-white">
+                  {storedScores.map((score) => (
+                    <div
+                      key={score.sauceId}
+                      className="border border-gray-300 rounded-lg p-4 bg-white sm:border-0 sm:rounded-none sm:border-t sm:first:border-t-0 sm:p-0"
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-0">
+                        <div className="flex-1 sm:px-4 sm:py-3">
+                          <p className="font-medium text-gray-900">Code: {score.sauceCode}</p>
+                        </div>
+                        <div className="sm:px-4 sm:py-3">
+                          <Link
+                            href={`/judge/score/${score.sauceId}`}
+                            className="block w-full sm:inline-block sm:w-auto px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 text-center"
+                          >
+                            Edit Score
+                          </Link>
+                        </div>
+                      </div>
                     </div>
-                    <div className="sm:px-4 sm:py-3">
-                      <Link
-                        href={`/judge/score/${score.sauceId}`}
-                        className="block w-full sm:inline-block sm:w-auto px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 text-center"
-                      >
-                        Edit Score
-                      </Link>
-                    </div>
-                  </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-            <div className="pt-2">
-              <button
-                onClick={handleSubmitAll}
-                disabled={isSubmitting}
-                className="w-full sm:w-auto sm:float-right px-6 py-3 font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:bg-red-400"
-              >
-                {isSubmitting ? 'Submitting...' : 'Submit All Final Scores'}
-              </button>
-            </div>
+                <div className="pt-2">
+                  <button
+                    onClick={handleSubmitAll}
+                    disabled={isSubmitting}
+                    className="w-full sm:w-auto sm:float-right px-6 py-3 font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:bg-red-400"
+                  >
+                    {isSubmitting ? 'Submitting...' : 'Submit All Final Scores'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <p className="text-gray-300 text-sm sm:text-base">You have no scores pending submission.</p>
+            )}
           </div>
-        ) : (
-          <p className="text-gray-300 text-sm sm:text-base">You have no scores pending submission.</p>
-        )}
-      </div>
 
-      {/* Scored Sauces Section */}
-      <div className="pt-4 border-t border-gray-300">
-        <h3 className="text-lg sm:text-xl font-semibold mb-1 text-white">Completed Scores</h3>
-        <p className="text-sm text-gray-400 mb-3">Need to change a score? Just rescan the sauce QR code.</p>
-        {scoredSauces.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-            {scoredSauces.map((sauce) => (
-              <Link
-                key={sauce.sauceId}
-                href={`/judge/score/${sauce.sauceId}`}
-                className="px-3 py-2 bg-green-50 border border-green-300 rounded-lg text-center hover:bg-green-100"
-              >
-                <p className="text-sm font-semibold text-green-800">{sauce.sauceCode}</p>
-              </Link>
-            ))}
+          {/* Scored Sauces Section */}
+          <div className="pt-4 border-t border-gray-300">
+            <h3 className="text-lg sm:text-xl font-semibold mb-1 text-white">Completed Scores</h3>
+            <p className="text-sm text-gray-400 mb-3">Need to change a score? Just rescan the sauce QR code.</p>
+            {scoredSauces.length > 0 ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                {scoredSauces.map((sauce) => (
+                  <Link
+                    key={sauce.sauceId}
+                    href={`/judge/score/${sauce.sauceId}`}
+                    className="px-3 py-2 bg-green-50 border border-green-300 rounded-lg text-center hover:bg-green-100"
+                  >
+                    <p className="text-sm font-semibold text-green-800">{sauce.sauceCode}</p>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-300 text-sm sm:text-base">No sauces scored yet. Scan a QR code to begin.</p>
+            )}
           </div>
-        ) : (
-          <p className="text-gray-300 text-sm sm:text-base">No sauces scored yet. Scan a QR code to begin.</p>
-        )}
-      </div>
 
-      {error && <p className="mt-4 text-sm text-center text-red-400">{error}</p>}
-      {success && <p className="mt-4 text-sm text-center text-green-400">{success}</p>}
+          {error && <p className="mt-4 text-sm text-center text-red-400">{error}</p>}
+          {success && <p className="mt-4 text-sm text-center text-green-400">{success}</p>}
+        </>
+      )}
 
       <RohFollowCTA />
 

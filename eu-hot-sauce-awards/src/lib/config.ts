@@ -13,6 +13,13 @@
 export const COMPETITION_YEAR = 2026;
 
 /**
+ * Set to false when judging has closed for the season.
+ * Hides the QR scanner, score entry, and pending submission UI across all dashboards.
+ * Flip back to true at the start of the next judging window.
+ */
+export const JUDGING_OPEN = false;
+
+/**
  * The most recent completed competition year (for rankings and past results pages).
  * Update this after each competition's results are finalised.
  */

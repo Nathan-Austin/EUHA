@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic';
 import jsQR from 'jsqr';
 import { createClient } from '@/lib/supabase/client';
 import { lookupSauceByCodeForJudge } from '@/app/actions';
+import { JUDGING_OPEN } from '@/lib/config';
 
 
 const Scanner = dynamic(
@@ -129,7 +130,8 @@ export default function ScanPage() {
       }
     };
 
-    initializeSession();
+    if (JUDGING_OPEN) initializeSession();
+    else setIsCheckingSession(false);
   }, [router]);
 
   const handlePhotoCapture = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -185,6 +187,23 @@ export default function ScanPage() {
     return (
       <div className="container mx-auto p-4 text-center">
         <h1 className="text-2xl font-bold mb-4 text-gray-900">Preparing scanner...</h1>
+      </div>
+    );
+  }
+
+  if (!JUDGING_OPEN) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#08040e] px-4">
+        <div className="w-full max-w-md rounded-lg bg-white p-8 text-center space-y-4 shadow-md">
+          <p className="text-4xl">🌶️🏆</p>
+          <h1 className="text-2xl font-bold text-gray-900">Judging is now closed</h1>
+          <p className="text-gray-600">
+            Thank you for participating in the 2026 EU Hot Sauce Awards. Winners will be announced on Republic of Heat&apos;s social media channels.
+          </p>
+          <a href="/dashboard" className="inline-block mt-2 px-6 py-3 bg-orange-600 text-white font-semibold rounded-lg hover:bg-orange-700">
+            Back to Dashboard
+          </a>
+        </div>
       </div>
     );
   }

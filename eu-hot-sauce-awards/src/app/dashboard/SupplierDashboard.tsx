@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { submitAllScores, getJudgeScoredSauces } from '@/app/actions';
 import ShippingAddressDisplay from './ShippingAddressDisplay';
 import RohFollowCTA from '@/components/RohFollowCTA';
+import { JUDGING_OPEN } from '@/lib/config';
 
 interface StoredScore {
   sauceId: string;
@@ -106,13 +107,17 @@ export default function SupplierDashboard({ supplierData, judgeData, enteredSauc
             Your scores are in and judging is complete. We&apos;ll be in touch with the results.
             2027 entries will open late September.
           </p>
-          <p className="text-sm text-gray-500">Need to change a score? Just rescan the sauce QR code.</p>
-          <button
-            onClick={() => router.push('/judge/scan')}
-            className="w-full px-4 py-3 font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700"
-          >
-            Scan Sauce QR Code
-          </button>
+          {JUDGING_OPEN && (
+          <>
+            <p className="text-sm text-gray-500">Need to change a score? Just rescan the sauce QR code.</p>
+            <button
+              onClick={() => router.push('/judge/scan')}
+              className="w-full px-4 py-3 font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700"
+            >
+              Scan Sauce QR Code
+            </button>
+          </>
+        )}
         </div>
 
         <RohFollowCTA />
@@ -163,89 +168,101 @@ export default function SupplierDashboard({ supplierData, judgeData, enteredSauc
         </div>
       )}
 
-      {/* Judging section */}
-      <div className="space-y-4">
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
-          <div>
-            <h3 className="text-lg font-semibold text-white">Your Judging</h3>
-            <p className="text-sm text-gray-300 mt-1">
-              {totalAssigned === 0 ? (
-                <span className="text-yellow-400">Check back here once your judging box arrives</span>
-              ) : (
-                <><span className="font-semibold text-orange-400">{scoredSauces.length}/{totalAssigned}</span> sauces scored</>
-              )}
-            </p>
-          </div>
-          {totalAssigned > 0 && (
-            <button
-              onClick={() => router.push('/judge/scan')}
-              className="w-full sm:w-auto px-4 py-3 font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700 text-center"
-            >
-              Scan Sauce QR Code
-            </button>
-          )}
+      {!JUDGING_OPEN && (
+        <div className="rounded-lg bg-white border border-gray-200 px-6 py-5 text-center space-y-2">
+          <p className="text-3xl">🌶️🏆</p>
+          <h3 className="text-lg font-bold text-gray-900">Judging is now closed</h3>
+          <p className="text-sm text-gray-600">
+            Thank you for entering the 2026 EU Hot Sauce Awards. Winners will be announced on Republic of Heat&apos;s social media channels — follow along so you don&apos;t miss the reveal!
+          </p>
         </div>
+      )}
 
-        {/* Pending local scores */}
-        {storedScores.length > 0 && (
-          <div className="space-y-4">
-            <h4 className="text-base font-semibold text-white">Scores Pending Submission</h4>
-            <div className="space-y-3 sm:space-y-0 sm:border sm:border-gray-300 sm:rounded-md sm:bg-white">
-              {storedScores.map((score) => (
-                <div
-                  key={score.sauceId}
-                  className="border border-gray-300 rounded-lg p-4 bg-white sm:border-0 sm:rounded-none sm:border-t sm:first:border-t-0 sm:p-0"
-                >
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-0">
-                    <div className="flex-1 sm:px-4 sm:py-3">
-                      <p className="font-medium text-gray-900">Code: {score.sauceCode}</p>
-                    </div>
-                    <div className="sm:px-4 sm:py-3">
-                      <Link
-                        href={`/judge/score/${score.sauceId}`}
-                        className="block w-full sm:inline-block sm:w-auto px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 text-center"
-                      >
-                        Edit Score
-                      </Link>
+      {/* Judging section */}
+      {JUDGING_OPEN && (
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+            <div>
+              <h3 className="text-lg font-semibold text-white">Your Judging</h3>
+              <p className="text-sm text-gray-300 mt-1">
+                {totalAssigned === 0 ? (
+                  <span className="text-yellow-400">Check back here once your judging box arrives</span>
+                ) : (
+                  <><span className="font-semibold text-orange-400">{scoredSauces.length}/{totalAssigned}</span> sauces scored</>
+                )}
+              </p>
+            </div>
+            {totalAssigned > 0 && (
+              <button
+                onClick={() => router.push('/judge/scan')}
+                className="w-full sm:w-auto px-4 py-3 font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700 text-center"
+              >
+                Scan Sauce QR Code
+              </button>
+            )}
+          </div>
+
+          {/* Pending local scores */}
+          {storedScores.length > 0 && (
+            <div className="space-y-4">
+              <h4 className="text-base font-semibold text-white">Scores Pending Submission</h4>
+              <div className="space-y-3 sm:space-y-0 sm:border sm:border-gray-300 sm:rounded-md sm:bg-white">
+                {storedScores.map((score) => (
+                  <div
+                    key={score.sauceId}
+                    className="border border-gray-300 rounded-lg p-4 bg-white sm:border-0 sm:rounded-none sm:border-t sm:first:border-t-0 sm:p-0"
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-0">
+                      <div className="flex-1 sm:px-4 sm:py-3">
+                        <p className="font-medium text-gray-900">Code: {score.sauceCode}</p>
+                      </div>
+                      <div className="sm:px-4 sm:py-3">
+                        <Link
+                          href={`/judge/score/${score.sauceId}`}
+                          className="block w-full sm:inline-block sm:w-auto px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 text-center"
+                        >
+                          Edit Score
+                        </Link>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
-            <div className="pt-2">
-              <button
-                onClick={handleSubmitAll}
-                disabled={isSubmitting}
-                className="w-full sm:w-auto sm:float-right px-6 py-3 font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:bg-red-400"
-              >
-                {isSubmitting ? 'Submitting...' : 'Submit All Final Scores'}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Completed scores */}
-        {scoredSauces.length > 0 && (
-          <div className="pt-4 border-t border-gray-600">
-            <h4 className="text-base font-semibold text-white mb-1">Completed Scores</h4>
-            <p className="text-sm text-gray-400 mb-3">Need to change a score? Just rescan the sauce QR code.</p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-              {scoredSauces.map((sauce) => (
-                <Link
-                  key={sauce.sauceId}
-                  href={`/judge/score/${sauce.sauceId}`}
-                  className="px-3 py-2 bg-green-50 border border-green-300 rounded-lg text-center hover:bg-green-100"
+                ))}
+              </div>
+              <div className="pt-2">
+                <button
+                  onClick={handleSubmitAll}
+                  disabled={isSubmitting}
+                  className="w-full sm:w-auto sm:float-right px-6 py-3 font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:bg-red-400"
                 >
-                  <p className="text-sm font-semibold text-green-800">{sauce.sauceCode}</p>
-                </Link>
-              ))}
+                  {isSubmitting ? 'Submitting...' : 'Submit All Final Scores'}
+                </button>
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {error && <p className="text-sm text-center text-red-400">{error}</p>}
-        {success && <p className="text-sm text-center text-green-400">{success}</p>}
-      </div>
+          {/* Completed scores */}
+          {scoredSauces.length > 0 && (
+            <div className="pt-4 border-t border-gray-600">
+              <h4 className="text-base font-semibold text-white mb-1">Completed Scores</h4>
+              <p className="text-sm text-gray-400 mb-3">Need to change a score? Just rescan the sauce QR code.</p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                {scoredSauces.map((sauce) => (
+                  <Link
+                    key={sauce.sauceId}
+                    href={`/judge/score/${sauce.sauceId}`}
+                    className="px-3 py-2 bg-green-50 border border-green-300 rounded-lg text-center hover:bg-green-100"
+                  >
+                    <p className="text-sm font-semibold text-green-800">{sauce.sauceCode}</p>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {error && <p className="text-sm text-center text-red-400">{error}</p>}
+          {success && <p className="text-sm text-center text-green-400">{success}</p>}
+        </div>
+      )}
 
       <RohFollowCTA />
 
