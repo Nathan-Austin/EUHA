@@ -397,7 +397,7 @@ export const emailTemplates = {
         <p style="font-size: 16px; line-height: 1.6;">Hi ${name},</p>
 
         <p style="font-size: 16px; line-height: 1.6;">
-          The results of the <strong>European Hot Sauce Awards 2026</strong> are officially out — and we're kicking things off with a special winners announcement video on YouTube. Watch it now:
+          The results of the <strong>European Hot Sauce Awards 2026</strong> are officially out — and we're kicking things off with the mild category winners announcement video on YouTube. Watch it now:
         </p>
 
         <p style="text-align: center; margin: 30px 0;">
@@ -411,9 +411,10 @@ export const emailTemplates = {
         <div style="background-color: #fff3e0; padding: 20px; border-left: 4px solid #ff4d00; margin: 30px 0; border-radius: 0 5px 5px 0;">
           <p style="margin: 0 0 8px 0; font-weight: bold; color: #ff4d00; font-size: 15px;">What's coming next:</p>
           <ul style="margin: 0; padding-left: 20px; font-size: 15px; line-height: 1.8; color: #333;">
-            <li><strong>Category winners</strong> — revealed on Instagram over the next few days via
-              <a href="https://www.instagram.com/republicofheat/" style="color: #ff4d00;">@republicofheat</a> and
-              <a href="https://www.instagram.com/europeanhotsauceawards/" style="color: #ff4d00;">@europeanhotsauceawards</a>
+            <li><strong>Category winners</strong> — revealed on YouTube on the
+              <a href="https://www.youtube.com/@RepublicofHeat" style="color: #ff4d00;">Republic of Heat channel</a>,
+              then on Instagram over the next few days via
+              <a href="https://www.instagram.com/republicofheat/" style="color: #ff4d00;">@republicofheat</a>
             </li>
             <li><strong>Full results</strong> — published at <a href="https://heatawards.eu/results" style="color: #ff4d00;">heatawards.eu/results</a> on <strong>20 May 2026</strong></li>
           </ul>
@@ -454,7 +455,7 @@ export const emailTemplates = {
         </p>
       </div>
     `,
-    text: `Hi ${name}, the EU Hot Sauce Awards 2026 winners are announced! Watch the video: https://www.youtube.com/watch?v=nQsGH0tPhZ8. Category winners will be posted on Instagram (@republicofheat and @europeanhotsauceawards) over the next few days. Full results go live at https://heatawards.eu/results on 20 May 2026.`,
+    text: `Hi ${name}, the EU Hot Sauce Awards 2026 winners are announced! Watch the mild category winners video: https://www.youtube.com/watch?v=nQsGH0tPhZ8. Category winners will be revealed on the Republic of Heat YouTube channel (https://www.youtube.com/@RepublicofHeat), then on Instagram via @republicofheat over the next few days. Full results go live at https://heatawards.eu/results on 20 May 2026.`,
   }),
 
   authConfirmationLink: (name: string, magicLink: string, expiryHours: number) => ({

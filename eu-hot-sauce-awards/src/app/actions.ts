@@ -3998,43 +3998,69 @@ export async function getWinnersAnnouncementRecipients() {
   if ('error' in serviceClientResult) return { error: serviceClientResult.error }
   const { client } = serviceClientResult
 
-  const [{ data: judges }, { data: suppliers }] = await Promise.all([
+  const [
+    { data: judges },
+    { data: suppliers },
+    { data: judgeParticipations },
+    { data: supplierParticipations },
+  ] = await Promise.all([
     client
       .from('judges')
-      .select('email, name, type')
+      .select('email, name')
       .in('type', ['pro', 'community', 'supplier'])
-      .eq('active', true)
-      .order('name', { ascending: true }),
+      .not('email', 'is', null),
     client
       .from('suppliers')
       .select('email, brand_name')
-      .not('email', 'is', null)
-      .order('brand_name', { ascending: true }),
+      .not('email', 'is', null),
+    client
+      .from('judge_participations')
+      .select('email, full_name')
+      .not('email', 'is', null),
+    client
+      .from('supplier_participations')
+      .select('email, company_name')
+      .not('email', 'is', null),
   ])
 
-  // Build deduplicated recipient list — judges first, suppliers fill gaps
+  // Merge all sources, deduplicating by email.
+  // Priority: judges table > judge_participations > suppliers > supplier_participations
   const seen = new Map<string, WinnersAnnouncementRecipient>()
 
-  for (const j of judges || []) {
-    if (!j.email) continue
-    const key = j.email.toLowerCase()
-    seen.set(key, {
-      email: j.email,
-      name: j.name || j.email.split('@')[0],
+  for (const r of supplierParticipations || []) {
+    if (!r.email) continue
+    seen.set(r.email.toLowerCase(), {
+      email: r.email,
+      name: r.company_name || r.email.split('@')[0],
+      recipientType: 'supplier',
+    })
+  }
+
+  for (const r of suppliers || []) {
+    if (!r.email) continue
+    seen.set(r.email.toLowerCase(), {
+      email: r.email,
+      name: r.brand_name || r.email.split('@')[0],
+      recipientType: 'supplier',
+    })
+  }
+
+  for (const r of judgeParticipations || []) {
+    if (!r.email) continue
+    seen.set(r.email.toLowerCase(), {
+      email: r.email,
+      name: r.full_name || r.email.split('@')[0],
       recipientType: 'judge',
     })
   }
 
-  for (const s of suppliers || []) {
-    if (!s.email) continue
-    const key = s.email.toLowerCase()
-    if (!seen.has(key)) {
-      seen.set(key, {
-        email: s.email,
-        name: s.brand_name || s.email.split('@')[0],
-        recipientType: 'supplier',
-      })
-    }
+  for (const r of judges || []) {
+    if (!r.email) continue
+    seen.set(r.email.toLowerCase(), {
+      email: r.email,
+      name: r.name || r.email.split('@')[0],
+      recipientType: 'judge',
+    })
   }
 
   return { recipients: Array.from(seen.values()) }
