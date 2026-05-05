@@ -387,6 +387,76 @@ export const emailTemplates = {
     `,
     text: `Hi ${name}, use this link to access your EU Hot Sauce Awards dashboard: ${magicLink}. It stays active for the next ${expiryHours} hours. Need another? Head to https://heatawards.eu/login.`,
   }),
+  winnersAnnouncement: (name: string) => ({
+    subject: 'The EU Hot Sauce Awards 2026 Winners Are In!',
+    html: `
+      ${emailBanner}
+      <div style="padding: 30px 20px; font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+        <h1 style="color: #ff4d00; margin-bottom: 10px;">The Winners Are In!</h1>
+
+        <p style="font-size: 16px; line-height: 1.6;">Hi ${name},</p>
+
+        <p style="font-size: 16px; line-height: 1.6;">
+          The results of the <strong>European Hot Sauce Awards 2026</strong> are officially out — and we're kicking things off with a special winners announcement video on YouTube. Watch it now:
+        </p>
+
+        <p style="text-align: center; margin: 30px 0;">
+          <a href="https://www.youtube.com/watch?v=nQsGH0tPhZ8" target="_blank" style="display: inline-block; text-decoration: none;">
+            <img src="https://img.youtube.com/vi/nQsGH0tPhZ8/maxresdefault.jpg" alt="EU Hot Sauce Awards 2026 Winners" style="max-width: 100%; width: 560px; border-radius: 8px; border: 3px solid #ff4d00;" />
+            <br/>
+            <span style="display: inline-block; margin-top: 12px; background-color: #ff0000; color: white; padding: 12px 30px; border-radius: 5px; font-weight: bold; font-size: 16px;">▶ Watch on YouTube</span>
+          </a>
+        </p>
+
+        <div style="background-color: #fff3e0; padding: 20px; border-left: 4px solid #ff4d00; margin: 30px 0; border-radius: 0 5px 5px 0;">
+          <p style="margin: 0 0 8px 0; font-weight: bold; color: #ff4d00; font-size: 15px;">What's coming next:</p>
+          <ul style="margin: 0; padding-left: 20px; font-size: 15px; line-height: 1.8; color: #333;">
+            <li><strong>Category winners</strong> — revealed on Instagram over the next few days via
+              <a href="https://www.instagram.com/republicofheat/" style="color: #ff4d00;">@republicofheat</a> and
+              <a href="https://www.instagram.com/europeanhotsauceawards/" style="color: #ff4d00;">@europeanhotsauceawards</a>
+            </li>
+            <li><strong>Full results</strong> — published at <a href="https://heatawards.eu/results" style="color: #ff4d00;">heatawards.eu/results</a> on <strong>20 May 2026</strong></li>
+          </ul>
+        </div>
+
+        <p style="font-size: 16px; line-height: 1.6;">
+          Thank you for being part of this year's competition — whether you entered a sauce, lent your palate as a judge, or both. The standard of entries was exceptional and it made for some incredibly tight judging.
+        </p>
+
+        <p style="font-size: 16px; line-height: 1.6;">
+          Follow us on Instagram to catch each category reveal as it drops:
+        </p>
+
+        <p style="text-align: center; margin: 20px 0;">
+          <a href="https://www.instagram.com/republicofheat/" style="display: inline-block; background-color: #E1306C; color: white; padding: 10px 24px; text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 14px; margin: 5px;">@republicofheat</a>
+        </p>
+
+        <p style="font-size: 16px; line-height: 1.6; margin-top: 30px;">
+          With fire,<br/>
+          <strong>The EU Hot Sauce Awards Team</strong>
+        </p>
+
+        <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
+
+        <div style="text-align: center; padding: 20px 0;">
+          <p style="color: #666; font-size: 13px; margin-bottom: 12px;">Proudly sponsored by</p>
+          <a href="https://republicofheat.com/?utm_source=heatawards&utm_medium=email&utm_campaign=2026_winners_announcement" target="_blank">
+            <img src="https://heatawards.eu/sponsors/ROH_LOGO.png" alt="Republic of Heat" style="max-width: 180px; height: auto;" />
+          </a>
+          <p style="color: #666; font-size: 13px; margin-top: 8px; line-height: 1.4;">Discover Europe's best hot sauces delivered monthly</p>
+        </div>
+
+        <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
+
+        <p style="color: #666; font-size: 12px; line-height: 1.5;">
+          You're receiving this because you participated in the EU Hot Sauce Awards 2026.
+          If you'd prefer not to receive future updates, <a href="mailto:heataward@gmail.com?subject=Unsubscribe" style="color: #666;">let us know</a>.
+        </p>
+      </div>
+    `,
+    text: `Hi ${name}, the EU Hot Sauce Awards 2026 winners are announced! Watch the video: https://www.youtube.com/watch?v=nQsGH0tPhZ8. Category winners will be posted on Instagram (@republicofheat and @europeanhotsauceawards) over the next few days. Full results go live at https://heatawards.eu/results on 20 May 2026.`,
+  }),
+
   authConfirmationLink: (name: string, magicLink: string, expiryHours: number) => ({
     subject: 'Confirm Your Email - EU Hot Sauce Awards',
     html: `

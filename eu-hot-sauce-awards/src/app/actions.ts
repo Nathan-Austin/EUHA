@@ -3970,3 +3970,159 @@ export async function getJudgeForShipping(judgeId: string): Promise<{
 
   return { judge }
 }
+
+// Winners Announcement
+
+export interface WinnersAnnouncementRecipient {
+  email: string
+  name: string
+  recipientType: 'judge' | 'supplier'
+}
+
+export async function getWinnersAnnouncementRecipients() {
+  const cookieStore = cookies()
+  const supabase = createClient(cookieStore)
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user?.email) return { error: 'You must be logged in.' }
+
+  const { data: adminCheck } = await supabase
+    .from('judges')
+    .select('type')
+    .ilike('email', user.email)
+    .single()
+
+  if (adminCheck?.type !== 'admin') return { error: 'You are not authorized.' }
+
+  const serviceClientResult = getServiceSupabase()
+  if ('error' in serviceClientResult) return { error: serviceClientResult.error }
+  const { client } = serviceClientResult
+
+  const [{ data: judges }, { data: suppliers }] = await Promise.all([
+    client
+      .from('judges')
+      .select('email, name, type')
+      .in('type', ['pro', 'community', 'supplier'])
+      .eq('active', true)
+      .order('name', { ascending: true }),
+    client
+      .from('suppliers')
+      .select('email, brand_name')
+      .not('email', 'is', null)
+      .order('brand_name', { ascending: true }),
+  ])
+
+  // Build deduplicated recipient list — judges first, suppliers fill gaps
+  const seen = new Map<string, WinnersAnnouncementRecipient>()
+
+  for (const j of judges || []) {
+    if (!j.email) continue
+    const key = j.email.toLowerCase()
+    seen.set(key, {
+      email: j.email,
+      name: j.name || j.email.split('@')[0],
+      recipientType: 'judge',
+    })
+  }
+
+  for (const s of suppliers || []) {
+    if (!s.email) continue
+    const key = s.email.toLowerCase()
+    if (!seen.has(key)) {
+      seen.set(key, {
+        email: s.email,
+        name: s.brand_name || s.email.split('@')[0],
+        recipientType: 'supplier',
+      })
+    }
+  }
+
+  return { recipients: Array.from(seen.values()) }
+}
+
+export async function sendWinnersAnnouncement(recipientEmails: string[]) {
+  const cookieStore = cookies()
+  const supabase = createClient(cookieStore)
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user?.email) return { error: 'You must be logged in.' }
+
+  const { data: adminCheck } = await supabase
+    .from('judges')
+    .select('type')
+    .ilike('email', user.email)
+    .single()
+
+  if (adminCheck?.type !== 'admin') return { error: 'You are not authorized.' }
+
+  if (!recipientEmails || recipientEmails.length === 0) return { error: 'No recipients provided.' }
+
+  const serviceClientResult = getServiceSupabase()
+  if ('error' in serviceClientResult) return { error: serviceClientResult.error }
+  const { client } = serviceClientResult
+
+  // Fetch all recipient details in one pass
+  const [{ data: judges }, { data: suppliers }] = await Promise.all([
+    client
+      .from('judges')
+      .select('email, name')
+      .in('email', recipientEmails),
+    client
+      .from('suppliers')
+      .select('email, brand_name')
+      .in('email', recipientEmails),
+  ])
+
+  const nameMap = new Map<string, string>()
+  for (const s of suppliers || []) {
+    if (s.email) nameMap.set(s.email.toLowerCase(), s.brand_name || s.email.split('@')[0])
+  }
+  for (const j of judges || []) {
+    if (j.email) nameMap.set(j.email.toLowerCase(), j.name || j.email.split('@')[0])
+  }
+
+  const results = { sent: [] as string[], failed: [] as { email: string; error: string }[] }
+
+  for (const email of recipientEmails) {
+    try {
+      const name = nameMap.get(email.toLowerCase()) || email.split('@')[0]
+      await sendEmail({ to: email, ...emailTemplates.winnersAnnouncement(name) })
+      results.sent.push(email)
+      await new Promise((resolve) => setTimeout(resolve, 300))
+    } catch (error: any) {
+      results.failed.push({ email, error: error.message })
+    }
+  }
+
+  return {
+    success: true,
+    sent: results.sent.length,
+    failed: results.failed.length,
+    failedEmails: results.failed,
+  }
+}
+
+export async function sendTestWinnersEmail(testEmail: string, name: string) {
+  const cookieStore = cookies()
+  const supabase = createClient(cookieStore)
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user?.email) return { error: 'You must be logged in.' }
+
+  const { data: adminCheck } = await supabase
+    .from('judges')
+    .select('type')
+    .ilike('email', user.email)
+    .single()
+
+  if (adminCheck?.type !== 'admin') return { error: 'You are not authorized.' }
+
+  if (!testEmail || !testEmail.includes('@')) return { error: 'Please provide a valid email address.' }
+
+  try {
+    await sendEmail({ to: testEmail, ...emailTemplates.winnersAnnouncement(name || 'Test User') })
+    return { success: true, message: `Test email sent to ${testEmail}` }
+  } catch (error: any) {
+    return { error: `Failed to send test email: ${error.message}` }
+  }
+}
