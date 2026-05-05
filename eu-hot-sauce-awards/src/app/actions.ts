@@ -3977,7 +3977,10 @@ export interface WinnersAnnouncementRecipient {
   email: string
   name: string
   recipientType: 'judge' | 'supplier'
+  alreadySent: boolean
 }
+
+const WINNERS_EMAIL_TYPE = 'winners_announcement_2026'
 
 export async function getWinnersAnnouncementRecipients() {
   const cookieStore = cookies()
@@ -4003,6 +4006,7 @@ export async function getWinnersAnnouncementRecipients() {
     { data: suppliers },
     { data: judgeParticipations },
     { data: supplierParticipations },
+    { data: auditRows },
   ] = await Promise.all([
     client
       .from('judges')
@@ -4021,7 +4025,16 @@ export async function getWinnersAnnouncementRecipients() {
       .from('supplier_participations')
       .select('email, company_name')
       .not('email', 'is', null),
+    client
+      .from('email_audit')
+      .select('recipient_email')
+      .eq('email_type', WINNERS_EMAIL_TYPE)
+      .eq('status', 'sent'),
   ])
+
+  const alreadySentEmails = new Set(
+    (auditRows || []).map((r: any) => r.recipient_email.toLowerCase())
+  )
 
   // Merge all sources, deduplicating by email.
   // Priority: judges table > judge_participations > suppliers > supplier_participations
@@ -4029,37 +4042,45 @@ export async function getWinnersAnnouncementRecipients() {
 
   for (const r of supplierParticipations || []) {
     if (!r.email) continue
-    seen.set(r.email.toLowerCase(), {
+    const key = r.email.toLowerCase()
+    seen.set(key, {
       email: r.email,
       name: r.company_name || r.email.split('@')[0],
       recipientType: 'supplier',
+      alreadySent: alreadySentEmails.has(key),
     })
   }
 
   for (const r of suppliers || []) {
     if (!r.email) continue
-    seen.set(r.email.toLowerCase(), {
+    const key = r.email.toLowerCase()
+    seen.set(key, {
       email: r.email,
       name: r.brand_name || r.email.split('@')[0],
       recipientType: 'supplier',
+      alreadySent: alreadySentEmails.has(key),
     })
   }
 
   for (const r of judgeParticipations || []) {
     if (!r.email) continue
-    seen.set(r.email.toLowerCase(), {
+    const key = r.email.toLowerCase()
+    seen.set(key, {
       email: r.email,
       name: r.full_name || r.email.split('@')[0],
       recipientType: 'judge',
+      alreadySent: alreadySentEmails.has(key),
     })
   }
 
   for (const r of judges || []) {
     if (!r.email) continue
-    seen.set(r.email.toLowerCase(), {
+    const key = r.email.toLowerCase()
+    seen.set(key, {
       email: r.email,
       name: r.name || r.email.split('@')[0],
       recipientType: 'judge',
+      alreadySent: alreadySentEmails.has(key),
     })
   }
 
@@ -4107,22 +4128,55 @@ export async function sendWinnersAnnouncement(recipientEmails: string[]) {
     if (j.email) nameMap.set(j.email.toLowerCase(), j.name || j.email.split('@')[0])
   }
 
+  // Check which emails already have a successful audit record — skip them
+  const { data: alreadySentRows } = await client
+    .from('email_audit')
+    .select('recipient_email')
+    .eq('email_type', WINNERS_EMAIL_TYPE)
+    .eq('status', 'sent')
+    .in('recipient_email', recipientEmails)
+
+  const alreadySent = new Set(
+    (alreadySentRows || []).map((r: any) => r.recipient_email.toLowerCase())
+  )
+
+  const toSend = recipientEmails.filter((e) => !alreadySent.has(e.toLowerCase()))
+  const skipped = recipientEmails.length - toSend.length
+
   const results = { sent: [] as string[], failed: [] as { email: string; error: string }[] }
 
-  for (const email of recipientEmails) {
+  for (const email of toSend) {
+    const name = nameMap.get(email.toLowerCase()) || email.split('@')[0]
     try {
-      const name = nameMap.get(email.toLowerCase()) || email.split('@')[0]
       await sendEmail({ to: email, ...emailTemplates.winnersAnnouncement(name) })
       results.sent.push(email)
+      await client.from('email_audit').insert({
+        email_type: WINNERS_EMAIL_TYPE,
+        recipient_email: email,
+        year: 2026,
+        sent_at: new Date().toISOString(),
+        sent_by_email: user.email,
+        status: 'sent',
+      })
       await new Promise((resolve) => setTimeout(resolve, 300))
     } catch (error: any) {
       results.failed.push({ email, error: error.message })
+      await client.from('email_audit').insert({
+        email_type: WINNERS_EMAIL_TYPE,
+        recipient_email: email,
+        year: 2026,
+        sent_at: new Date().toISOString(),
+        sent_by_email: user.email,
+        status: 'failed',
+        error_message: error.message,
+      }) // audit failure is non-fatal
     }
   }
 
   return {
     success: true,
     sent: results.sent.length,
+    skipped,
     failed: results.failed.length,
     failedEmails: results.failed,
   }

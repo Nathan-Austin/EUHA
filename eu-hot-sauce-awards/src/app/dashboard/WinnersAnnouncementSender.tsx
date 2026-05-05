@@ -23,6 +23,7 @@ export default function WinnersAnnouncementSender() {
   const [currentBatch, setCurrentBatch] = useState(0)
   const [totalBatches, setTotalBatches] = useState(0)
   const [totalSent, setTotalSent] = useState(0)
+  const [totalSkipped, setTotalSkipped] = useState(0)
   const [allFailed, setAllFailed] = useState<{ email: string; error: string }[]>([])
   const [showFailed, setShowFailed] = useState(false)
   const [countdown, setCountdown] = useState<number | null>(null)
@@ -54,9 +55,10 @@ export default function WinnersAnnouncementSender() {
   }
 
   async function handleSend() {
+    const pending = recipients.filter((r) => !r.alreadySent)
     const batches: string[][] = []
-    for (let i = 0; i < recipients.length; i += BATCH_SIZE) {
-      batches.push(recipients.slice(i, i + BATCH_SIZE).map((r) => r.email))
+    for (let i = 0; i < pending.length; i += BATCH_SIZE) {
+      batches.push(pending.slice(i, i + BATCH_SIZE).map((r) => r.email))
     }
 
     if (!confirm(`Send winners announcement to ${recipients.length} recipients in ${batches.length} batches of ${BATCH_SIZE}? This will take approximately ${Math.ceil(batches.length * (BATCH_WAIT_SECONDS + 15) / 60)} minutes.`)) return
@@ -65,11 +67,13 @@ export default function WinnersAnnouncementSender() {
     setCurrentBatch(0)
     setTotalBatches(batches.length)
     setTotalSent(0)
+    setTotalSkipped(0)
     setAllFailed([])
     setMessage(null)
     abortRef.current = false
 
     let sent = 0
+    let skipped = 0
     const failed: { email: string; error: string }[] = []
 
     for (let i = 0; i < batches.length; i++) {
@@ -87,8 +91,10 @@ export default function WinnersAnnouncementSender() {
           break
         }
         sent += result.sent
+        skipped += result.skipped ?? 0
         failed.push(...(result.failedEmails || []))
         setTotalSent(sent)
+        setTotalSkipped(skipped)
         setAllFailed([...failed])
       } catch (error: any) {
         setMessage({ type: 'error', text: `Batch ${i + 1} failed: ${error.message}` })
@@ -107,7 +113,7 @@ export default function WinnersAnnouncementSender() {
     if (!abortRef.current) {
       setMessage({
         type: failed.length > 0 ? 'error' : 'success',
-        text: `Done! Sent ${sent} emails.${failed.length > 0 ? ` ${failed.length} failed.` : ''}`,
+        text: `Done! Sent ${sent} emails.${skipped > 0 ? ` ${skipped} already sent (skipped).` : ''}${failed.length > 0 ? ` ${failed.length} failed.` : ''}`,
       })
       if (failed.length > 0) setShowFailed(true)
     }
@@ -183,7 +189,9 @@ export default function WinnersAnnouncementSender() {
 
   const judgeCount = recipients.filter((r) => r.recipientType === 'judge').length
   const supplierCount = recipients.filter((r) => r.recipientType === 'supplier').length
-  const batchCount = Math.ceil(recipients.length / BATCH_SIZE)
+  const alreadySentCount = recipients.filter((r) => r.alreadySent).length
+  const pendingCount = recipients.length - alreadySentCount
+  const batchCount = Math.ceil(pendingCount / BATCH_SIZE)
 
   if (loading) {
     return (
@@ -230,7 +238,9 @@ export default function WinnersAnnouncementSender() {
               <p className="text-sm font-semibold text-blue-900">
                 Batch {currentBatch} of {totalBatches}
               </p>
-              <p className="text-sm text-blue-700">{totalSent} sent so far</p>
+              <p className="text-sm text-blue-700">
+                {totalSent} sent{totalSkipped > 0 ? `, ${totalSkipped} skipped (already sent)` : ''}
+              </p>
             </div>
             <button
               onClick={handleStop}
@@ -305,19 +315,22 @@ export default function WinnersAnnouncementSender() {
             <h4 className="text-lg font-semibold text-gray-900">All Judges &amp; Suppliers</h4>
             <p className="text-sm text-gray-600 mt-1">
               {recipients.length} total &bull; {judgeCount} judges &bull; {supplierCount} suppliers
-              &bull; {batchCount} batch{batchCount !== 1 ? 'es' : ''} of {BATCH_SIZE}
+            </p>
+            <p className="text-sm text-gray-600">
+              {pendingCount} to send &bull; {alreadySentCount} already sent
+              {pendingCount > 0 ? ` &bull; ${batchCount} batch${batchCount !== 1 ? 'es' : ''} of ${BATCH_SIZE}` : ''}
             </p>
           </div>
           <button
             onClick={handleSend}
-            disabled={sending || recipients.length === 0}
+            disabled={sending || pendingCount === 0}
             className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
-              recipients.length === 0 || sending
+              pendingCount === 0 || sending
                 ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                 : 'bg-orange-600 text-white hover:bg-orange-700'
             }`}
           >
-            {sending ? 'Sending…' : `Send to ${recipients.length}`}
+            {sending ? 'Sending…' : pendingCount === 0 ? 'All sent' : `Send to ${pendingCount}`}
           </button>
         </div>
 
@@ -374,11 +387,12 @@ export default function WinnersAnnouncementSender() {
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-600">Name</th>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-600">Email</th>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-600">Type</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-600">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {recipients.map((r) => (
-                  <tr key={r.email} className="hover:bg-gray-50">
+                  <tr key={r.email} className={`hover:bg-gray-50 ${r.alreadySent ? 'opacity-50' : ''}`}>
                     <td className="px-3 py-2 text-gray-900">{r.name}</td>
                     <td className="px-3 py-2 text-gray-600">{r.email}</td>
                     <td className="px-3 py-2">
@@ -391,6 +405,13 @@ export default function WinnersAnnouncementSender() {
                       >
                         {r.recipientType}
                       </span>
+                    </td>
+                    <td className="px-3 py-2">
+                      {r.alreadySent ? (
+                        <span className="inline-block px-2 py-1 text-xs font-medium rounded bg-gray-100 text-gray-500">sent</span>
+                      ) : (
+                        <span className="inline-block px-2 py-1 text-xs font-medium rounded bg-orange-100 text-orange-700">pending</span>
+                      )}
                     </td>
                   </tr>
                 ))}
