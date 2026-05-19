@@ -28,7 +28,7 @@ interface RankedSauce {
   year: number;
 }
 
-async function getTopRankings(year: number = PAST_RESULTS_YEAR) {
+async function getTopRankings(year: number) {
   const { cookies } = await import('next/headers');
   const supabase = createClient(cookies());
 
@@ -48,8 +48,10 @@ async function getTopRankings(year: number = PAST_RESULTS_YEAR) {
   return data as RankedSauce[];
 }
 
-const RankingsPage = async () => {
-  const rankings = await getTopRankings();
+const RankingsPage = async ({ searchParams }: { searchParams: { year?: string } }) => {
+  const year = searchParams.year ? parseInt(searchParams.year, 10) : PAST_RESULTS_YEAR;
+  const rankings = await getTopRankings(year);
+  const previousYear = year - 1;
 
   const getCountryFlag = (country: string | null) => {
     if (!country) return '';
@@ -81,7 +83,7 @@ const RankingsPage = async () => {
     <div className="bg-[#08040e] min-h-screen">
       <Hero
         title="Global Rankings"
-        subtitle={`Top ${rankings.length} Hot Sauces of ${PAST_RESULTS_YEAR}`}
+        subtitle={`Top ${rankings.length} Hot Sauces of ${year}`}
       />
 
       <div className="space-y-10 md:space-y-16 py-10 md:py-16">
@@ -89,7 +91,7 @@ const RankingsPage = async () => {
           <div className="max-w-6xl mx-auto">
             <div className="flex justify-center mb-8">
               <div className="bg-black/30 py-3 px-6 rounded-full border border-white/20">
-                <span className="text-xl font-bold text-amber-200 uppercase tracking-wider">{PAST_RESULTS_YEAR} Rankings</span>
+                <span className="text-xl font-bold text-amber-200 uppercase tracking-wider">{year} Rankings</span>
               </div>
             </div>
 
@@ -130,10 +132,10 @@ const RankingsPage = async () => {
                             </td>
                             <td className="p-4">
                               <div className="flex items-center gap-4">
-                                {sauce.code && (
+                                {(sauce.product_image_url || sauce.code) && (
                                   <div className="relative w-16 h-16 rounded-lg overflow-hidden bg-black/20 flex-shrink-0">
                                     <Image
-                                      src={`/images/${sauce.code}.jpg`}
+                                      src={sauce.product_image_url || `/images/${sauce.code}.jpg`}
                                       alt={sauce.entry_name}
                                       fill
                                       className="object-contain"
@@ -185,12 +187,18 @@ const RankingsPage = async () => {
                   </p>
                 </div>
 
-                <div className="mt-8 text-center">
+                <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center items-center">
                   <Link
-                    href={`/results/${PAST_RESULTS_YEAR}`}
+                    href={`/results/${year}`}
                     className="inline-block rounded-full bg-gradient-to-r from-[#ff4d00] to-[#f1b12e] px-8 py-4 text-sm font-semibold uppercase tracking-[0.2em] text-white transition hover:from-[#ff7033] hover:to-[#ffd060]"
                   >
-                    View All {PAST_RESULTS_YEAR} Results
+                    View All {year} Results
+                  </Link>
+                  <Link
+                    href={`/rankings?year=${previousYear}`}
+                    className="inline-block rounded-full border border-white/30 px-8 py-4 text-sm font-semibold uppercase tracking-[0.2em] text-white/70 transition hover:border-white/60 hover:text-white"
+                  >
+                    {previousYear} Global Rankings
                   </Link>
                 </div>
               </>

@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 };
 
 // Mock data
-const availableYears = [2025, 2024];
+const availableYears = [2026, 2025, 2024];
 
 const ResultsPage = () => {
   return (
