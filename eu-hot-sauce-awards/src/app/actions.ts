@@ -4279,7 +4279,7 @@ function buildResultsHTML(brandName: string, sauces: SauceEmailData[]): string {
 
   const sauceBlock = (sauce: SauceEmailData) => {
     const stickerNote = sauce.award
-      ? `<p style="margin:12px 0 0;color:#fabf14;font-size:12px">🏆 Your award sticker is attached — feel free to use it on your packaging!</p>`
+      ? `<p style="margin:12px 0 0;color:#fabf14;font-size:12px">🏆 Your award sticker and digital certificate are attached — feel free to use them on your packaging and marketing!</p>`
       : ''
     return `<div style="margin-bottom:32px;padding:20px;background:#111;border-radius:10px;border:1px solid #2a2a2a"><div style="margin-bottom:12px"><h2 style="margin:0 0 4px;color:#fff;font-size:18px">${sauce.sauce_name}</h2><p style="margin:0;color:#888;font-size:13px">${sauce.sauce_category}</p></div><div style="margin-bottom:16px">${resultBadge(sauce)}</div>${sauce.global_rank ? `<p style="color:#fabf14;font-size:12px;margin:0 0 12px">🌍 Global Rank #${sauce.global_rank}</p>` : ''}${scoresTable(sauce.scores, sauce.overall_avg)}${commentsSection(sauce.comments)}${stickerNote}</div>`
   }
@@ -4289,38 +4289,58 @@ function buildResultsHTML(brandName: string, sauces: SauceEmailData[]): string {
     : `<p>Thank you for entering the <strong>2026 European Hot Sauce Awards</strong>. Below you'll find the detailed judging scores and feedback for your sauce${sauces.length > 1 ? 's' : ''}.</p>`
 
   const stickerNote = hasMedals
-    ? `<div style="background:#1a1a1a;border:1px solid #fabf14;border-radius:8px;padding:16px;margin:20px 0"><p style="margin:0;color:#fabf14;font-weight:bold">🏅 Award Stickers</p><p style="margin:8px 0 0;color:#ccc;font-size:14px">Your award sticker${medalCount > 1 ? 's are' : ' is'} attached to this email as PNG files. You're welcome to use them on your bottle labels, packaging, and marketing materials.</p></div>`
+    ? `<div style="background:#1a1a1a;border:1px solid #fabf14;border-radius:8px;padding:16px;margin:20px 0"><p style="margin:0;color:#fabf14;font-weight:bold">🏅 Award Stickers & Certificates</p><p style="margin:8px 0 0;color:#ccc;font-size:14px">Your award sticker${medalCount > 1 ? 's are' : ' is'} attached to this email as PNG files, along with a personalised digital certificate for each winning sauce. You're welcome to use them on your bottle labels, packaging, and marketing materials.</p></div>`
     : ''
 
   return `${emailBanner}<div style="background:#08040e;padding:24px;font-family:Arial,sans-serif;max-width:600px;margin:0 auto;color:#fff"><h1 style="color:#ff4d00;margin-top:0">Your 2026 Results</h1><p>Dear ${brandName},</p>${intro}<p style="color:#888;font-size:13px">Scores are averaged across all judges on a scale of 1–10. We don't share individual judge details or how many judges scored each sauce.</p>${stickerNote}<hr style="border:none;border-top:1px solid #2a2a2a;margin:24px 0">${sauces.map(sauceBlock).join('')}<hr style="border:none;border-top:1px solid #2a2a2a;margin:24px 0"><p style="color:#888;font-size:13px">Results are published at <a href="https://heatawards.eu/results/2026" style="color:#ff4d00">heatawards.eu/results/2026</a>.</p><p style="color:#888;font-size:13px">Questions? Reply to this email or contact <a href="mailto:heataward@gmail.com" style="color:#ff4d00">heataward@gmail.com</a></p><p style="color:#555;font-size:12px;margin-top:24px">European Hot Sauce Awards 2026</p></div>`
 }
 
-function buildResultsEmailForSupplier(
+async function buildResultsEmailForSupplier(
   brandName: string,
   sauces: SauceEmailData[]
-): { subject: string; html: string; attachments: Array<{ filename: string; path: string }> } {
+): Promise<{ subject: string; html: string; attachments: Array<{ filename: string; content: Buffer; contentType: string }> }> {
   const hasMedals = sauces.some(s => s.award)
   const subject = hasMedals
     ? '🏆 Your 2026 EU Hot Sauce Awards Results & Award Stickers'
     : 'Your 2026 EU Hot Sauce Awards Results & Feedback'
 
+  const stickersDir = path.join(process.cwd(), 'public', 'stickers')
   const stickerFiles: Record<string, string> = {
     'GOLD (winner)': 'gold-winner.png',
     'GOLD': 'gold.png',
     'SILVER': 'silver.png',
     'BRONZE': 'bronze.png',
   }
-  const stickersDir = path.join(process.cwd(), 'public', 'stickers')
+
+  const CERT_BASE_URL = 'https://csweurtdldauwrthqafo.supabase.co/storage/v1/object/public/sauce-media/certificates-2026'
+
+  const attachments: Array<{ filename: string; content: Buffer; contentType: string }> = []
+
+  // Attach stickers (one per unique award type)
   const awardTypes = new Set(sauces.map(s => s.award).filter(Boolean) as string[])
-  const attachments = Array.from(awardTypes)
-    .filter(award => stickerFiles[award])
-    .map(award => ({
-      filename: stickerFiles[award],
-      path: path.join(stickersDir, stickerFiles[award]),
-    }))
-    .filter(a => {
-      try { fs.accessSync(a.path); return true } catch { return false }
-    })
+  for (const award of awardTypes) {
+    const stickerFile = stickerFiles[award]
+    if (!stickerFile) continue
+    const stickerPath = path.join(stickersDir, stickerFile)
+    try {
+      fs.accessSync(stickerPath)
+      attachments.push({ filename: stickerFile, content: fs.readFileSync(stickerPath), contentType: 'image/png' })
+    } catch { /* sticker file missing, skip */ }
+  }
+
+  // Attach a personalised certificate for each medal-winning sauce
+  const medalSauces = sauces.filter(s => s.award && s.sauce_code)
+  for (const sauce of medalSauces) {
+    try {
+      const certUrl = `${CERT_BASE_URL}/${sauce.sauce_code}.jpg`
+      const res = await fetch(certUrl)
+      if (res.ok) {
+        const buf = Buffer.from(await res.arrayBuffer())
+        const safeName = sauce.sauce_name.replace(/[^a-zA-Z0-9\-_. ]/g, '').trim().substring(0, 60)
+        attachments.push({ filename: `${safeName} - Certificate.jpg`, content: buf, contentType: 'image/jpeg' })
+      }
+    } catch { /* cert fetch failed, skip */ }
+  }
 
   return { subject, html: buildResultsHTML(brandName, sauces), attachments }
 }
@@ -4508,7 +4528,7 @@ export async function sendResultsFeedbackBatch(supplierEmails: string[]) {
     if (sauces.length === 0) { results.skipped++; continue }
 
     const brandName = supplier.brand_name || supplier.contact_name || supplier.email.split('@')[0]
-    const { subject, html, attachments } = buildResultsEmailForSupplier(brandName, sauces)
+    const { subject, html, attachments } = await buildResultsEmailForSupplier(brandName, sauces)
 
     try {
       await sendEmail({ to: supplier.email, subject, html, attachments })
@@ -4581,7 +4601,7 @@ export async function sendTestResultsFeedback(testEmail: string, targetSupplierE
   if (sauces.length === 0) return { error: 'No judged sauces found for this supplier.' }
 
   const brandName = supplier.brand_name || supplier.contact_name || supplier.email.split('@')[0]
-  const { subject, html, attachments } = buildResultsEmailForSupplier(brandName, sauces)
+  const { subject, html, attachments } = await buildResultsEmailForSupplier(brandName, sauces)
 
   try {
     await sendEmail({ to: testEmail, subject: `[TEST — ${brandName}] ${subject}`, html, attachments })
