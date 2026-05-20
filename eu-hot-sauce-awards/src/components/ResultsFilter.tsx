@@ -279,10 +279,10 @@ export default function ResultsFilter({ results }: ResultsFilterProps) {
                     className="bg-black/30 p-6 rounded-lg border border-white/10 hover:border-amber-200/30 transition group"
                   >
                     {/* Product Image (served from Vercel public folder) */}
-                    {winner.code && (
+                    {(winner.product_image_url || winner.code) && (
                       <div className="relative w-full h-48 mb-4 rounded-lg overflow-hidden bg-black/20">
                         <Image
-                          src={`/images/${winner.code}.jpg`}
+                          src={winner.product_image_url || `/images/${winner.code}.jpg`}
                           alt={winner.entry_name}
                           fill
                           className="object-contain group-hover:scale-105 transition-transform"

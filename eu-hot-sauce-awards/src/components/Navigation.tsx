@@ -93,8 +93,9 @@ const Navigation = () => {
               <DropdownLink href="/packing-sheet">Packing Sheet</DropdownLink>
             </Dropdown>
             <Dropdown title="Results">
-              <DropdownLink href="/results">Past Results</DropdownLink>
+              <DropdownLink href="/results/2026">2026 Results</DropdownLink>
               <DropdownLink href="/rankings">Global Rankings</DropdownLink>
+              <DropdownLink href="/results">Past Results</DropdownLink>
             </Dropdown>
             <NavLink href="/events">Events</NavLink>
             <NavLink href="/sponsors">Sponsors</NavLink>
@@ -146,8 +147,9 @@ const Navigation = () => {
               <DropdownLink href="/packing-sheet" onClick={closeMobileMenu}>Packing Sheet</DropdownLink>
             </MobileDropdown>
             <MobileDropdown title="Results">
-              <DropdownLink href="/results" onClick={closeMobileMenu}>Past Results</DropdownLink>
+              <DropdownLink href="/results/2026" onClick={closeMobileMenu}>2026 Results</DropdownLink>
               <DropdownLink href="/rankings" onClick={closeMobileMenu}>Global Rankings</DropdownLink>
+              <DropdownLink href="/results" onClick={closeMobileMenu}>Past Results</DropdownLink>
             </MobileDropdown>
             <NavLink href="/events" onClick={closeMobileMenu}>Events</NavLink>
             <NavLink href="/sponsors" onClick={closeMobileMenu}>Sponsors</NavLink>
