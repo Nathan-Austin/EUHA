@@ -58,7 +58,8 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const payload: JudgePayload = await req.json();
+    const raw: JudgePayload = await req.json();
+    const payload: JudgePayload = { ...raw, email: raw.email.trim().toLowerCase() };
 
     const supabaseAdmin = createClient(
       Deno.env.get('PROJECT_URL') ?? '',

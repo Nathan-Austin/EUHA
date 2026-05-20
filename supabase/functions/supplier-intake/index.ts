@@ -123,7 +123,7 @@ Deno.serve(async (req) => {
       throw new Error('At least one sauce entry is required.');
     }
 
-    const trimmedEmail = payload.email.trim();
+    const trimmedEmail = payload.email.trim().toLowerCase();
 
     currentStep = 'init-supabase-client';
     // Initialize Supabase client with service role (bypasses RLS)
