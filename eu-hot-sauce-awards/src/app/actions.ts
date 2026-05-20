@@ -4610,3 +4610,67 @@ export async function sendTestResultsFeedback(testEmail: string, targetSupplierE
     return { error: `Failed to send test email: ${error.message}` }
   }
 }
+
+// Called from the background API route — no auth check (caller is responsible)
+export async function sendAllResultsFeedbackEmails(adminEmail: string): Promise<void> {
+  const serviceClientResult = getServiceSupabase()
+  if ('error' in serviceClientResult) return
+
+  const { client } = serviceClientResult
+  const { scoresByCode, rankByCode, resultByCode } = await loadResultsEmailData(client)
+
+  const [{ data: suppliers }, { data: allSauces }, { data: auditRows }] = await Promise.all([
+    client.from('suppliers').select('id, email, brand_name, contact_name'),
+    client.from('sauces').select('supplier_id, name, sauce_code, category').not('sauce_code', 'is', null),
+    client.from('email_audit').select('recipient_email').eq('email_type', RESULTS_EMAIL_TYPE).eq('status', 'sent'),
+  ])
+
+  const alreadySent = new Set((auditRows ?? []).map((r: any) => r.recipient_email.toLowerCase()))
+
+  const saucesBySupplier = new Map<string, any[]>()
+  for (const s of allSauces ?? []) {
+    if (!saucesBySupplier.has(s.supplier_id)) saucesBySupplier.set(s.supplier_id, [])
+    saucesBySupplier.get(s.supplier_id)!.push(s)
+  }
+
+  for (const supplier of suppliers ?? []) {
+    if (!supplier.email) continue
+    if (alreadySent.has(supplier.email.toLowerCase())) continue
+
+    const sauces = (saucesBySupplier.get(supplier.id) ?? [])
+      .map(s => buildSauceEmailData(s as any, scoresByCode, rankByCode, resultByCode))
+      .filter(Boolean) as SauceEmailData[]
+
+    if (sauces.length === 0) continue
+
+    const brandName = supplier.brand_name || supplier.contact_name || supplier.email.split('@')[0]
+    const { subject, html, attachments } = await buildResultsEmailForSupplier(brandName, sauces)
+
+    try {
+      await sendEmail({ to: supplier.email, subject, html, attachments })
+      await client.from('email_audit').insert({
+        email_type: RESULTS_EMAIL_TYPE,
+        recipient_email: supplier.email,
+        supplier_id: supplier.id,
+        year: 2026,
+        sent_at: new Date().toISOString(),
+        sent_by_email: adminEmail,
+        status: 'sent',
+        metadata: { sauce_codes: sauces.map(s => s.sauce_code), awards: sauces.map(s => s.award).filter(Boolean) },
+      })
+    } catch (error: any) {
+      await client.from('email_audit').insert({
+        email_type: RESULTS_EMAIL_TYPE,
+        recipient_email: supplier.email,
+        supplier_id: supplier.id,
+        year: 2026,
+        sent_at: new Date().toISOString(),
+        sent_by_email: adminEmail,
+        status: 'error',
+        error_message: error.message,
+      })
+    }
+
+    await new Promise(r => setTimeout(r, 200))
+  }
+}

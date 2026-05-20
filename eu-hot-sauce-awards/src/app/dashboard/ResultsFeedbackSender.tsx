@@ -1,15 +1,11 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import {
   getResultsFeedbackRecipients,
-  sendResultsFeedbackBatch,
   sendTestResultsFeedback,
   type ResultsRecipient,
 } from '@/app/actions'
-
-const BATCH_SIZE = 30
-const BATCH_WAIT_SECONDS = 90
 
 export default function ResultsFeedbackSender() {
   const [recipients, setRecipients] = useState<ResultsRecipient[]>([])
@@ -20,14 +16,6 @@ export default function ResultsFeedbackSender() {
 
   // Batch send state
   const [sending, setSending] = useState(false)
-  const [currentBatch, setCurrentBatch] = useState(0)
-  const [totalBatches, setTotalBatches] = useState(0)
-  const [totalSent, setTotalSent] = useState(0)
-  const [totalSkipped, setTotalSkipped] = useState(0)
-  const [allFailed, setAllFailed] = useState<{ email: string; error: string }[]>([])
-  const [showFailed, setShowFailed] = useState(false)
-  const [countdown, setCountdown] = useState<number | null>(null)
-  const abortRef = useRef(false)
 
   // Test state
   const [testSending, setTestSending] = useState(false)
@@ -55,115 +43,45 @@ export default function ResultsFeedbackSender() {
   }
 
   async function handleSend() {
-    const pending = recipients.filter(r => !r.alreadySent)
-    const batches: string[][] = []
-    for (let i = 0; i < pending.length; i += BATCH_SIZE) {
-      batches.push(pending.slice(i, i + BATCH_SIZE).map(r => r.email))
-    }
-
-    if (!confirm(`Send results feedback to ${pending.length} suppliers in ${batches.length} batch${batches.length !== 1 ? 'es' : ''} of ${BATCH_SIZE}? This will take approximately ${Math.ceil(batches.length * (BATCH_WAIT_SECONDS + 15) / 60)} minutes.`)) return
+    if (!confirm(`Send results feedback to ${pendingCount} suppliers? The send runs server-side — you can close this tab and it will continue.`)) return
 
     setSending(true)
-    setCurrentBatch(0)
-    setTotalBatches(batches.length)
-    setTotalSent(0)
-    setTotalSkipped(0)
-    setAllFailed([])
     setMessage(null)
-    abortRef.current = false
 
-    let sent = 0
-    let skipped = 0
-    const failed: { email: string; error: string }[] = []
-
-    for (let i = 0; i < batches.length; i++) {
-      if (abortRef.current) {
-        setMessage({ type: 'error', text: `Stopped after ${sent} sends.` })
-        break
+    try {
+      const res = await fetch('/api/results-email-worker', { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok || data.error) {
+        setMessage({ type: 'error', text: data.error || 'Failed to start send job' })
+        setSending(false)
+        return
       }
-
-      setCurrentBatch(i + 1)
-
-      try {
-        const result = await sendResultsFeedbackBatch(batches[i])
-        if ('error' in result) {
-          setMessage({ type: 'error', text: result.error || 'Batch failed' })
-          break
-        }
-        sent += result.sent
-        skipped += result.skipped ?? 0
-        failed.push(...(result.failedEmails || []))
-        setTotalSent(sent)
-        setTotalSkipped(skipped)
-        setAllFailed([...failed])
-      } catch (error: any) {
-        setMessage({ type: 'error', text: `Batch ${i + 1} failed: ${error.message}` })
-        break
-      }
-
-      if (i < batches.length - 1 && !abortRef.current) {
-        await waitWithCountdown(BATCH_WAIT_SECONDS)
-      }
-    }
-
-    setCountdown(null)
-    setSending(false)
-
-    if (!abortRef.current) {
-      setMessage({
-        type: failed.length > 0 ? 'error' : 'success',
-        text: `Done! Sent ${sent} emails.${skipped > 0 ? ` ${skipped} skipped (no judged sauces or already sent).` : ''}${failed.length > 0 ? ` ${failed.length} failed.` : ''}`,
-      })
-      if (failed.length > 0) setShowFailed(true)
-      loadRecipients()
+      setMessage({ type: 'success', text: 'Send job started server-side. Progress updates every 10s.' })
+      startPolling()
+    } catch (error: any) {
+      setMessage({ type: 'error', text: error.message })
+      setSending(false)
     }
   }
 
-  function waitWithCountdown(seconds: number): Promise<void> {
-    return new Promise(resolve => {
-      let remaining = seconds
-      setCountdown(remaining)
-      const interval = setInterval(() => {
-        remaining -= 1
-        if (remaining <= 0 || abortRef.current) {
+  function startPolling() {
+    const interval = setInterval(async () => {
+      const result = await getResultsFeedbackRecipients()
+      if (!('error' in result)) {
+        setRecipients(result.recipients || [])
+        const stillPending = (result.recipients || []).filter((r: any) => !r.alreadySent).length
+        if (stillPending === 0) {
           clearInterval(interval)
-          setCountdown(null)
-          resolve()
-        } else {
-          setCountdown(remaining)
+          setSending(false)
+          setMessage({ type: 'success', text: 'All done! All emails sent.' })
         }
-      }, 1000)
-    })
+      }
+    }, 10000)
   }
 
   function handleStop() {
-    abortRef.current = true
-  }
-
-  async function handleRetryFailed() {
-    if (!confirm(`Retry ${allFailed.length} failed emails?`)) return
-    setSending(true)
-    setMessage(null)
-    abortRef.current = false
-    const emails = allFailed.map(f => f.email)
-    try {
-      const result = await sendResultsFeedbackBatch(emails)
-      if ('error' in result) {
-        setMessage({ type: 'error', text: result.error || 'Retry failed' })
-      } else {
-        const stillFailed = result.failedEmails || []
-        setAllFailed(stillFailed)
-        setTotalSent(prev => prev + result.sent)
-        setMessage({
-          type: stillFailed.length > 0 ? 'error' : 'success',
-          text: `Retried: ${result.sent} sent${stillFailed.length > 0 ? `, ${stillFailed.length} still failing` : ''}`,
-        })
-      }
-    } catch (error: any) {
-      setMessage({ type: 'error', text: error.message })
-    } finally {
-      setSending(false)
-    }
+    setSending(false)
+    setMessage({ type: 'error', text: 'Stopped polling — send job may still be running server-side.' })
   }
 
   async function handleSendTest() {
@@ -194,7 +112,6 @@ export default function ResultsFeedbackSender() {
   const alreadySentCount = recipients.filter(r => r.alreadySent).length
   const pendingCount = recipients.length - alreadySentCount
   const medalWinnerCount = recipients.filter(r => r.medalCount > 0).length
-  const batchCount = Math.ceil(pendingCount / BATCH_SIZE)
 
   if (loading) {
     return (
@@ -210,8 +127,8 @@ export default function ResultsFeedbackSender() {
         <h3 className="text-xl font-semibold text-gray-900 mb-1">Results Feedback 2026</h3>
         <p className="text-sm text-gray-600">
           Send each supplier their personalised judging scores, judge comments, and award sticker
-          attachments. One email per supplier covering all their sauces. Sends in batches of{' '}
-          {BATCH_SIZE} with a {BATCH_WAIT_SECONDS}s pause between batches to stay within Gmail limits.
+          attachments. One email per supplier covering all their sauces. Runs entirely server-side —
+          safe to close this tab once started.
         </p>
       </div>
 
@@ -227,81 +144,21 @@ export default function ResultsFeedbackSender() {
         </div>
       )}
 
-      {/* Batch progress */}
+      {/* Send progress */}
       {sending && (
         <div className="border border-blue-200 rounded-xl p-4 bg-blue-50">
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-semibold text-blue-900">
-                Batch {currentBatch} of {totalBatches}
-              </p>
-              <p className="text-sm text-blue-700">
-                {totalSent} sent{totalSkipped > 0 ? `, ${totalSkipped} skipped` : ''}
-              </p>
+              <p className="text-sm font-semibold text-blue-900">Sending server-side…</p>
+              <p className="text-sm text-blue-700">{alreadySentCount} sent so far — polling for updates every 10s</p>
             </div>
             <button
               onClick={handleStop}
               className="px-3 py-1 bg-red-600 text-white rounded-lg text-xs font-medium hover:bg-red-700"
             >
-              Stop
+              Stop polling
             </button>
           </div>
-          <div className="w-full bg-blue-200 rounded-full h-2 mb-3">
-            <div
-              className="bg-blue-600 h-2 rounded-full transition-all duration-500"
-              style={{ width: `${(currentBatch / totalBatches) * 100}%` }}
-            />
-          </div>
-          {countdown !== null ? (
-            <p className="text-sm text-blue-700 text-center">
-              Next batch in <strong>{countdown}s</strong>…
-            </p>
-          ) : (
-            <p className="text-sm text-blue-700 text-center">Sending batch {currentBatch}…</p>
-          )}
-        </div>
-      )}
-
-      {/* Failed emails */}
-      {allFailed.length > 0 && !sending && (
-        <div className="border border-red-200 rounded-xl p-4 bg-red-50">
-          <div className="flex items-center justify-between mb-3">
-            <h4 className="text-sm font-semibold text-red-800">{allFailed.length} failed sends</h4>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setShowFailed(!showFailed)}
-                className="text-sm text-red-600 hover:text-red-700 font-medium"
-              >
-                {showFailed ? '▼ Hide' : '▶ Show'} details
-              </button>
-              <button
-                onClick={handleRetryFailed}
-                className="px-3 py-1 bg-red-600 text-white rounded-lg text-xs font-medium hover:bg-red-700"
-              >
-                Retry {allFailed.length}
-              </button>
-            </div>
-          </div>
-          {showFailed && (
-            <div className="bg-white rounded-lg border border-red-200 max-h-48 overflow-y-auto">
-              <table className="min-w-full text-sm">
-                <thead className="bg-red-50 sticky top-0">
-                  <tr>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-red-700">Email</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-red-700">Error</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-red-100">
-                  {allFailed.map(f => (
-                    <tr key={f.email}>
-                      <td className="px-3 py-2 text-gray-900">{f.email}</td>
-                      <td className="px-3 py-2 text-red-700 text-xs">{f.error}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
         </div>
       )}
 
@@ -315,7 +172,6 @@ export default function ResultsFeedbackSender() {
             </p>
             <p className="text-sm text-gray-600">
               {pendingCount} to send &bull; {alreadySentCount} already sent
-              {pendingCount > 0 ? ` &bull; ${batchCount} batch${batchCount !== 1 ? 'es' : ''} of ${BATCH_SIZE}` : ''}
             </p>
           </div>
           <button
