@@ -5,6 +5,8 @@ import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { revalidatePath } from 'next/cache'
 import { sendEmail, emailTemplates } from '@/lib/email'
+import * as fs from 'fs'
+import * as path from 'path'
 import { COMPETITION_YEAR } from '@/lib/config'
 
 type SauceStatus = 'registered' | 'arrived' | 'boxed' | 'judged';
@@ -4202,6 +4204,388 @@ export async function sendTestWinnersEmail(testEmail: string, name: string) {
   try {
     await sendEmail({ to: testEmail, ...emailTemplates.winnersAnnouncement(name || 'Test User') })
     return { success: true, message: `Test email sent to ${testEmail}` }
+  } catch (error: any) {
+    return { error: `Failed to send test email: ${error.message}` }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Results Feedback 2026
+// ---------------------------------------------------------------------------
+
+const RESULTS_EMAIL_TYPE = 'results_feedback_2026'
+
+export interface ResultsRecipient {
+  supplierId: string
+  email: string
+  brandName: string
+  sauceCount: number
+  medalCount: number
+  alreadySent: boolean
+}
+
+function ordinalSuffix(n: number): string {
+  const s = ['th', 'st', 'nd', 'rd']
+  const v = n % 100
+  return n + (s[(v - 20) % 10] || s[v] || s[0])
+}
+
+interface CategoryScore { category: string; avg_score: number }
+interface SauceEmailData {
+  sauce_code: string
+  sauce_name: string
+  sauce_category: string
+  award: string | null
+  global_rank: number | null
+  category_rank: number | null
+  category_total: number | null
+  overall_avg: number
+  scores: CategoryScore[]
+  comments: string[]
+}
+
+function buildResultsHTML(brandName: string, sauces: SauceEmailData[]): string {
+  const emailBanner = '<div style="background-color: #fabf14; padding: 20px 0; text-align: center;"><img src="https://heatawards.eu/cropped-banner-website.png" alt="European Hot Sauce Awards" style="max-width: 600px; width: 100%; height: auto;" /></div>'
+
+  const hasMedals = sauces.some(s => s.award)
+  const medalCount = sauces.filter(s => s.award).length
+
+  const resultBadge = (sauce: SauceEmailData) => {
+    if (sauce.award) {
+      const colors: Record<string, string> = {
+        'GOLD (winner)': '#B8860B', 'GOLD': '#B8860B', 'SILVER': '#707070', 'BRONZE': '#8B4513',
+      }
+      const bg = colors[sauce.award] ?? '#555'
+      return `<span style="display:inline-block;padding:4px 14px;border-radius:20px;background:${bg};color:#fff;font-weight:bold;font-size:13px;letter-spacing:1px;text-transform:uppercase">${sauce.award}</span>`
+    }
+    if (sauce.category_rank && sauce.category_total) {
+      return `<span style="display:inline-block;padding:4px 14px;border-radius:20px;background:#333;color:#aaa;font-size:13px">${ordinalSuffix(sauce.category_rank)} out of ${sauce.category_total} in ${sauce.sauce_category}</span>`
+    }
+    return ''
+  }
+
+  const scoresTable = (scores: CategoryScore[], overall: number) => {
+    const rows = scores.map(s =>
+      `<tr><td style="padding:6px 12px;border-bottom:1px solid #333;color:#ccc">${s.category}</td><td style="padding:6px 12px;border-bottom:1px solid #333;text-align:right;font-weight:bold;color:#fabf14">${Number(s.avg_score).toFixed(1)}<span style="color:#888;font-size:11px">/10</span></td></tr>`
+    ).join('')
+    return `<table style="width:100%;border-collapse:collapse;background:#1a1a1a;border-radius:8px;overflow:hidden;margin:12px 0"><thead><tr style="background:#111"><th style="padding:8px 12px;text-align:left;color:#888;font-size:11px;text-transform:uppercase;letter-spacing:1px">Category</th><th style="padding:8px 12px;text-align:right;color:#888;font-size:11px;text-transform:uppercase;letter-spacing:1px">Score</th></tr></thead><tbody>${rows}<tr style="background:#222"><td style="padding:8px 12px;color:#fff;font-weight:bold">Overall Average</td><td style="padding:8px 12px;text-align:right;font-weight:bold;color:#fabf14;font-size:16px">${Number(overall).toFixed(2)}<span style="color:#888;font-size:11px">/10</span></td></tr></tbody></table>`
+  }
+
+  const commentsSection = (comments: string[]) => {
+    if (comments.length === 0) return ''
+    const items = comments.map(c => `<li style="margin-bottom:8px;color:#bbb;line-height:1.5">"${c}"</li>`).join('')
+    return `<div style="margin-top:16px"><p style="color:#888;font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Judge Comments</p><ul style="list-style:none;padding:12px 16px;margin:0;background:#1a1a1a;border-left:3px solid #ff4d00;border-radius:0 6px 6px 0">${items}</ul></div>`
+  }
+
+  const sauceBlock = (sauce: SauceEmailData) => {
+    const stickerNote = sauce.award
+      ? `<p style="margin:12px 0 0;color:#fabf14;font-size:12px">🏆 Your award sticker is attached — feel free to use it on your packaging!</p>`
+      : ''
+    return `<div style="margin-bottom:32px;padding:20px;background:#111;border-radius:10px;border:1px solid #2a2a2a"><div style="margin-bottom:12px"><h2 style="margin:0 0 4px;color:#fff;font-size:18px">${sauce.sauce_name}</h2><p style="margin:0;color:#888;font-size:13px">${sauce.sauce_category}</p></div><div style="margin-bottom:16px">${resultBadge(sauce)}</div>${sauce.global_rank ? `<p style="color:#fabf14;font-size:12px;margin:0 0 12px">🌍 Global Rank #${sauce.global_rank}</p>` : ''}${scoresTable(sauce.scores, sauce.overall_avg)}${commentsSection(sauce.comments)}${stickerNote}</div>`
+  }
+
+  const intro = hasMedals
+    ? `<p>Congratulations on your result${medalCount > 1 ? 's' : ''} at the <strong>2026 European Hot Sauce Awards</strong>! Below you'll find the detailed judging scores and feedback for each of your sauces.</p>`
+    : `<p>Thank you for entering the <strong>2026 European Hot Sauce Awards</strong>. Below you'll find the detailed judging scores and feedback for your sauce${sauces.length > 1 ? 's' : ''}.</p>`
+
+  const stickerNote = hasMedals
+    ? `<div style="background:#1a1a1a;border:1px solid #fabf14;border-radius:8px;padding:16px;margin:20px 0"><p style="margin:0;color:#fabf14;font-weight:bold">🏅 Award Stickers</p><p style="margin:8px 0 0;color:#ccc;font-size:14px">Your award sticker${medalCount > 1 ? 's are' : ' is'} attached to this email as PNG files. You're welcome to use them on your bottle labels, packaging, and marketing materials.</p></div>`
+    : ''
+
+  return `${emailBanner}<div style="background:#08040e;padding:24px;font-family:Arial,sans-serif;max-width:600px;margin:0 auto;color:#fff"><h1 style="color:#ff4d00;margin-top:0">Your 2026 Results</h1><p>Dear ${brandName},</p>${intro}<p style="color:#888;font-size:13px">Scores are averaged across all judges on a scale of 1–10. We don't share individual judge details or how many judges scored each sauce.</p>${stickerNote}<hr style="border:none;border-top:1px solid #2a2a2a;margin:24px 0">${sauces.map(sauceBlock).join('')}<hr style="border:none;border-top:1px solid #2a2a2a;margin:24px 0"><p style="color:#888;font-size:13px">Results are published at <a href="https://heatawards.eu/results/2026" style="color:#ff4d00">heatawards.eu/results/2026</a>.</p><p style="color:#888;font-size:13px">Questions? Reply to this email or contact <a href="mailto:heataward@gmail.com" style="color:#ff4d00">heataward@gmail.com</a></p><p style="color:#555;font-size:12px;margin-top:24px">European Hot Sauce Awards 2026</p></div>`
+}
+
+function buildResultsEmailForSupplier(
+  brandName: string,
+  sauces: SauceEmailData[]
+): { subject: string; html: string; attachments: Array<{ filename: string; path: string }> } {
+  const hasMedals = sauces.some(s => s.award)
+  const subject = hasMedals
+    ? '🏆 Your 2026 EU Hot Sauce Awards Results & Award Stickers'
+    : 'Your 2026 EU Hot Sauce Awards Results & Feedback'
+
+  const stickerFiles: Record<string, string> = {
+    'GOLD (winner)': 'gold-winner.png',
+    'GOLD': 'gold.png',
+    'SILVER': 'silver.png',
+    'BRONZE': 'bronze.png',
+  }
+  const stickersDir = path.join(process.cwd(), 'public', 'stickers')
+  const awardTypes = new Set(sauces.map(s => s.award).filter(Boolean) as string[])
+  const attachments = Array.from(awardTypes)
+    .filter(award => stickerFiles[award])
+    .map(award => ({
+      filename: stickerFiles[award],
+      path: path.join(stickersDir, stickerFiles[award]),
+    }))
+    .filter(a => {
+      try { fs.accessSync(a.path); return true } catch { return false }
+    })
+
+  return { subject, html: buildResultsHTML(brandName, sauces), attachments }
+}
+
+async function loadResultsEmailData(client: any) {
+  const [{ data: scoreRows }, { data: rankRows }, { data: results2026 }] = await Promise.all([
+    client.rpc('get_sauce_judging_scores'),
+    client.rpc('get_sauce_category_rankings'),
+    client.from('past_results').select('code,award,position,area,global_rank,entry_name,category').eq('year', 2026),
+  ])
+
+  const scoresByCode = new Map<string, { scores: CategoryScore[]; comments: string[] }>()
+  for (const row of (scoreRows ?? []) as any[]) {
+    scoresByCode.set(row.sauce_code, {
+      scores: row.category_scores as CategoryScore[],
+      comments: (row.all_comments as string[]) ?? [],
+    })
+  }
+
+  const rankByCode = new Map<string, { rank: number; total: number }>()
+  for (const row of (rankRows ?? []) as any[]) {
+    rankByCode.set(row.sauce_code, { rank: Number(row.category_rank), total: Number(row.category_total) })
+  }
+
+  const resultByCode = new Map<string, any>()
+  for (const r of (results2026 ?? []) as any[]) resultByCode.set(r.code, r)
+
+  return { scoresByCode, rankByCode, resultByCode }
+}
+
+function buildSauceEmailData(
+  sauce: { name: string; sauce_code: string; category: string | null },
+  scoresByCode: Map<string, { scores: CategoryScore[]; comments: string[] }>,
+  rankByCode: Map<string, { rank: number; total: number }>,
+  resultByCode: Map<string, any>
+): SauceEmailData | null {
+  const judging = scoresByCode.get(sauce.sauce_code)
+  if (!judging || judging.scores.length === 0) return null
+
+  const result = resultByCode.get(sauce.sauce_code)
+  const ranking = rankByCode.get(sauce.sauce_code)
+  const overall = judging.scores.reduce((sum, s) => sum + Number(s.avg_score), 0) / judging.scores.length
+
+  return {
+    sauce_code: sauce.sauce_code,
+    sauce_name: result?.entry_name ?? sauce.name,
+    sauce_category: result?.category ?? sauce.category ?? '',
+    award: result?.award ?? null,
+    global_rank: result?.global_rank ?? null,
+    category_rank: result ? null : (ranking?.rank ?? null),
+    category_total: result ? null : (ranking?.total ?? null),
+    overall_avg: overall,
+    scores: judging.scores,
+    comments: judging.comments,
+  }
+}
+
+export async function getResultsFeedbackRecipients() {
+  const cookieStore = cookies()
+  const supabase = createClient(cookieStore)
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user?.email) return { error: 'You must be logged in.' }
+
+  const { data: adminCheck } = await supabase.from('judges').select('type').ilike('email', user.email).single()
+  if (adminCheck?.type !== 'admin') return { error: 'You are not authorized.' }
+
+  const serviceClientResult = getServiceSupabase()
+  if ('error' in serviceClientResult) return { error: serviceClientResult.error }
+  const { client } = serviceClientResult
+
+  // Find suppliers that have at least one judged sauce
+  const { data: sauces } = await client
+    .from('sauces')
+    .select('supplier_id, sauce_code')
+    .not('sauce_code', 'is', null)
+
+  const { data: scoreRows } = await client.rpc('get_sauce_judging_scores')
+  const judgedCodes = new Set((scoreRows ?? []).map((r: any) => r.sauce_code))
+
+  const supplierIdsWithJudgedSauces = new Set(
+    (sauces ?? []).filter(s => judgedCodes.has(s.sauce_code)).map(s => s.supplier_id)
+  )
+
+  if (supplierIdsWithJudgedSauces.size === 0) return { recipients: [] as ResultsRecipient[] }
+
+  const { data: suppliers } = await client
+    .from('suppliers')
+    .select('id, email, brand_name, contact_name')
+    .in('id', Array.from(supplierIdsWithJudgedSauces))
+    .not('email', 'is', null)
+
+  // Medal counts from past_results
+  const { data: medals } = await client
+    .from('past_results')
+    .select('code')
+    .eq('year', 2026)
+    .not('award', 'is', null)
+
+  const medalCodes = new Set((medals ?? []).map(m => m.code))
+
+  // Sauce counts per supplier
+  const sauceCountBySupplier = new Map<string, number>()
+  const medalCountBySupplier = new Map<string, number>()
+  for (const s of sauces ?? []) {
+    if (!judgedCodes.has(s.sauce_code)) continue
+    sauceCountBySupplier.set(s.supplier_id, (sauceCountBySupplier.get(s.supplier_id) ?? 0) + 1)
+    if (medalCodes.has(s.sauce_code)) {
+      medalCountBySupplier.set(s.supplier_id, (medalCountBySupplier.get(s.supplier_id) ?? 0) + 1)
+    }
+  }
+
+  // Already sent
+  const { data: auditRows } = await client
+    .from('email_audit')
+    .select('recipient_email')
+    .eq('email_type', RESULTS_EMAIL_TYPE)
+    .eq('status', 'sent')
+
+  const alreadySentEmails = new Set((auditRows ?? []).map((r: any) => r.recipient_email.toLowerCase()))
+
+  const recipients: ResultsRecipient[] = (suppliers ?? []).map(s => ({
+    supplierId: s.id,
+    email: s.email,
+    brandName: s.brand_name || s.contact_name || s.email.split('@')[0],
+    sauceCount: sauceCountBySupplier.get(s.id) ?? 0,
+    medalCount: medalCountBySupplier.get(s.id) ?? 0,
+    alreadySent: alreadySentEmails.has(s.email.toLowerCase()),
+  }))
+
+  return { recipients }
+}
+
+export async function sendResultsFeedbackBatch(supplierEmails: string[]) {
+  const cookieStore = cookies()
+  const supabase = createClient(cookieStore)
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user?.email) return { error: 'You must be logged in.' }
+
+  const { data: adminCheck } = await supabase.from('judges').select('type').ilike('email', user.email).single()
+  if (adminCheck?.type !== 'admin') return { error: 'You are not authorized.' }
+
+  if (!supplierEmails?.length) return { error: 'No recipients provided.' }
+
+  const serviceClientResult = getServiceSupabase()
+  if ('error' in serviceClientResult) return { error: serviceClientResult.error }
+  const { client } = serviceClientResult
+
+  // Load all shared data once per batch
+  const { scoresByCode, rankByCode, resultByCode } = await loadResultsEmailData(client)
+
+  // Fetch suppliers and their sauces for this batch
+  const [{ data: suppliers }, { data: allSauces }] = await Promise.all([
+    client.from('suppliers').select('id, email, brand_name, contact_name').in('email', supplierEmails),
+    client.from('sauces').select('supplier_id, name, sauce_code, category').not('sauce_code', 'is', null),
+  ])
+
+  const saucesBySupplier = new Map<string, typeof allSauces>()
+  for (const s of allSauces ?? []) {
+    if (!saucesBySupplier.has(s.supplier_id)) saucesBySupplier.set(s.supplier_id, [])
+    saucesBySupplier.get(s.supplier_id)!.push(s)
+  }
+
+  // Check already sent within this batch
+  const { data: auditRows } = await client
+    .from('email_audit')
+    .select('recipient_email')
+    .eq('email_type', RESULTS_EMAIL_TYPE)
+    .eq('status', 'sent')
+    .in('recipient_email', supplierEmails)
+
+  const alreadySent = new Set((auditRows ?? []).map((r: any) => r.recipient_email.toLowerCase()))
+
+  const results = { sent: [] as string[], failed: [] as { email: string; error: string }[], skipped: 0 }
+
+  for (const supplier of suppliers ?? []) {
+    if (!supplier.email) continue
+    if (alreadySent.has(supplier.email.toLowerCase())) { results.skipped++; continue }
+
+    const sauces = (saucesBySupplier.get(supplier.id) ?? [])
+      .map(s => buildSauceEmailData(s as any, scoresByCode, rankByCode, resultByCode))
+      .filter(Boolean) as SauceEmailData[]
+
+    if (sauces.length === 0) { results.skipped++; continue }
+
+    const brandName = supplier.brand_name || supplier.contact_name || supplier.email.split('@')[0]
+    const { subject, html, attachments } = buildResultsEmailForSupplier(brandName, sauces)
+
+    try {
+      await sendEmail({ to: supplier.email, subject, html, attachments })
+      results.sent.push(supplier.email)
+      await client.from('email_audit').insert({
+        email_type: RESULTS_EMAIL_TYPE,
+        recipient_email: supplier.email,
+        supplier_id: supplier.id,
+        year: 2026,
+        sent_at: new Date().toISOString(),
+        sent_by_email: user.email,
+        status: 'sent',
+        metadata: { sauce_codes: sauces.map(s => s.sauce_code), awards: sauces.map(s => s.award).filter(Boolean) },
+      })
+      await new Promise(r => setTimeout(r, 300))
+    } catch (error: any) {
+      results.failed.push({ email: supplier.email, error: error.message })
+      await client.from('email_audit').insert({
+        email_type: RESULTS_EMAIL_TYPE,
+        recipient_email: supplier.email,
+        supplier_id: supplier.id,
+        year: 2026,
+        sent_at: new Date().toISOString(),
+        sent_by_email: user.email,
+        status: 'error',
+        error_message: error.message,
+      })
+    }
+  }
+
+  return { success: true, sent: results.sent.length, skipped: results.skipped, failed: results.failed.length, failedEmails: results.failed }
+}
+
+export async function sendTestResultsFeedback(testEmail: string, targetSupplierEmail: string) {
+  const cookieStore = cookies()
+  const supabase = createClient(cookieStore)
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user?.email) return { error: 'You must be logged in.' }
+
+  const { data: adminCheck } = await supabase.from('judges').select('type').ilike('email', user.email).single()
+  if (adminCheck?.type !== 'admin') return { error: 'You are not authorized.' }
+
+  if (!testEmail?.includes('@')) return { error: 'Invalid test email address.' }
+
+  const serviceClientResult = getServiceSupabase()
+  if ('error' in serviceClientResult) return { error: serviceClientResult.error }
+  const { client } = serviceClientResult
+
+  const { data: supplier } = await client
+    .from('suppliers')
+    .select('id, email, brand_name, contact_name')
+    .ilike('email', targetSupplierEmail)
+    .single()
+
+  if (!supplier) return { error: `No supplier found with email: ${targetSupplierEmail}` }
+
+  const { scoresByCode, rankByCode, resultByCode } = await loadResultsEmailData(client)
+
+  const { data: sauceRows } = await client
+    .from('sauces')
+    .select('supplier_id, name, sauce_code, category')
+    .eq('supplier_id', supplier.id)
+    .not('sauce_code', 'is', null)
+
+  const sauces = (sauceRows ?? [])
+    .map(s => buildSauceEmailData(s as any, scoresByCode, rankByCode, resultByCode))
+    .filter(Boolean) as SauceEmailData[]
+
+  if (sauces.length === 0) return { error: 'No judged sauces found for this supplier.' }
+
+  const brandName = supplier.brand_name || supplier.contact_name || supplier.email.split('@')[0]
+  const { subject, html, attachments } = buildResultsEmailForSupplier(brandName, sauces)
+
+  try {
+    await sendEmail({ to: testEmail, subject: `[TEST — ${brandName}] ${subject}`, html, attachments })
+    return { success: true, message: `Test email sent to ${testEmail} using data from ${brandName}` }
   } catch (error: any) {
     return { error: `Failed to send test email: ${error.message}` }
   }

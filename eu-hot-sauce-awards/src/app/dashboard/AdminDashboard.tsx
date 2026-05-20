@@ -18,6 +18,7 @@ import EmailTemplateEditor from './EmailTemplateEditor'
 import ShippingAddressRequestSender from './ShippingAddressRequestSender'
 import JudgingReminderSender from './JudgingReminderSender'
 import WinnersAnnouncementSender from './WinnersAnnouncementSender'
+import ResultsFeedbackSender from './ResultsFeedbackSender'
 import ProJudgeApproval from './ProJudgeApproval'
 import JudgeAnalysis from './JudgeAnalysis'
 import AdminTabs from './AdminTabs'
@@ -451,6 +452,9 @@ export default async function AdminDashboard() {
             title="Marketing & Outreach"
             description="Manage email campaigns and customize email templates."
           />
+          <Card>
+            <ResultsFeedbackSender />
+          </Card>
           <Card>
             <WinnersAnnouncementSender />
           </Card>

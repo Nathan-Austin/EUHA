@@ -2,11 +2,19 @@ import nodemailer, { Transporter } from 'nodemailer';
 
 // Email service for sending transactional emails configured via SMTP environment variables
 
+export interface EmailAttachment {
+  filename: string;
+  path?: string;
+  content?: Buffer;
+  contentType?: string;
+}
+
 export interface EmailOptions {
   to: string;
   subject: string;
   html: string;
   text?: string;
+  attachments?: EmailAttachment[];
 }
 
 /**
@@ -69,6 +77,7 @@ export async function sendEmail(options: EmailOptions): Promise<void> {
     subject: options.subject,
     html: options.html,
     text: options.text ?? undefined,
+    attachments: options.attachments,
   });
 }
 
