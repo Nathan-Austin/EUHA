@@ -3,9 +3,9 @@ import Hero from '@/components/Hero';
 import SectionContainer from '@/components/SectionContainer';
 import type { Metadata } from 'next';
 import { createClient } from '@/lib/supabase/server';
-import Image from 'next/image';
 import Link from 'next/link';
 import { PAST_RESULTS_YEAR } from '@/lib/config';
+import SauceImage from '@/components/SauceImage';
 
 export const metadata: Metadata = {
   title: 'Global Rankings | EU Hot Sauce Awards',
@@ -134,10 +134,10 @@ const RankingsPage = async ({ searchParams }: { searchParams: { year?: string } 
                               <div className="flex items-center gap-4">
                                 {(sauce.product_image_url || sauce.code) && (
                                   <div className="relative w-16 h-16 rounded-lg overflow-hidden bg-black/20 flex-shrink-0">
-                                    <Image
-                                      src={sauce.product_image_url || `/images/${sauce.code}.jpg`}
-                                      alt={sauce.entry_name}
-                                      fill
+                                    <SauceImage
+                                      code={sauce.code}
+                                      productImageUrl={sauce.product_image_url}
+                                      name={sauce.entry_name}
                                       className="object-contain"
                                     />
                                   </div>

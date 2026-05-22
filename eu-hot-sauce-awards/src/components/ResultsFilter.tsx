@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import Image from 'next/image';
+import SauceImage from '@/components/SauceImage';
 
 interface PastResult {
   id: string;
@@ -281,10 +281,10 @@ export default function ResultsFilter({ results }: ResultsFilterProps) {
                     {/* Product Image (served from Vercel public folder) */}
                     {(winner.product_image_url || winner.code) && (
                       <div className="relative w-full h-48 mb-4 rounded-lg overflow-hidden bg-black/20">
-                        <Image
-                          src={winner.product_image_url || `/images/${winner.code}.jpg`}
-                          alt={winner.entry_name}
-                          fill
+                        <SauceImage
+                          code={winner.code}
+                          productImageUrl={winner.product_image_url}
+                          name={winner.entry_name}
                           className="object-contain group-hover:scale-105 transition-transform"
                         />
                       </div>
