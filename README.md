@@ -34,7 +34,7 @@ The migration to a custom-built platform provided:
 
 ### Registration & Payment
 - **Supplier Registration:** Multi-sauce entry forms with image uploads, automatic pricing with volume discounts
-- **Judge Registration:** Application forms with conflict of interest declarations
+- **Judge Registration:** Application forms with conflict of interest declarations; event judge registration for live tastings
 - **Payment Processing:** Stripe integration for community judges (€15) and supplier entries (€50/sauce with discounts)
 - **Magic Link Authentication:** Email-based passwordless login via Supabase Auth
 
@@ -44,20 +44,31 @@ The migration to a custom-built platform provided:
 - **Local Storage Backup:** Auto-saves scores to prevent data loss
 - **Bulk Submission:** Submit all pending scores at once
 - **Judge Types:** Pro, Community, and Supplier judges with weighted scoring
+- **Event Judging:** Toggle per-event judging open/closed for live tasting events
 
 ### Admin Features
 - **Sauce Status Management:** Track sauces through registration → arrived → boxed → judged
 - **Box Assignment Scanner:** Physical box packing with QR scanning and conflict of interest checking
 - **Label Generation:** PDF generation for sauce stickers (Avery 4780) and judge labels
 - **Results Export:** CSV export with weighted scoring algorithms
+- **Judge Management:** Pro judge approval/rejection, judging reminders, conflict-of-interest checking
+- **Shipping Integration:** DHL label generation, outbound box tracking, inbound parcel tracking
+- **Email Templates:** Admin-editable transactional templates with audit log
 - **User Management:** Add/manage admin users
+
+### Results & Communications
+- **Personalised Results Emails:** Sent to each supplier with per-sauce scores, awards, and category breakdowns
+- **Digital Certificates:** Generated per winning sauce and attached directly to results emails
+- **Award Stickers:** PNG sticker files (Gold/Silver/Bronze) attached to winner emails
+- **Background Email Worker:** Uses Vercel `waitUntil` so results emails send without blocking the HTTP response
+- **Historical Results:** Public results pages filterable by year, with past winner listings
 
 ### Competition Management
 - **18 Categories:** From Mild to Extract-Based, BBQ, Ketchup, Jam, Honey, and more
 - **Unique Sauce Codes:** Auto-generated codes (e.g., D001, H042) based on category
 - **Box Tracking:** Track which sauces are packed in which judge boxes
 - **Bottle Scan Tracking:** Monitor individual bottle scans during packing (7 per sauce type)
-- **Historical Results:** Display past competition winners with filtering
+- **Newsletter:** Subscription capture with edge-function handler
 
 ## Architecture
 
@@ -67,45 +78,79 @@ The migration to a custom-built platform provided:
 eu-hot-sauce-awards/
 ├── src/
 │   ├── app/
-│   │   ├── actions.ts              # Server actions
+│   │   ├── actions.ts              # Server actions (50+ functions)
 │   │   ├── page.tsx                # Landing page
 │   │   ├── login/                  # Auth pages
 │   │   ├── dashboard/              # Role-based dashboard
 │   │   ├── judge/
 │   │   │   ├── scan/               # QR scanner
-│   │   │   └── score/[sauceId]/    # Scoring interface
+│   │   │   ├── score/[sauceId]/    # Scoring interface
+│   │   │   ├── ready/              # Pre-judging checklist
+│   │   │   └── start/              # Judging onboarding
 │   │   ├── apply/
 │   │   │   ├── supplier/           # Supplier registration
-│   │   │   └── judge/              # Judge registration
-│   │   └── results/                # Past winners
+│   │   │   ├── judge/              # Judge registration
+│   │   │   └── event-judge/        # Event judge registration
+│   │   ├── results/[year]/         # Past winners by year
+│   │   ├── rankings/               # Live rankings view
+│   │   ├── events/                 # Event listing
+│   │   ├── events/[id]/            # Single event view
+│   │   ├── packing-sheet/          # Admin packing labels
+│   │   ├── judges/                 # Judge listing
+│   │   ├── sponsors/               # Sponsors page
+│   │   ├── prizes/                 # Prizes page
+│   │   ├── payment-success/        # Stripe callback
+│   │   ├── payment-cancelled/      # Stripe callback
+│   │   └── api/
+│   │       ├── auth/               # Magic link, OTP, session
+│   │       ├── send-email/         # Email utility endpoint
+│   │       ├── event-judge-register/ # Event judge intake
+│   │       └── results-email-worker/ # Background results sender
 │   ├── components/                 # Reusable components
 │   ├── lib/
-│   │   └── supabase/               # Supabase client config
+│   │   ├── supabase/               # Supabase client config
+│   │   ├── email.ts                # Nodemailer/SMTP email library
+│   │   └── dhl/                    # DHL shipping integration
 │   └── hooks/                      # Custom React hooks
 └── public/                         # Static assets
 
 supabase/
 ├── functions/                      # Edge functions
-│   ├── judge-intake/              # Judge registration handler
-│   ├── supplier-intake/           # Supplier registration handler
-│   ├── stripe-checkout/           # Judge payment sessions
-│   ├── supplier-checkout/         # Supplier payment sessions
-│   └── stripe-webhook/            # Payment confirmations
-└── migrations/                     # Database schema
+│   ├── judge-intake/               # Judge registration handler
+│   ├── supplier-intake/            # Supplier registration + pricing
+│   ├── stripe-checkout/            # Judge payment sessions
+│   ├── supplier-checkout/          # Supplier payment sessions
+│   ├── stripe-webhook/             # Payment confirmations
+│   ├── send-payment-reminders/     # Supplier payment reminder emails
+│   └── newsletter-subscribe/       # Newsletter subscription handler
+└── migrations/                     # Database schema (50+ migrations)
 ```
 
 ### Database Schema
 
-**Key Tables:**
+**Core Tables:**
 - `suppliers` - Brand information and contact details
 - `sauces` - Sauce entries with status, codes, QR codes, images
 - `judges` - Judge profiles with type, payment status, QR codes
+- `judges_participations` - Per-year judge participation records
 - `judging_categories` - Scoring categories with weights
 - `judging_scores` - Individual category scores (judge × sauce × category)
 - `box_assignments` - Maps sauces to physical judging boxes
-- `supplier_payments` - Payment tracking with discounts
 - `bottle_scans` - Individual bottle scan tracking during packing
+
+**Payments & Logistics:**
+- `supplier_payments` - Payment batches with volume discount tracking
+- `supplier_tracking` - Inbound parcel tracking numbers
+- `judge_shipping_address` - Outbound judge box shipping addresses
+
+**Content & Config:**
 - `past_results` - Historical competition winners
+- `email_templates` - Admin-editable transactional email templates
+- `email_audit` - Log of all sent emails
+- `sponsors` - Sponsor listings
+- `events` - Live tasting events
+- `contact_submissions` - Contact form entries
+- `newsletter_subscribers` - Newsletter opt-ins
 
 ### Sauce Code System
 
@@ -201,9 +246,14 @@ NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
 NEXT_PUBLIC_SAUCE_IMAGE_BUCKET=sauce-media
 NEXT_PUBLIC_GA_MEASUREMENT_ID=your_ga_id
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your_email@gmail.com
+SMTP_PASS=your_app_password
 ```
 
-**Supabase Secrets:**
+**Supabase Secrets (edge functions):**
 ```bash
 supabase secrets set PROJECT_URL="your_supabase_url"
 supabase secrets set SERVICE_ROLE_KEY="your_service_role_key"
@@ -273,5 +323,5 @@ Proprietary - All rights reserved
 
 ---
 
-**Last Updated:** October 2025
+**Last Updated:** June 2026
 **Platform Version:** 2026 Competition System
