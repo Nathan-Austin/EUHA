@@ -692,9 +692,9 @@ export const emailTemplates = {
     text: `Payment Reminder - Dear ${brandName}, your ${entryCount} sauce ${entryCount > 1 ? 'entries are' : 'entry is'} still pending payment (€${amount}). Access your dashboard to complete payment: ${magicLink || 'https://heatawards.eu/login'}. Registered ${daysSinceRegistration} days ago.`,
   }),
 
-  vatInvoice: (params: {
-    invoiceNumber: string;
-    invoiceDate: string;
+  paymentReceipt: (params: {
+    receiptNumber: string;
+    receiptDate: string;
     year: number;
     supplierName: string;
     supplierContactName: string;
@@ -708,16 +708,21 @@ export const emailTemplates = {
     companyAddress: string;
     companyVat: string;
   }) => ({
-    subject: `VAT Invoice ${params.invoiceNumber} - EU Hot Sauce Awards ${params.year}`,
+    subject: `Payment Receipt ${params.receiptNumber} - EU Hot Sauce Awards ${params.year}`,
     html: `
       ${emailBanner}
       <div style="padding: 20px; font-family: Arial, sans-serif; max-width: 700px; margin: 0 auto;">
-        <div style="text-align: right; color: #666; margin-bottom: 20px;">
-          <p style="margin: 2px 0;"><strong>Invoice Number:</strong> ${params.invoiceNumber}</p>
-          <p style="margin: 2px 0;"><strong>Invoice Date:</strong> ${params.invoiceDate}</p>
+
+        <div style="background-color: #fff8e1; border-left: 4px solid #ff4d00; padding: 12px 16px; margin-bottom: 24px; border-radius: 0 5px 5px 0; font-size: 14px; color: #555;">
+          <strong style="color: #ff4d00;">Please note:</strong> An earlier email sent in error described this document as a VAT invoice. This is the corrected version — it is a payment receipt confirming the amount you paid. We apologise for any confusion.
         </div>
 
-        <h1 style="color: #ff4d00; border-bottom: 3px solid #ff4d00; padding-bottom: 10px;">VAT INVOICE</h1>
+        <div style="text-align: right; color: #666; margin-bottom: 20px;">
+          <p style="margin: 2px 0;"><strong>Receipt Number:</strong> ${params.receiptNumber}</p>
+          <p style="margin: 2px 0;"><strong>Receipt Date:</strong> ${params.receiptDate}</p>
+        </div>
+
+        <h1 style="color: #ff4d00; border-bottom: 3px solid #ff4d00; padding-bottom: 10px;">PAYMENT RECEIPT</h1>
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 30px 0;">
           <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px;">
@@ -766,7 +771,7 @@ export const emailTemplates = {
               <td style="padding: 8px 0; text-align: right;">€${params.vatAmount}</td>
             </tr>
             <tr style="border-top: 2px solid #ff4d00;">
-              <td style="padding: 12px 0;"><strong style="font-size: 18px;">Total Amount:</strong></td>
+              <td style="padding: 12px 0;"><strong style="font-size: 18px;">Total Paid:</strong></td>
               <td style="padding: 12px 0; text-align: right;"><strong style="font-size: 18px; color: #ff4d00;">€${params.grossAmount}</strong></td>
             </tr>
           </table>
@@ -778,11 +783,11 @@ export const emailTemplates = {
         </div>
 
         <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 12px; color: #666;">
-          <p style="margin: 5px 0;">This is an automatically generated VAT invoice.</p>
+          <p style="margin: 5px 0;">This is an automatically generated payment receipt.</p>
           <p style="margin: 5px 0;">For questions, please contact: heataward@gmail.com</p>
         </div>
       </div>
     `,
-    text: `VAT INVOICE\n\nInvoice Number: ${params.invoiceNumber}\nInvoice Date: ${params.invoiceDate}\n\nFrom:\n${params.companyName}\n${params.companyAddress}\nVAT Number: ${params.companyVat}\n\nTo:\n${params.supplierName}\n${params.supplierContactName ? `Attn: ${params.supplierContactName}\n` : ''}${params.supplierAddress}\n\nDescription: EU Hot Sauce Awards ${params.year} - Competition Entry\nQuantity: ${params.entryCount}\n\nNet Amount: €${params.netAmount}\nVAT (${params.vatRate}%): €${params.vatAmount}\nTotal Amount: €${params.grossAmount}\n\nPayment Status: Paid via Stripe\n\nThank you for your participation in the EU Hot Sauce Awards ${params.year}!`,
+    text: `PAYMENT RECEIPT\n\nPlease note: An earlier email sent in error described this document as a VAT invoice. This is the corrected version — a payment receipt confirming the amount you paid. We apologise for any confusion.\n\nReceipt Number: ${params.receiptNumber}\nReceipt Date: ${params.receiptDate}\n\nFrom:\n${params.companyName}\n${params.companyAddress}\nVAT Number: ${params.companyVat}\n\nTo:\n${params.supplierName}\n${params.supplierContactName ? `Attn: ${params.supplierContactName}\n` : ''}${params.supplierAddress}\n\nDescription: EU Hot Sauce Awards ${params.year} - Competition Entry\nQuantity: ${params.entryCount}\n\nNet Amount: €${params.netAmount}\nVAT (${params.vatRate}%): €${params.vatAmount}\nTotal Paid: €${params.grossAmount}\n\nPayment Status: Paid via Stripe\n\nThank you for your participation in the EU Hot Sauce Awards ${params.year}!`,
   }),
 };

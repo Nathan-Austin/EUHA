@@ -148,9 +148,9 @@ export default function VatInvoiceSender() {
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="text-lg font-semibold text-gray-900">VAT Invoice Sender</h3>
+        <h3 className="text-lg font-semibold text-gray-900">Payment Receipt Sender</h3>
         <p className="text-sm text-gray-600 mt-1">
-          Send VAT invoices to all suppliers with paid entries for {new Date().getFullYear()}.
+          Send payment receipts to all suppliers with paid entries for {new Date().getFullYear()}.
           Already-sent suppliers are skipped automatically.
         </p>
       </div>
@@ -229,7 +229,7 @@ export default function VatInvoiceSender() {
           disabled={sending || pending.length === 0}
           className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-700 disabled:bg-orange-300 disabled:cursor-not-allowed transition-colors"
         >
-          {sending ? 'Sending…' : `Send to ${pending.length} Pending`}
+          {sending ? 'Sending…' : `Send Receipt to ${pending.length} Pending`}
         </button>
 
         {allFailed.length > 0 && (
@@ -269,7 +269,7 @@ export default function VatInvoiceSender() {
                 <th className="px-4 py-2 text-center text-xs font-semibold text-gray-600 uppercase tracking-wide">Entries</th>
                 <th className="px-4 py-2 text-right text-xs font-semibold text-gray-600 uppercase tracking-wide">Amount</th>
                 <th className="px-4 py-2 text-center text-xs font-semibold text-gray-600 uppercase tracking-wide">Status</th>
-                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">Invoice #</th>
+                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">Receipt #</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 bg-white">
@@ -290,7 +290,7 @@ export default function VatInvoiceSender() {
                       {r.status}
                     </span>
                   </td>
-                  <td className="px-4 py-2 text-gray-500 font-mono text-xs">{r.invoice_number ?? '—'}</td>
+                  <td className="px-4 py-2 text-gray-500 font-mono text-xs">{r.receipt_number ?? '—'}</td>
                 </tr>
               ))}
             </tbody>

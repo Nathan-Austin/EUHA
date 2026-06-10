@@ -101,8 +101,8 @@ export default function SendVatEmailButton() {
             {/* Header */}
             <div className="flex items-center justify-between border-b border-gray-200 p-6">
               <div>
-                <h2 className="text-xl font-bold text-gray-900">Send VAT Invoice</h2>
-                <p className="text-sm text-gray-600">Select a supplier to send their VAT invoice for current year entries</p>
+                <h2 className="text-xl font-bold text-gray-900">Send Payment Receipt</h2>
+                <p className="text-sm text-gray-600">Select a supplier to send their payment receipt for current year entries</p>
               </div>
               <button
                 onClick={() => {
@@ -181,7 +181,7 @@ export default function SendVatEmailButton() {
                         <svg className="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
                           <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                         </svg>
-                        <p className="text-sm font-semibold text-green-800">Invoice Sent Successfully!</p>
+                        <p className="text-sm font-semibold text-green-800">Receipt Sent Successfully!</p>
                       </div>
                       <div className="space-y-2 text-sm text-green-800">
                         <div className="flex justify-between">

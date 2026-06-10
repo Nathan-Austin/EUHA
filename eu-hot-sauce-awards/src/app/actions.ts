@@ -2910,30 +2910,30 @@ export async function sendVatEmail(supplierId: string) {
 
   const vatBreakdown = calculateVAT(totalGrossCents);
 
-  // 5. Generate invoice number using DB function
+  // 5. Generate receipt number using DB function
   const serviceSupabase = createServiceClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-  const { data: invoiceNumberResult, error: invoiceError } = await serviceSupabase
+  const { data: receiptNumberResult, error: receiptError } = await serviceSupabase
     .rpc('generate_invoice_number', { p_year: currentYear });
 
-  if (invoiceError || !invoiceNumberResult) {
-    return { error: `Failed to generate invoice number: ${invoiceError?.message || 'Unknown error'}` };
+  if (receiptError || !receiptNumberResult) {
+    return { error: `Failed to generate receipt number: ${receiptError?.message || 'Unknown error'}` };
   }
 
-  const invoiceNumber = invoiceNumberResult as string;
-  const invoiceDate = new Date().toLocaleDateString('en-GB', {
+  const receiptNumber = receiptNumberResult as string;
+  const receiptDate = new Date().toLocaleDateString('en-GB', {
     day: '2-digit',
     month: 'long',
     year: 'numeric'
   });
 
   // 6. Generate and send email
-  const emailTemplate = emailTemplates.vatInvoice({
-    invoiceNumber,
-    invoiceDate,
+  const emailTemplate = emailTemplates.paymentReceipt({
+    receiptNumber,
+    receiptDate,
     year: currentYear,
     supplierName: supplier.brand_name,
     supplierContactName: supplier.contact_name || '',
@@ -2956,10 +2956,9 @@ export async function sendVatEmail(supplierId: string) {
       text: emailTemplate.text,
     });
   } catch (emailError: any) {
-    // Log failed attempt
     await serviceSupabase.from('email_audit').insert({
-      email_type: 'vat_invoice',
-      invoice_number: invoiceNumber,
+      email_type: 'payment_receipt',
+      invoice_number: receiptNumber,
       recipient_email: supplier.email,
       supplier_id: supplierId,
       year: currentYear,
@@ -2976,12 +2975,12 @@ export async function sendVatEmail(supplierId: string) {
     return { error: `Failed to send email: ${emailError?.message || 'Unknown error'}` };
   }
 
-  // 7. Log successful email send
+  // 7. Log successful send
   const { error: auditError } = await serviceSupabase
     .from('email_audit')
     .insert({
-      email_type: 'vat_invoice',
-      invoice_number: invoiceNumber,
+      email_type: 'payment_receipt',
+      invoice_number: receiptNumber,
       recipient_email: supplier.email,
       supplier_id: supplierId,
       year: currentYear,
@@ -2996,14 +2995,13 @@ export async function sendVatEmail(supplierId: string) {
 
   if (auditError) {
     console.error('Failed to log email audit:', auditError);
-    // Don't fail the whole operation if audit logging fails
   }
 
   return {
     success: true,
-    message: `VAT invoice ${invoiceNumber} sent to ${supplier.brand_name} (${supplier.email})`,
+    message: `Payment receipt ${receiptNumber} sent to ${supplier.brand_name} (${supplier.email})`,
     data: {
-      invoiceNumber,
+      invoiceNumber: receiptNumber,
       supplierName: supplier.brand_name,
       entryCount: totalEntries,
       grossAmount: formatEuro(vatBreakdown.gross),
@@ -3024,7 +3022,7 @@ export interface VatInvoiceRecipient {
   entry_count: number
   gross_amount: string
   status: 'pending' | 'sent' | 'failed'
-  invoice_number?: string
+  receipt_number?: string
 }
 
 export async function getVatInvoiceRecipients(): Promise<
@@ -3080,15 +3078,15 @@ export async function getVatInvoiceRecipients(): Promise<
   const { data: auditRows } = await serviceClient
     .from('email_audit')
     .select('supplier_id, status, invoice_number')
-    .eq('email_type', 'vat_invoice')
+    .eq('email_type', 'payment_receipt')
     .eq('year', COMPETITION_YEAR)
     .in('supplier_id', supplierIds)
 
-  const auditBySupplierId = new Map<string, { sent: boolean; failed: boolean; invoice_number?: string }>()
+  const auditBySupplierId = new Map<string, { sent: boolean; failed: boolean; receipt_number?: string }>()
   for (const row of auditRows ?? []) {
     const existing = auditBySupplierId.get(row.supplier_id) ?? { sent: false, failed: false }
     if (row.status === 'sent') {
-      auditBySupplierId.set(row.supplier_id, { sent: true, failed: existing.failed, invoice_number: row.invoice_number })
+      auditBySupplierId.set(row.supplier_id, { sent: true, failed: existing.failed, receipt_number: row.invoice_number })
     } else if (row.status === 'failed' && !existing.sent) {
       auditBySupplierId.set(row.supplier_id, { ...existing, failed: true })
     }
@@ -3110,7 +3108,7 @@ export async function getVatInvoiceRecipients(): Promise<
       entry_count: pay.entry_count,
       gross_amount: formatEuro(vatBreakdown.gross),
       status,
-      invoice_number: audit?.invoice_number,
+      receipt_number: audit?.receipt_number,
     }
   })
 
@@ -3157,7 +3155,7 @@ export async function sendBulkVatInvoices(supplierIds: string[]): Promise<
     const { data: existingAudit } = await serviceClient
       .from('email_audit')
       .select('id')
-      .eq('email_type', 'vat_invoice')
+      .eq('email_type', 'payment_receipt')
       .eq('year', COMPETITION_YEAR)
       .eq('supplier_id', supplierId)
       .eq('status', 'sent')
@@ -3187,22 +3185,22 @@ export async function sendBulkVatInvoices(supplierIds: string[]): Promise<
     const totalGrossCents = payments.reduce((sum, p) => sum + p.amount_due_cents, 0)
     const vatBreakdown = calculateVAT(totalGrossCents)
 
-    const { data: invoiceNumberResult } = await serviceClient
+    const { data: receiptNumberResult } = await serviceClient
       .rpc('generate_invoice_number', { p_year: COMPETITION_YEAR })
 
-    const invoiceNumber = invoiceNumberResult as string | null
-    if (!invoiceNumber) {
-      failedEmails.push({ email: supplier.email, error: 'Failed to generate invoice number' })
+    const receiptNumber = receiptNumberResult as string | null
+    if (!receiptNumber) {
+      failedEmails.push({ email: supplier.email, error: 'Failed to generate receipt number' })
       continue
     }
 
-    const invoiceDate = new Date().toLocaleDateString('en-GB', {
+    const receiptDate = new Date().toLocaleDateString('en-GB', {
       day: '2-digit', month: 'long', year: 'numeric',
     })
 
-    const emailTemplate = emailTemplates.vatInvoice({
-      invoiceNumber,
-      invoiceDate,
+    const emailTemplate = emailTemplates.paymentReceipt({
+      receiptNumber,
+      receiptDate,
       year: COMPETITION_YEAR,
       supplierName: supplier.brand_name,
       supplierContactName: supplier.contact_name || '',
@@ -3218,8 +3216,8 @@ export async function sendBulkVatInvoices(supplierIds: string[]): Promise<
     })
 
     const auditBase = {
-      email_type: 'vat_invoice',
-      invoice_number: invoiceNumber,
+      email_type: 'payment_receipt',
+      invoice_number: receiptNumber,
       recipient_email: supplier.email,
       supplier_id: supplierId,
       year: COMPETITION_YEAR,
