@@ -27,7 +27,7 @@ import SupplierCountryManager from './SupplierCountryManager'
 import { getResultsData } from '@/app/actions'
 import { COMPETITION_YEAR } from '@/lib/config'
 import SendPaymentRemindersButton from './SendPaymentRemindersButton'
-import SendVatEmailButton from './SendVatEmailButton'
+import VatInvoiceSender from './VatInvoiceSender'
 import JudgeShippingManager from './JudgeShippingManager'
 import RequestShippingAddressButton from './RequestShippingAddressButton'
 import DhlLabelScanner from './DhlLabelScanner'
@@ -163,7 +163,6 @@ export default async function AdminDashboard() {
               </div>
               <div className="flex flex-wrap items-center gap-3">
                 <ExportResultsButton />
-                <SendVatEmailButton />
               </div>
             </div>
             <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -452,6 +451,9 @@ export default async function AdminDashboard() {
             title="Marketing & Outreach"
             description="Manage email campaigns and customize email templates."
           />
+          <Card>
+            <VatInvoiceSender />
+          </Card>
           <Card>
             <ResultsFeedbackSender />
           </Card>

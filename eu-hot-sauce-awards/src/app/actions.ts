@@ -3014,6 +3014,248 @@ export async function sendVatEmail(supplierId: string) {
 }
 
 // ============================================================================
+// BULK VAT INVOICE ACTIONS
+// ============================================================================
+
+export interface VatInvoiceRecipient {
+  id: string
+  brand_name: string
+  email: string
+  entry_count: number
+  gross_amount: string
+  status: 'pending' | 'sent' | 'failed'
+  invoice_number?: string
+}
+
+export async function getVatInvoiceRecipients(): Promise<
+  { recipients: VatInvoiceRecipient[] } | { error: string }
+> {
+  const cookieStore = cookies()
+  const supabase = createClient(cookieStore)
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user?.email) return { error: 'Not authenticated.' }
+
+  const serviceClient = createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+
+  const { data: adminJudge } = await serviceClient
+    .from('judges')
+    .select('type')
+    .ilike('email', user.email)
+    .single()
+  if (adminJudge?.type !== 'admin') return { error: 'Not authorized.' }
+
+  const cycleStart = `${COMPETITION_YEAR - 1}-05-01`
+  const cycleEnd = `${COMPETITION_YEAR}-05-31`
+
+  const { data: payments } = await serviceClient
+    .from('supplier_payments')
+    .select('supplier_id, entry_count, amount_due_cents')
+    .eq('stripe_payment_status', 'succeeded')
+    .gte('created_at', cycleStart)
+    .lte('created_at', cycleEnd)
+
+  if (!payments || payments.length === 0) return { recipients: [] }
+
+  const paymentsBySupplier = new Map<string, { entry_count: number; total_cents: number }>()
+  for (const p of payments) {
+    const existing = paymentsBySupplier.get(p.supplier_id) ?? { entry_count: 0, total_cents: 0 }
+    paymentsBySupplier.set(p.supplier_id, {
+      entry_count: existing.entry_count + p.entry_count,
+      total_cents: existing.total_cents + p.amount_due_cents,
+    })
+  }
+
+  const supplierIds = Array.from(paymentsBySupplier.keys())
+
+  const { data: suppliers } = await serviceClient
+    .from('suppliers')
+    .select('id, brand_name, email, email_opted_out')
+    .in('id', supplierIds)
+    .eq('email_opted_out', false)
+
+  const { data: auditRows } = await serviceClient
+    .from('email_audit')
+    .select('supplier_id, status, invoice_number')
+    .eq('email_type', 'vat_invoice')
+    .eq('year', COMPETITION_YEAR)
+    .in('supplier_id', supplierIds)
+
+  const auditBySupplierId = new Map<string, { sent: boolean; failed: boolean; invoice_number?: string }>()
+  for (const row of auditRows ?? []) {
+    const existing = auditBySupplierId.get(row.supplier_id) ?? { sent: false, failed: false }
+    if (row.status === 'sent') {
+      auditBySupplierId.set(row.supplier_id, { sent: true, failed: existing.failed, invoice_number: row.invoice_number })
+    } else if (row.status === 'failed' && !existing.sent) {
+      auditBySupplierId.set(row.supplier_id, { ...existing, failed: true })
+    }
+  }
+
+  const { calculateVAT, formatEuro } = await import('@/lib/company')
+
+  const recipients: VatInvoiceRecipient[] = (suppliers ?? []).map((s) => {
+    const pay = paymentsBySupplier.get(s.id)!
+    const audit = auditBySupplierId.get(s.id)
+    const vatBreakdown = calculateVAT(pay.total_cents)
+    let status: VatInvoiceRecipient['status'] = 'pending'
+    if (audit?.sent) status = 'sent'
+    else if (audit?.failed) status = 'failed'
+    return {
+      id: s.id,
+      brand_name: s.brand_name,
+      email: s.email,
+      entry_count: pay.entry_count,
+      gross_amount: formatEuro(vatBreakdown.gross),
+      status,
+      invoice_number: audit?.invoice_number,
+    }
+  })
+
+  recipients.sort((a, b) => a.brand_name.localeCompare(b.brand_name))
+
+  return { recipients }
+}
+
+export async function sendBulkVatInvoices(supplierIds: string[]): Promise<
+  { success: true; sent: number; skipped: number; failed: number; failedEmails: { email: string; error: string }[] }
+  | { error: string }
+> {
+  if (!supplierIds.length) return { success: true, sent: 0, skipped: 0, failed: 0, failedEmails: [] }
+
+  const cookieStore = cookies()
+  const supabase = createClient(cookieStore)
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user?.email) return { error: 'Not authenticated.' }
+
+  const serviceClient = createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+
+  const { data: adminJudge } = await serviceClient
+    .from('judges')
+    .select('type, email')
+    .ilike('email', user.email)
+    .single()
+  if (adminJudge?.type !== 'admin') return { error: 'Not authorized.' }
+
+  const cycleStart = `${COMPETITION_YEAR - 1}-05-01`
+  const cycleEnd = `${COMPETITION_YEAR}-05-31`
+
+  const { COMPANY_INFO, calculateVAT, formatEuro } = await import('@/lib/company')
+
+  let sent = 0
+  let skipped = 0
+  const failedEmails: { email: string; error: string }[] = []
+
+  for (const supplierId of supplierIds) {
+    // Skip if already sent successfully
+    const { data: existingAudit } = await serviceClient
+      .from('email_audit')
+      .select('id')
+      .eq('email_type', 'vat_invoice')
+      .eq('year', COMPETITION_YEAR)
+      .eq('supplier_id', supplierId)
+      .eq('status', 'sent')
+      .maybeSingle()
+
+    if (existingAudit) { skipped++; continue }
+
+    const { data: supplier } = await serviceClient
+      .from('suppliers')
+      .select('id, brand_name, contact_name, email, address, email_opted_out')
+      .eq('id', supplierId)
+      .single()
+
+    if (!supplier || supplier.email_opted_out) { skipped++; continue }
+
+    const { data: payments } = await serviceClient
+      .from('supplier_payments')
+      .select('id, entry_count, amount_due_cents')
+      .eq('supplier_id', supplierId)
+      .eq('stripe_payment_status', 'succeeded')
+      .gte('created_at', cycleStart)
+      .lte('created_at', cycleEnd)
+
+    if (!payments || payments.length === 0) { skipped++; continue }
+
+    const totalEntries = payments.reduce((sum, p) => sum + p.entry_count, 0)
+    const totalGrossCents = payments.reduce((sum, p) => sum + p.amount_due_cents, 0)
+    const vatBreakdown = calculateVAT(totalGrossCents)
+
+    const { data: invoiceNumberResult } = await serviceClient
+      .rpc('generate_invoice_number', { p_year: COMPETITION_YEAR })
+
+    const invoiceNumber = invoiceNumberResult as string | null
+    if (!invoiceNumber) {
+      failedEmails.push({ email: supplier.email, error: 'Failed to generate invoice number' })
+      continue
+    }
+
+    const invoiceDate = new Date().toLocaleDateString('en-GB', {
+      day: '2-digit', month: 'long', year: 'numeric',
+    })
+
+    const emailTemplate = emailTemplates.vatInvoice({
+      invoiceNumber,
+      invoiceDate,
+      year: COMPETITION_YEAR,
+      supplierName: supplier.brand_name,
+      supplierContactName: supplier.contact_name || '',
+      supplierAddress: supplier.address || '',
+      entryCount: totalEntries,
+      grossAmount: formatEuro(vatBreakdown.gross).replace('€', '').trim(),
+      netAmount: formatEuro(vatBreakdown.net).replace('€', '').trim(),
+      vatAmount: formatEuro(vatBreakdown.vat).replace('€', '').trim(),
+      vatRate: (vatBreakdown.vatRate * 100).toFixed(0),
+      companyName: COMPANY_INFO.name,
+      companyAddress: COMPANY_INFO.address.full,
+      companyVat: COMPANY_INFO.vat.number,
+    })
+
+    const auditBase = {
+      email_type: 'vat_invoice',
+      invoice_number: invoiceNumber,
+      recipient_email: supplier.email,
+      supplier_id: supplierId,
+      year: COMPETITION_YEAR,
+      total_entries: totalEntries,
+      gross_amount_cents: totalGrossCents,
+      net_amount_cents: Math.round(vatBreakdown.net * 100),
+      vat_amount_cents: Math.round(vatBreakdown.vat * 100),
+      sent_by_email: adminJudge.email,
+      metadata: { payment_ids: payments.map((p) => p.id) },
+    }
+
+    try {
+      await sendEmail({
+        to: supplier.email,
+        subject: emailTemplate.subject,
+        html: emailTemplate.html,
+        text: emailTemplate.text,
+      })
+      await serviceClient.from('email_audit').insert({ ...auditBase, status: 'sent' })
+      sent++
+    } catch (err: any) {
+      await serviceClient.from('email_audit').insert({
+        ...auditBase,
+        status: 'failed',
+        error_message: err.message || 'Unknown error',
+      })
+      failedEmails.push({ email: supplier.email, error: err.message || 'Unknown error' })
+    }
+
+    await new Promise((r) => setTimeout(r, 200))
+  }
+
+  return { success: true, sent, skipped, failed: failedEmails.length, failedEmails }
+}
+
+// ============================================================================
 // SUPPLIER SAUCE MANAGEMENT ACTIONS
 // ============================================================================
 
