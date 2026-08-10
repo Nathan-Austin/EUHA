@@ -312,7 +312,9 @@ Deno.serve(async (req) => {
         throw new Error(`Unknown category: ${sauce.category}`);
       }
 
-      // Check for existing unpaid sauce with the same name AND category from this supplier
+      // Check for existing unpaid sauce with the same name AND category from this supplier,
+      // scoped to this competition year (sauces persist across years now, so an unpaid
+      // draft or paid entry from a previous season must not be mistaken for this year's).
       // (allows same sauce in different categories, prevents true duplicates)
       currentStep = 'check-existing-sauce';
       const { data: existingUnpaid, error: existingError } = await supabaseAdmin
@@ -322,6 +324,7 @@ Deno.serve(async (req) => {
         .eq('name', sauce.name)
         .eq('category', sauce.category)
         .eq('payment_status', 'pending_payment')
+        .eq('competition_year', COMPETITION_YEAR)
         .limit(1)
         .single();
 
@@ -355,6 +358,7 @@ Deno.serve(async (req) => {
           .eq('name', sauce.name)
           .eq('category', sauce.category)
           .eq('payment_status', 'paid')
+          .eq('competition_year', COMPETITION_YEAR)
           .limit(1)
           .single();
 
@@ -402,6 +406,7 @@ Deno.serve(async (req) => {
             status: 'registered',
             webshop_link: sauce.webshopLink || null,
             payment_status: 'pending_payment',
+            competition_year: COMPETITION_YEAR,
           },
         });
       }

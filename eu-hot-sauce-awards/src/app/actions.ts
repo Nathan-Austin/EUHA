@@ -3298,7 +3298,20 @@ function resolveDiscount(entryCount: number) {
 /**
  * Get all unpaid sauce entries for the logged-in supplier
  */
-export async function getSupplierUnpaidSauces() {
+export type UnpaidSauceRecord = {
+  id: string;
+  name: string;
+  category: string;
+  sauce_code: string;
+  ingredients: string;
+  allergens: string;
+  webshop_link: string | null;
+  created_at: string;
+};
+
+export async function getSupplierUnpaidSauces(): Promise<
+  { error: string } | { success: true; data: UnpaidSauceRecord[] }
+> {
   const cookieStore = cookies();
   const supabase = createClient(cookieStore);
 
@@ -3319,25 +3332,146 @@ export async function getSupplierUnpaidSauces() {
     return { error: 'Supplier account not found.' };
   }
 
-  // Fetch all unpaid sauces
+  // Fetch this season's unpaid sauces
   const { data: sauces, error: saucesError } = await supabase
     .from('sauces')
     .select('id, name, category, sauce_code, ingredients, allergens, webshop_link, created_at')
     .eq('supplier_id', supplier.id)
     .eq('payment_status', 'pending_payment')
+    .eq('competition_year', COMPETITION_YEAR)
     .order('created_at', { ascending: false });
 
   if (saucesError) {
     return { error: saucesError.message };
   }
 
-  return { success: true, data: sauces || [] };
+  return { success: true, data: (sauces || []) as UnpaidSauceRecord[] };
+}
+
+type SauceEntryFields = {
+  name: string;
+  category: string;
+  ingredients: string;
+  allergens: string | null;
+  webshopLink: string | null;
+};
+
+/**
+ * Shared insert path for a new sauce row: generates the sauce code, creates the
+ * row, generates the QR code, and auto-attaches it to any pending payment.
+ * Used by both createSauceEntry (blank form) and reuseSauceEntry (cloned from a
+ * prior year's entry) so the code-generation/payment-attach logic can't drift
+ * between the two call sites.
+ */
+async function insertSauceEntry(
+  serviceSupabase: any,
+  supplierId: string,
+  fields: SauceEntryFields
+): Promise<{ error: string } | { success: true; sauceId: string; sauceCode: string }> {
+  const categoryCode = CATEGORY_CODES[fields.category];
+  if (!categoryCode) {
+    return { error: `Unknown category: ${fields.category}` };
+  }
+
+  // Generate sauce code
+  const { data: existingSauces, error: countError } = await serviceSupabase
+    .from('sauces')
+    .select('sauce_code')
+    .like('sauce_code', `${categoryCode}%`)
+    .order('sauce_code', { ascending: false })
+    .limit(1);
+
+  if (countError) {
+    return { error: countError.message };
+  }
+
+  let nextNumber = 1;
+  if (existingSauces && existingSauces.length > 0) {
+    const lastCode = existingSauces[0].sauce_code;
+    const lastNumber = parseInt(lastCode.substring(1), 10);
+    nextNumber = lastNumber + 1;
+  }
+
+  const sauceCode = `${categoryCode}${String(nextNumber).padStart(3, '0')}`;
+
+  // Create sauce entry
+  const { data: newSauce, error: insertError } = await serviceSupabase
+    .from('sauces')
+    .insert({
+      supplier_id: supplierId,
+      name: fields.name,
+      category: fields.category,
+      ingredients: fields.ingredients,
+      allergens: fields.allergens || 'None',
+      webshop_link: fields.webshopLink || null,
+      sauce_code: sauceCode,
+      status: 'registered',
+      payment_status: 'pending_payment',
+      competition_year: COMPETITION_YEAR,
+    })
+    .select('id')
+    .single();
+
+  if (insertError) {
+    return { error: insertError.message };
+  }
+
+  // Generate QR code
+  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?data=${newSauce.id}&size=200x200`;
+  const { error: qrError } = await serviceSupabase
+    .from('sauces')
+    .update({ qr_code_url: qrCodeUrl })
+    .eq('id', newSauce.id);
+
+  if (qrError) {
+    console.error('Failed to generate QR code:', qrError);
+    // Don't fail the whole operation
+  }
+
+  // Check if there's a pending payment and auto-add this sauce to it
+  const { data: pendingPayment } = await serviceSupabase
+    .from('supplier_payments')
+    .select('id, entry_count, stripe_session_id')
+    .eq('supplier_id', supplierId)
+    .eq('stripe_payment_status', 'pending')
+    .single();
+
+  if (pendingPayment) {
+    // Link this sauce to the existing payment
+    await serviceSupabase
+      .from('sauces')
+      .update({ payment_id: pendingPayment.id })
+      .eq('id', newSauce.id);
+
+    // Update payment amounts with new sauce count
+    const newEntryCount = pendingPayment.entry_count + 1;
+    const newDiscountRate = resolveDiscount(newEntryCount);
+    const newSubtotalCents = newEntryCount * BASE_PRICE_CENTS;
+    const newDiscountCents = Math.round(newSubtotalCents * newDiscountRate);
+    const newAmountDueCents = newSubtotalCents - newDiscountCents;
+
+    await serviceSupabase
+      .from('supplier_payments')
+      .update({
+        entry_count: newEntryCount,
+        discount_percent: Number((newDiscountRate * 100).toFixed(2)),
+        subtotal_cents: newSubtotalCents,
+        discount_cents: newDiscountCents,
+        amount_due_cents: newAmountDueCents,
+        stripe_session_id: null, // Clear old Stripe session - it will be recreated with correct amounts
+      })
+      .eq('id', pendingPayment.id);
+  }
+
+  return { success: true as const, sauceId: newSauce.id as string, sauceCode };
 }
 
 /**
  * Create a new sauce entry for the logged-in supplier
  */
-export async function createSauceEntry(formData: FormData) {
+export async function createSauceEntry(formData: FormData): Promise<
+  { error: string } | { success: true; data: { id: string; sauce_code: string } }
+> {
   const name = formData.get('name') as string;
   const category = formData.get('category') as string;
   const ingredients = formData.get('ingredients') as string;
@@ -3369,111 +3503,28 @@ export async function createSauceEntry(formData: FormData) {
     return { error: 'Supplier account not found.' };
   }
 
-  // Get category code
-  const categoryCode = CATEGORY_CODES[category];
-  if (!categoryCode) {
-    return { error: `Unknown category: ${category}` };
-  }
-
   // Use service client to bypass RLS for sauce code generation
   const serviceSupabase = createServiceClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-  // Generate sauce code
-  const { data: existingSauces, error: countError } = await serviceSupabase
-    .from('sauces')
-    .select('sauce_code')
-    .like('sauce_code', `${categoryCode}%`)
-    .order('sauce_code', { ascending: false })
-    .limit(1);
+  const result = await insertSauceEntry(serviceSupabase, supplier.id, {
+    name,
+    category,
+    ingredients,
+    allergens,
+    webshopLink,
+  });
 
-  if (countError) {
-    return { error: countError.message };
-  }
-
-  let nextNumber = 1;
-  if (existingSauces && existingSauces.length > 0) {
-    const lastCode = existingSauces[0].sauce_code;
-    const lastNumber = parseInt(lastCode.substring(1), 10);
-    nextNumber = lastNumber + 1;
-  }
-
-  const sauceCode = `${categoryCode}${String(nextNumber).padStart(3, '0')}`;
-
-  // Create sauce entry
-  const { data: newSauce, error: insertError } = await serviceSupabase
-    .from('sauces')
-    .insert({
-      supplier_id: supplier.id,
-      name,
-      category,
-      ingredients,
-      allergens: allergens || 'None',
-      webshop_link: webshopLink || null,
-      sauce_code: sauceCode,
-      status: 'registered',
-      payment_status: 'pending_payment',
-    })
-    .select('id')
-    .single();
-
-  if (insertError) {
-    return { error: insertError.message };
-  }
-
-  // Generate QR code
-  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?data=${newSauce.id}&size=200x200`;
-  const { error: qrError } = await serviceSupabase
-    .from('sauces')
-    .update({ qr_code_url: qrCodeUrl })
-    .eq('id', newSauce.id);
-
-  if (qrError) {
-    console.error('Failed to generate QR code:', qrError);
-    // Don't fail the whole operation
-  }
-
-  // Check if there's a pending payment and auto-add this sauce to it
-  const { data: pendingPayment } = await serviceSupabase
-    .from('supplier_payments')
-    .select('id, entry_count, stripe_session_id')
-    .eq('supplier_id', supplier.id)
-    .eq('stripe_payment_status', 'pending')
-    .single();
-
-  if (pendingPayment) {
-    // Link this sauce to the existing payment
-    await serviceSupabase
-      .from('sauces')
-      .update({ payment_id: pendingPayment.id })
-      .eq('id', newSauce.id);
-
-    // Update payment amounts with new sauce count
-    const newEntryCount = pendingPayment.entry_count + 1;
-    const newDiscountRate = resolveDiscount(newEntryCount);
-    const newSubtotalCents = newEntryCount * BASE_PRICE_CENTS;
-    const newDiscountCents = Math.round(newSubtotalCents * newDiscountRate);
-    const newAmountDueCents = newSubtotalCents - newDiscountCents;
-
-    await serviceSupabase
-      .from('supplier_payments')
-      .update({
-        entry_count: newEntryCount,
-        discount_percent: Number((newDiscountRate * 100).toFixed(2)),
-        subtotal_cents: newSubtotalCents,
-        discount_cents: newDiscountCents,
-        amount_due_cents: newAmountDueCents,
-        stripe_session_id: null, // Clear old Stripe session - it will be recreated with correct amounts
-      })
-      .eq('id', pendingPayment.id);
+  if ('error' in result) {
+    return result;
   }
 
   // Handle image upload if provided
   if (imagePath) {
     const bucket = process.env.NEXT_PUBLIC_SAUCE_IMAGE_BUCKET || 'sauce-media';
-    const targetPath = `suppliers/${supplier.id}/${newSauce.id}.webp`;
+    const targetPath = `suppliers/${supplier.id}/${result.sauceId}.webp`;
 
     // Move image from pending to final location
     const { error: moveError } = await serviceSupabase.storage
@@ -3488,7 +3539,7 @@ export async function createSauceEntry(formData: FormData) {
       const { error: updateError } = await serviceSupabase
         .from('sauces')
         .update({ image_path: targetPath })
-        .eq('id', newSauce.id);
+        .eq('id', result.sauceId);
 
       if (updateError) {
         console.error('Failed to update sauce with image path:', updateError);
@@ -3497,7 +3548,189 @@ export async function createSauceEntry(formData: FormData) {
   }
 
   revalidatePath('/dashboard');
-  return { success: true, data: { id: newSauce.id, sauce_code: sauceCode } };
+  return { success: true, data: { id: result.sauceId, sauce_code: result.sauceCode } };
+}
+
+/**
+ * Re-enter a sauce the supplier previously submitted in an earlier competition
+ * year: clones its identity fields (and image, if any) into a fresh row for
+ * the current competition year, leaving the original row untouched as history.
+ */
+export async function reuseSauceEntry(sourceSauceId: string): Promise<
+  { error: string } | { success: true; data: { id: string; sauce_code: string } }
+> {
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user?.email) {
+    return { error: 'You must be logged in to reuse a sauce entry.' };
+  }
+
+  const { data: supplier, error: supplierError } = await supabase
+    .from('suppliers')
+    .select('id')
+    .ilike('email', user.email)
+    .single();
+
+  if (supplierError || !supplier) {
+    return { error: 'Supplier account not found.' };
+  }
+
+  const serviceSupabase = createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
+  // Fetch the source sauce, scoped to this supplier so one supplier can't clone another's entry
+  const { data: sourceSauce, error: sourceError } = await serviceSupabase
+    .from('sauces')
+    .select('name, category, ingredients, allergens, webshop_link, image_path, competition_year')
+    .eq('id', sourceSauceId)
+    .eq('supplier_id', supplier.id)
+    .single();
+
+  if (sourceError || !sourceSauce) {
+    return { error: 'Sauce not found.' };
+  }
+
+  if (sourceSauce.competition_year === COMPETITION_YEAR) {
+    return { error: 'This sauce has already been entered for this competition year.' };
+  }
+
+  const result = await insertSauceEntry(serviceSupabase, supplier.id, {
+    name: sourceSauce.name,
+    category: sourceSauce.category,
+    ingredients: sourceSauce.ingredients,
+    allergens: sourceSauce.allergens,
+    webshopLink: sourceSauce.webshop_link,
+  });
+
+  if ('error' in result) {
+    return result;
+  }
+
+  // Copy the previous image across, if there was one
+  if (sourceSauce.image_path) {
+    const bucket = process.env.NEXT_PUBLIC_SAUCE_IMAGE_BUCKET || 'sauce-media';
+    const targetPath = `suppliers/${supplier.id}/${result.sauceId}.webp`;
+
+    const { error: copyError } = await serviceSupabase.storage
+      .from(bucket)
+      .copy(sourceSauce.image_path, targetPath);
+
+    if (copyError) {
+      console.error('Failed to copy sauce image for reuse:', copyError);
+    } else {
+      const { error: updateError } = await serviceSupabase
+        .from('sauces')
+        .update({ image_path: targetPath })
+        .eq('id', result.sauceId);
+
+      if (updateError) {
+        console.error('Failed to update reused sauce with image path:', updateError);
+      }
+    }
+  }
+
+  revalidatePath('/dashboard');
+  return { success: true, data: { id: result.sauceId, sauce_code: result.sauceCode } };
+}
+
+export type PastSauceRecord = {
+  id: string;
+  name: string;
+  category: string;
+  image_path: string | null;
+  competition_year: number;
+};
+
+/**
+ * List the logged-in supplier's sauces from previous competition years, for
+ * the "reuse a previous sauce" picker.
+ */
+export async function getSupplierPastSauces(): Promise<
+  { error: string } | { success: true; data: PastSauceRecord[] }
+> {
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user?.email) {
+    return { error: 'You must be logged in to view your sauces.' };
+  }
+
+  const { data: supplier, error: supplierError } = await supabase
+    .from('suppliers')
+    .select('id')
+    .ilike('email', user.email)
+    .single();
+
+  if (supplierError || !supplier) {
+    return { error: 'Supplier account not found.' };
+  }
+
+  const { data: sauces, error: saucesError } = await supabase
+    .from('sauces')
+    .select('id, name, category, image_path, competition_year')
+    .eq('supplier_id', supplier.id)
+    .lt('competition_year', COMPETITION_YEAR)
+    .order('competition_year', { ascending: false })
+    .order('name', { ascending: true });
+
+  if (saucesError) {
+    return { error: saucesError.message };
+  }
+
+  return { success: true, data: (sauces || []) as PastSauceRecord[] };
+}
+
+/**
+ * Record that the logged-in supplier has opted in to the current competition
+ * year. Backs the "Enter 2027 Competition" gate in the dashboard so returning
+ * suppliers land on a deliberate opt-in step rather than straight back into
+ * last season's sauce management UI.
+ */
+export async function enterCompetitionYear(): Promise<{ error: string } | { success: true }> {
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user?.email) {
+    return { error: 'You must be logged in.' };
+  }
+
+  const { data: supplier, error: supplierError } = await supabase
+    .from('suppliers')
+    .select('brand_name')
+    .ilike('email', user.email)
+    .single();
+
+  if (supplierError || !supplier) {
+    return { error: 'Supplier account not found.' };
+  }
+
+  const serviceSupabase = createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
+  const { error: upsertError } = await serviceSupabase
+    .from('supplier_participations')
+    .upsert({
+      email: user.email,
+      company_name: supplier.brand_name,
+      year: COMPETITION_YEAR,
+      participated: true,
+      source: 'dashboard_opt_in',
+    }, { onConflict: 'email,year' });
+
+  if (upsertError) {
+    return { error: upsertError.message };
+  }
+
+  revalidatePath('/dashboard');
+  return { success: true };
 }
 
 /**
@@ -3615,12 +3848,13 @@ export async function createPaymentBatch() {
     .neq('stripe_payment_status', 'succeeded');
 
   if (existingPayments && existingPayments.length > 0) {
-    // Unlink all sauces from the old payment
+    // Unlink this season's sauces from the old payment
     await serviceSupabase
       .from('sauces')
       .update({ payment_id: null })
       .eq('supplier_id', supplier.id)
-      .eq('payment_status', 'pending_payment');
+      .eq('payment_status', 'pending_payment')
+      .eq('competition_year', COMPETITION_YEAR);
 
     // Delete old pending payments
     for (const payment of existingPayments) {
@@ -3631,12 +3865,13 @@ export async function createPaymentBatch() {
     }
   }
 
-  // Get all unpaid sauces for this supplier (including those just unlinked)
+  // Get this season's unpaid sauces for this supplier (including those just unlinked)
   const { data: unpaidSauces, error: saucesError } = await serviceSupabase
     .from('sauces')
     .select('id')
     .eq('supplier_id', supplier.id)
-    .eq('payment_status', 'pending_payment');
+    .eq('payment_status', 'pending_payment')
+    .eq('competition_year', COMPETITION_YEAR);
 
   if (saucesError) {
     return { error: saucesError.message };

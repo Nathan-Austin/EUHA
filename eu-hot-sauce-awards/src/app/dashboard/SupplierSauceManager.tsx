@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useTransition } from 'react';
-import { createSauceEntry, deleteSauce, createPaymentBatch } from '@/app/actions';
+import { useState, useEffect, useTransition } from 'react';
+import { createSauceEntry, deleteSauce, createPaymentBatch, enterCompetitionYear, getSupplierPastSauces, reuseSauceEntry } from '@/app/actions';
 import { createClient } from '@/lib/supabase/client';
+import { COMPETITION_YEAR } from '@/lib/config';
 
 interface UnpaidSauce {
   id: string;
@@ -15,9 +16,18 @@ interface UnpaidSauce {
   created_at: string;
 }
 
+interface PastSauce {
+  id: string;
+  name: string;
+  category: string;
+  image_path: string | null;
+  competition_year: number;
+}
+
 interface SupplierSauceManagerProps {
   initialSauces: UnpaidSauce[];
   hasExistingPayment?: boolean;
+  hasOptedIn: boolean;
 }
 
 const CATEGORIES = [
@@ -73,7 +83,7 @@ const formatCurrency = (amount: number) =>
     minimumFractionDigits: 2,
   }).format(amount);
 
-export default function SupplierSauceManager({ initialSauces, hasExistingPayment = false }: SupplierSauceManagerProps) {
+export default function SupplierSauceManager({ initialSauces, hasExistingPayment = false, hasOptedIn }: SupplierSauceManagerProps) {
   const [sauces, setSauces] = useState<UnpaidSauce[]>(initialSauces);
   const [showAddForm, setShowAddForm] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
@@ -82,6 +92,58 @@ export default function SupplierSauceManager({ initialSauces, hasExistingPayment
   const [isPending, startTransition] = useTransition();
   const [uploadingImage, setUploadingImage] = useState(false);
   const supabase = createClient();
+
+  const [optedIn, setOptedIn] = useState(hasOptedIn);
+  const [entering, setEntering] = useState(false);
+  const [pastSauces, setPastSauces] = useState<PastSauce[] | null>(null);
+  const [loadingPastSauces, setLoadingPastSauces] = useState(false);
+  const [reusingId, setReusingId] = useState<string | null>(null);
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const imageBucket = process.env.NEXT_PUBLIC_SAUCE_IMAGE_BUCKET || 'sauce-media';
+
+  useEffect(() => {
+    if (!optedIn || pastSauces !== null) return;
+    setLoadingPastSauces(true);
+    getSupplierPastSauces().then((result) => {
+      if ('data' in result) {
+        setPastSauces(result.data);
+      } else {
+        setPastSauces([]);
+      }
+      setLoadingPastSauces(false);
+    });
+  }, [optedIn, pastSauces]);
+
+  const handleEnterCompetition = () => {
+    setError(null);
+    setEntering(true);
+    startTransition(async () => {
+      const result = await enterCompetitionYear();
+      setEntering(false);
+      if ('error' in result) {
+        setError(result.error);
+      } else {
+        setOptedIn(true);
+      }
+    });
+  };
+
+  const handleReuseSauce = (sauceId: string) => {
+    setError(null);
+    setSuccess(null);
+    setReusingId(sauceId);
+    startTransition(async () => {
+      const result = await reuseSauceEntry(sauceId);
+      setReusingId(null);
+      if ('error' in result) {
+        setError(result.error);
+      } else {
+        setSuccess(`Sauce re-entered for ${COMPETITION_YEAR}! Code: ${result.data.sauce_code}`);
+        window.location.reload();
+      }
+    });
+  };
 
   const handleAddSauce = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -128,14 +190,14 @@ export default function SupplierSauceManager({ initialSauces, hasExistingPayment
 
     startTransition(async () => {
       const result = await createSauceEntry(formData);
-      if (result.error) {
+      if ('error' in result) {
         setError(result.error);
         // Clean up uploaded image if sauce creation failed
         if (imagePath) {
           await supabase.storage.from(process.env.NEXT_PUBLIC_SAUCE_IMAGE_BUCKET || 'sauce-media').remove([imagePath]);
         }
       } else {
-        setSuccess(`Sauce entry created successfully! Code: ${result.data?.sauce_code}`);
+        setSuccess(`Sauce entry created successfully! Code: ${result.data.sauce_code}`);
         // Refresh the page to get updated sauces (no need to reset form, reload will clear it)
         window.location.reload();
       }
@@ -175,6 +237,28 @@ export default function SupplierSauceManager({ initialSauces, hasExistingPayment
 
   const payment = sauces.length > 0 ? calculatePayment(sauces.length) : null;
 
+  if (!optedIn) {
+    return (
+      <div className="text-center bg-white rounded-lg border-2 border-dashed border-orange-300 p-8 space-y-4">
+        <p className="text-3xl">🌶️</p>
+        <h2 className="text-2xl font-bold text-gray-900">Ready for the {COMPETITION_YEAR} EU Hot Sauce Awards?</h2>
+        <p className="text-gray-600 max-w-md mx-auto">
+          Judging is changing this year — professionals and press will be scoring entries live at an event in Berlin,
+          rather than judges scoring at home. Click below to get started: you can resubmit any of your previous
+          sauces in one click, or add new ones.
+        </p>
+        {error && <p className="text-sm text-red-600">{error}</p>}
+        <button
+          onClick={handleEnterCompetition}
+          disabled={entering}
+          className="px-6 py-3 bg-orange-600 text-white font-semibold rounded-lg hover:bg-orange-700 disabled:bg-orange-400 transition-colors"
+        >
+          {entering ? 'Starting...' : `Enter ${COMPETITION_YEAR} Competition`}
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -184,16 +268,63 @@ export default function SupplierSauceManager({ initialSauces, hasExistingPayment
             Add new sauce entries or remove unpaid entries
           </p>
         </div>
-        <div className="flex flex-col items-end gap-1">
-          <button
-            disabled
-            className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg opacity-50 cursor-not-allowed"
-          >
-            + Add Sauce Entry
-          </button>
-          <p className="text-xs text-gray-500">Entries are closed for the 2026 awards</p>
-        </div>
+        <button
+          onClick={() => setShowAddForm((prev) => !prev)}
+          className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors"
+        >
+          {showAddForm ? 'Cancel' : '+ Add Sauce Entry'}
+        </button>
       </div>
+
+      <div className="bg-amber-50 border border-amber-200 rounded-md p-4 text-sm text-amber-900 space-y-1">
+        <p><strong>Delivery window:</strong> ship your samples between 1 January and 28 February {COMPETITION_YEAR}.</p>
+        <p>
+          <strong>Shipping from outside Europe?</strong> Include your EORI number on the customs paperwork and ship
+          via UPS — UPS clears customs and delivers directly to us, rather than us having to track the parcel down.
+        </p>
+      </div>
+
+      {pastSauces && pastSauces.length > 0 && (
+        <div className="bg-white border border-gray-200 rounded-lg p-6 space-y-4">
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900">Re-enter a Previous Sauce</h3>
+            <p className="text-sm text-gray-600 mt-1">
+              Pick one of your past entries to resubmit as-is for {COMPETITION_YEAR} — no retyping needed.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {pastSauces.map((sauce) => (
+              <div key={sauce.id} className="flex items-center justify-between gap-3 border border-gray-200 rounded-lg p-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  {sauce.image_path && supabaseUrl ? (
+                    <img
+                      src={`${supabaseUrl}/storage/v1/object/public/${imageBucket}/${sauce.image_path}`}
+                      alt={sauce.name}
+                      className="w-12 h-12 rounded-md object-cover flex-shrink-0"
+                    />
+                  ) : (
+                    <div className="w-12 h-12 rounded-md bg-gray-100 flex-shrink-0" />
+                  )}
+                  <div className="min-w-0">
+                    <p className="font-medium text-gray-900 truncate">{sauce.name}</p>
+                    <p className="text-xs text-gray-500">{sauce.category} · {sauce.competition_year}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => handleReuseSauce(sauce.id)}
+                  disabled={isPending && reusingId === sauce.id}
+                  className="px-3 py-1.5 bg-green-600 text-white text-sm font-semibold rounded hover:bg-green-700 disabled:bg-green-400 flex-shrink-0"
+                >
+                  {reusingId === sauce.id ? 'Adding...' : 'Re-enter'}
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {loadingPastSauces && (
+        <p className="text-sm text-gray-500">Loading your previous entries…</p>
+      )}
 
       {error && (
         <div className="p-4 bg-red-50 border border-red-200 rounded-md text-sm text-red-700">
@@ -207,8 +338,8 @@ export default function SupplierSauceManager({ initialSauces, hasExistingPayment
         </div>
       )}
 
-      {/* Add Sauce Form — entries closed */}
-      {false && (
+      {/* Add Sauce Form */}
+      {showAddForm && (
         <form onSubmit={handleAddSauce} className="bg-blue-50 border-2 border-blue-200 rounded-lg p-6 space-y-4">
           <h3 className="text-lg font-semibold text-blue-900">Add New Sauce Entry</h3>
 

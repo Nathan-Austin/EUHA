@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { submitAllScores, getJudgeScoredSauces } from '@/app/actions';
 import ShippingAddressDisplay from './ShippingAddressDisplay';
+import SupplierSauceManager from './SupplierSauceManager';
 import RohFollowCTA from '@/components/RohFollowCTA';
 import { JUDGING_OPEN } from '@/lib/config';
 
@@ -28,6 +29,17 @@ interface EnteredSauce {
   status: string;
 }
 
+interface UnpaidSauce {
+  id: string;
+  name: string;
+  category: string;
+  sauce_code: string;
+  ingredients: string;
+  allergens: string;
+  webshop_link: string | null;
+  created_at: string;
+}
+
 interface SupplierDashboardProps {
   supplierData: {
     brandName: string;
@@ -45,9 +57,12 @@ interface SupplierDashboardProps {
     dhl_label_url: string | null;
   } | null;
   enteredSauces: EnteredSauce[];
+  hasOptedIn: boolean;
+  unpaidSauces: UnpaidSauce[];
+  hasExistingPayment: boolean;
 }
 
-export default function SupplierDashboard({ supplierData, judgeData, enteredSauces }: SupplierDashboardProps) {
+export default function SupplierDashboard({ supplierData, judgeData, enteredSauces, hasOptedIn, unpaidSauces, hasExistingPayment }: SupplierDashboardProps) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const imageBucket = process.env.NEXT_PUBLIC_SAUCE_IMAGE_BUCKET || 'sauce-media';
 
@@ -105,7 +120,6 @@ export default function SupplierDashboard({ supplierData, judgeData, enteredSauc
           <h3 className="text-xl font-bold text-gray-900">That&apos;s all for 2026 — thank you!</h3>
           <p className="text-gray-600">
             Your scores are in and judging is complete. We&apos;ll be in touch with the results.
-            2027 entries will open late September.
           </p>
           {JUDGING_OPEN && (
           <>
@@ -120,6 +134,12 @@ export default function SupplierDashboard({ supplierData, judgeData, enteredSauc
         )}
         </div>
 
+        <SupplierSauceManager
+          initialSauces={unpaidSauces}
+          hasExistingPayment={hasExistingPayment}
+          hasOptedIn={hasOptedIn}
+        />
+
         <RohFollowCTA />
       </div>
     );
@@ -131,6 +151,12 @@ export default function SupplierDashboard({ supplierData, judgeData, enteredSauc
         <h2 className="text-2xl font-bold text-white mb-2">Supplier Dashboard</h2>
         <p className="text-gray-300">Welcome, {supplierData.brandName}!</p>
       </div>
+
+      <SupplierSauceManager
+        initialSauces={unpaidSauces}
+        hasExistingPayment={hasExistingPayment}
+        hasOptedIn={hasOptedIn}
+      />
 
       {/* Their entered sauces */}
       {enteredSauces.length > 0 && (

@@ -9,6 +9,7 @@ import AdminDashboard from './AdminDashboard'
 import CommunityJudgeDashboard from './CommunityJudgeDashboard'
 import SupplierDashboard from './SupplierDashboard'
 import StripeCheckoutButton from './StripeCheckoutButton'
+import { getSupplierUnpaidSauces } from '@/app/actions'
 
 export const dynamic = 'force-dynamic'
 
@@ -98,9 +99,32 @@ export default async function DashboardPage() {
           .select('id, name, category, image_path, status')
           .eq('supplier_id', supplier.id)
           .in('payment_status', ['paid', 'payment_waived'])
-          .gte('created_at', `${COMPETITION_YEAR - 1}-09-01`)
-          .lt('created_at', `${COMPETITION_YEAR + 1}-01-01`)
+          .eq('competition_year', COMPETITION_YEAR)
           .order('created_at', { ascending: false });
+
+        // Has this supplier already opted in to the current competition year?
+        // Either they've explicitly entered via the dashboard gate, or they
+        // already have a sauce (paid or not) recorded for this year.
+        const { data: participation } = await supabase
+          .from('supplier_participations')
+          .select('participated')
+          .ilike('email', user.email!)
+          .eq('year', COMPETITION_YEAR)
+          .maybeSingle();
+
+        const unpaidSaucesResult = await getSupplierUnpaidSauces();
+        const unpaidSauces = 'data' in unpaidSaucesResult ? unpaidSaucesResult.data : [];
+
+        const hasOptedIn = Boolean(participation?.participated)
+          || (enteredSauces?.length ?? 0) > 0
+          || unpaidSauces.length > 0;
+
+        const { data: pendingPayment } = await supabase
+          .from('supplier_payments')
+          .select('id')
+          .eq('supplier_id', supplier.id)
+          .neq('stripe_payment_status', 'succeeded')
+          .maybeSingle();
 
         return <SupplierDashboard
           supplierData={{
@@ -119,6 +143,9 @@ export default async function DashboardPage() {
             dhl_label_url: judge.dhl_label_url,
           }}
           enteredSauces={enteredSauces || []}
+          hasOptedIn={hasOptedIn}
+          unpaidSauces={unpaidSauces}
+          hasExistingPayment={Boolean(pendingPayment)}
         />;
       }
       case 'community':

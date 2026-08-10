@@ -72,17 +72,33 @@ export default async function AdminDashboard() {
         suppliers ( brand_name )
       `
     )
+    .eq('competition_year', COMPETITION_YEAR)
     .order('created_at', { ascending: false }) as { data: any[] | null; error: any }
 
-  const cycleStart = `${COMPETITION_YEAR - 1}-09-01`
+  // Suppliers active this season: since suppliers persist across years (an
+  // account created in a prior year is reused when they re-enter), filtering
+  // by suppliers.created_at would silently drop returning suppliers. Instead,
+  // scope to whoever has at least one sauce entered for the current year.
+  const { data: currentSeasonSupplierLinks } = await supabase
+    .from('sauces')
+    .select('supplier_id')
+    .eq('competition_year', COMPETITION_YEAR)
 
-  const { data: suppliers } = await supabase
-    .from('suppliers')
-    .select(
-      'id, brand_name, email, tracking_number, postal_service_name, package_status, package_received_at, country, region'
-    )
-    .gte('created_at', cycleStart)
-    .order('package_status', { ascending: true }) as { data: any[] | null; error: any }
+  const currentSeasonSupplierIds = Array.from(
+    new Set((currentSeasonSupplierLinks || []).map((s) => s.supplier_id).filter(Boolean))
+  )
+
+  const { data: suppliers } = (
+    currentSeasonSupplierIds.length > 0
+      ? await supabase
+          .from('suppliers')
+          .select(
+            'id, brand_name, email, tracking_number, postal_service_name, package_status, package_received_at, country, region'
+          )
+          .in('id', currentSeasonSupplierIds)
+          .order('package_status', { ascending: true })
+      : { data: [], error: null }
+  ) as { data: any[] | null; error: any }
 
   const { data: shippingJudges } = await supabase
     .from('judges')
