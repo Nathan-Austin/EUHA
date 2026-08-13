@@ -1,5 +1,8 @@
 
+'use client';
+
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 
 const FooterLink = ({ href, children }: { href: string, children: React.ReactNode }) => (
   <Link href={href} className="text-base text-gray-400 hover:text-white">
@@ -8,6 +11,11 @@ const FooterLink = ({ href, children }: { href: string, children: React.ReactNod
 );
 
 const Footer = () => {
+  const pathname = usePathname();
+
+  // Homepage ships its own EHSA-2027-style footer (see HeatFooter).
+  if (pathname === '/') return null;
+
   return (
     <footer className="bg-[#08040e]/70 border-t border-white/10 text-white">
       <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">

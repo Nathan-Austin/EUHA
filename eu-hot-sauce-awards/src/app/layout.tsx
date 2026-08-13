@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Archivo_Black } from "next/font/google";
 import "./globals.css";
 import GlobalNav from "@/components/GlobalNav";
 import Footer from "@/components/Footer";
@@ -8,6 +8,12 @@ import Script from "next/script";
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-inter",
+});
+
+const archivoBlack = Archivo_Black({
+  subsets: ["latin"],
+  weight: "400",
+  variable: "--font-archivo-black",
 });
 
 export const metadata: Metadata = {
@@ -66,7 +72,7 @@ export default function RootLayout({
           </>
         )}
       </head>
-      <body className={`${inter.variable} antialiased bg-[#08040e] text-white`}>
+      <body className={`${inter.variable} ${archivoBlack.variable} antialiased bg-[#08040e] text-white`}>
         <GlobalNav />
         <main>{children}</main>
         <Footer />

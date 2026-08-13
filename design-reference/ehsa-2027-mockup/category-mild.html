@@ -1,0 +1,512 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mild Chili Sauce — Best in Category 2026 — European Hot Sauce Awards</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --yellow: #F5C518;
+  --yellow-deep: #E0A800;
+  --ink: #111111;
+  --cream: #f3ead8;
+  --paper: #faf6ec;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { background: var(--paper); color: var(--ink); font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
+img { display: block; max-width: 100%; }
+a { color: inherit; text-decoration: none; }
+.display { font-family: 'Archivo Black', sans-serif; text-transform: uppercase; line-height: 0.95; letter-spacing: -0.02em; }
+.wrap { max-width: 1240px; margin: 0 auto; padding: 0 24px; }
+
+/* TOP BAR */
+.topbar { background: var(--yellow); border-bottom: 4px solid var(--ink); }
+.topbar .wrap { display: flex; align-items: center; justify-content: space-between; padding: 12px 24px; gap: 24px; }
+.brand { display: flex; align-items: center; gap: 14px; }
+.brand-mark { width: 44px; height: 44px; background: var(--ink); border-radius: 50%; display: grid; place-items: center; color: var(--yellow); font-family: 'Archivo Black'; font-size: 20px; }
+.brand-name { font-family: 'Archivo Black'; text-transform: uppercase; font-size: 18px; line-height: 1; }
+.brand-name small { display: block; font-family: 'Inter'; font-weight: 600; font-size: 11px; letter-spacing: 0.12em; margin-top: 4px; color: #333; }
+nav.primary { display: flex; gap: 28px; }
+nav.primary a { font-weight: 700; font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em; }
+nav.primary a.cta { background: var(--ink); color: var(--yellow); padding: 8px 14px; }
+
+/* BREADCRUMB */
+.crumbs { background: var(--ink); color: #aaa; padding: 14px 0; font-size: 13px; letter-spacing: 0.05em; }
+.crumbs .wrap { display: flex; gap: 10px; align-items: center; }
+.crumbs a { color: var(--yellow); font-weight: 600; }
+.crumbs .sep { color: #555; }
+.crumbs .here { color: #fff; font-weight: 700; }
+
+/* CATEGORY HERO */
+.cat-hero { background: var(--ink); color: #fff; padding: 0; position: relative; overflow: hidden; }
+.cat-hero-inner { display: grid; grid-template-columns: 1.1fr 1fr; min-height: 580px; }
+.cat-hero-text { padding: 80px 24px 80px 0; display: flex; flex-direction: column; justify-content: center; }
+.cat-hero-text .wrap-l { max-width: 620px; padding-left: 24px; margin-left: auto; padding-right: 56px; }
+.cat-hero-eyebrow { color: var(--yellow); font-weight: 700; font-size: 13px; letter-spacing: 0.18em; text-transform: uppercase; margin-bottom: 22px; }
+.cat-hero-category { font-family: 'Archivo Black'; text-transform: uppercase; font-size: 22px; color: #ccc; letter-spacing: 0.04em; margin-bottom: 16px; }
+.cat-hero-text h1 { font-family: 'Archivo Black'; text-transform: uppercase; font-size: clamp(56px, 7vw, 96px); line-height: 0.92; letter-spacing: -0.02em; }
+.cat-hero-text h1 .pop { color: var(--yellow); }
+.cat-hero-meta { margin-top: 28px; font-size: 16px; letter-spacing: 0.12em; text-transform: uppercase; color: #ddd; }
+.cat-hero-score { display: flex; align-items: baseline; gap: 18px; margin-top: 28px; }
+.cat-hero-score strong { font-family: 'Archivo Black'; font-size: 56px; color: var(--yellow); line-height: 1; }
+.cat-hero-score span { font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase; color: #aaa; }
+.cat-hero-ctas { margin-top: 36px; display: flex; gap: 14px; flex-wrap: wrap; }
+.btn-primary { background: var(--yellow); color: var(--ink); padding: 16px 24px; font-family: 'Archivo Black'; text-transform: uppercase; font-size: 14px; letter-spacing: 0.06em; border: 3px solid var(--yellow); display: inline-block; }
+.btn-primary:hover { background: var(--yellow-deep); border-color: var(--yellow-deep); }
+.btn-ghost { background: transparent; color: #fff; padding: 16px 24px; font-family: 'Archivo Black'; text-transform: uppercase; font-size: 14px; letter-spacing: 0.06em; border: 3px solid #fff; display: inline-block; }
+.btn-ghost:hover { background: #fff; color: var(--ink); }
+.cat-hero-img { background-size: cover; background-position: center; min-height: 580px; border-left: 4px solid var(--yellow); position: relative; }
+.best-stamp { position: absolute; top: 32px; left: 32px; background: var(--yellow); border: 4px solid var(--ink); padding: 18px 24px; transform: rotate(-6deg); text-align: center; font-family: 'Archivo Black'; text-transform: uppercase; color: var(--ink); line-height: 0.92; box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
+.best-stamp .big { font-size: 28px; letter-spacing: 0.01em; }
+.best-stamp .small { font-size: 11px; letter-spacing: 0.16em; margin-top: 8px; padding-top: 8px; border-top: 2px solid var(--ink); }
+
+/* CATEGORY STATS STRIP */
+.stats-strip { background: var(--ink); color: #fff; padding: 28px 0; border-top: 4px solid var(--yellow); }
+.stats-strip .wrap { display: flex; align-items: center; justify-content: space-between; gap: 32px; flex-wrap: wrap; }
+.stat { display: flex; align-items: baseline; gap: 12px; }
+.stat strong { font-family: 'Archivo Black'; font-size: 32px; color: var(--yellow); line-height: 1; }
+.stat span { font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: #ccc; }
+.stat-method { font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: #aaa; }
+.stat-method a { color: var(--yellow); border-bottom: 2px solid var(--yellow); padding-bottom: 2px; }
+
+/* SECTION BAND */
+section.band { padding: 88px 0; }
+.band-head { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 44px; gap: 32px; flex-wrap: wrap; }
+.band-head h2 { font-family: 'Archivo Black'; text-transform: uppercase; font-size: clamp(32px, 4vw, 48px); line-height: 0.95; max-width: 700px; }
+.band-head h2 .pop { background: var(--yellow); padding: 0 8px; }
+.band-head .sub { font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase; color: #666; font-weight: 600; }
+
+/* GOLD TIER PLAQUES */
+.gold-tier { display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 24px; align-items: stretch; }
+.tier-card { background: #fff; border: 3px solid var(--ink); display: flex; flex-direction: column; overflow: hidden; transition: transform .15s, box-shadow .15s; color: var(--ink); }
+.tier-card:hover { transform: translateY(-3px); box-shadow: 0 10px 24px rgba(0,0,0,0.15); }
+.tier-img { aspect-ratio: 4/3; background-size: cover; background-position: center; border-bottom: 3px solid var(--ink); position: relative; }
+.tier-rank-badge { position: absolute; top: 14px; left: 14px; background: var(--yellow); color: var(--ink); width: 56px; height: 56px; display: grid; place-items: center; font-family: 'Archivo Black'; font-size: 28px; border: 3px solid var(--ink); }
+.tier-rank-badge.silver { background: #DCDCDC; }
+.tier-rank-badge.bronze { background: var(--yellow); color: var(--ink); }
+.tier-body { padding: 24px; flex: 1; display: flex; flex-direction: column; gap: 14px; }
+.tier-medal-line { font-family: 'Archivo Black'; text-transform: uppercase; font-size: 12px; letter-spacing: 0.1em; color: #888; }
+.tier-medal-line.featured { color: var(--ink); }
+.tier-medal-line.featured .badge { background: var(--ink); color: var(--yellow); padding: 4px 10px; margin-right: 8px; font-size: 11px; }
+.tier-sauce { font-family: 'Archivo Black'; text-transform: uppercase; font-size: 28px; line-height: 1; }
+.tier-card.featured-tier .tier-sauce { font-size: 34px; }
+.tier-maker { font-size: 13px; letter-spacing: 0.1em; text-transform: uppercase; color: #555; }
+.tier-foot { display: flex; justify-content: space-between; align-items: baseline; margin-top: auto; padding-top: 16px; border-top: 1px solid #eee; }
+.tier-place { font-size: 12px; color: #888; letter-spacing: 0.02em; }
+.tier-score { font-family: 'Archivo Black'; font-size: 22px; color: var(--ink); }
+.tier-cta { font-family: 'Archivo Black'; font-size: 11px; letter-spacing: 0.1em; padding: 14px 24px; background: var(--ink); color: #fff; text-align: center; }
+.tier-cta:hover { background: var(--yellow-deep); color: var(--ink); }
+
+/* SILVER TIER */
+.silver-tier { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+.silver-tier .tier-img.placeholder { background: #DCDCDC; display: grid; place-items: center; padding: 16px; text-align: center; }
+.silver-tier .tier-img.placeholder span { font-family: 'Archivo Black'; text-transform: uppercase; font-size: 22px; color: var(--ink); line-height: 0.95; }
+.silver-tier .tier-sauce { font-size: 22px; }
+.silver-tier .tier-img { aspect-ratio: 16/10; }
+
+/* BRONZE TIER */
+.bronze-tier { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.bronze-card { background: #fff; border: 2px solid #ccc; padding: 20px 22px; display: flex; flex-direction: column; gap: 8px; transition: transform .15s, border-color .15s; color: var(--ink); }
+.bronze-card:hover { transform: translateY(-2px); border-color: var(--ink); }
+.bronze-rank { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+.bronze-rank .rank-num { font-family: 'Archivo Black'; font-size: 18px; color: var(--ink); background: var(--yellow); padding: 3px 10px; line-height: 1; }
+.bronze-rank .rank-label { font-family: 'Archivo Black'; font-size: 11px; letter-spacing: 0.08em; color: #888; }
+.bronze-sauce { font-family: 'Archivo Black'; text-transform: uppercase; font-size: 18px; line-height: 1.05; }
+.bronze-maker { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: #555; margin-top: 2px; }
+.bronze-foot { display: flex; justify-content: space-between; align-items: baseline; padding-top: 10px; margin-top: auto; border-top: 1px solid #eee; }
+.bronze-place { font-size: 11px; color: #999; }
+.bronze-score { font-family: 'Archivo Black'; font-size: 15px; color: var(--ink); }
+
+/* TIER GROUP HEADERS */
+.tier-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 22px; padding-bottom: 12px; border-bottom: 3px solid var(--ink); }
+.tier-head h3 { font-family: 'Archivo Black'; text-transform: uppercase; font-size: 26px; letter-spacing: 0.03em; }
+.tier-head h3 .medal-dot { display: inline-block; width: 16px; height: 16px; border-radius: 50%; margin-right: 10px; vertical-align: -2px; }
+.tier-head h3 .medal-dot.gold { background: var(--yellow); }
+.tier-head h3 .medal-dot.silver { background: #DCDCDC; }
+.tier-head h3 .medal-dot.bronze { background: var(--ink); border: 3px solid var(--yellow); box-sizing: border-box; }
+.tier-head .count { font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase; color: #666; font-weight: 600; }
+.tier-block { margin-bottom: 64px; }
+.tier-block:last-child { margin-bottom: 0; }
+
+/* RELATED CATEGORIES */
+.related-band { background: var(--cream); }
+.related-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+.related-card { background: #fff; border: 2px solid var(--ink); padding: 22px 22px 18px; display: flex; flex-direction: column; gap: 12px; transition: transform .15s; color: var(--ink); }
+.related-card:hover { transform: translateY(-3px); }
+.related-relation { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: #888; font-weight: 600; }
+.related-name { font-family: 'Archivo Black'; text-transform: uppercase; font-size: 22px; line-height: 1; }
+.related-winner { font-size: 13px; color: #444; margin-top: 6px; }
+.related-winner em { font-style: normal; font-weight: 700; color: var(--ink); }
+.related-arrow { font-family: 'Archivo Black'; font-size: 11px; letter-spacing: 0.1em; margin-top: auto; padding-top: 14px; border-top: 1px solid #eee; }
+
+/* PRESS STRIP */
+.press-strip-band { background: var(--ink); color: #fff; padding: 56px 0; }
+.press-strip-band .wrap { display: grid; grid-template-columns: 2fr 1fr; gap: 36px; align-items: center; }
+.press-strip-band h3 { font-family: 'Archivo Black'; text-transform: uppercase; font-size: 30px; line-height: 1; }
+.press-strip-band p { color: #ccc; margin-top: 12px; font-size: 15px; line-height: 1.5; max-width: 540px; }
+.press-strip-band .press-cta { display: flex; flex-direction: column; gap: 10px; }
+
+/* FOOTER */
+footer { background: var(--ink); color: #aaa; padding: 56px 0 32px; }
+.foot-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 36px; padding-bottom: 36px; border-bottom: 1px solid #333; }
+.foot-grid h4 { font-family: 'Archivo Black'; text-transform: uppercase; font-size: 13px; color: var(--yellow); letter-spacing: 0.1em; margin-bottom: 14px; }
+.foot-grid ul { list-style: none; }
+.foot-grid li { padding: 4px 0; font-size: 14px; }
+.foot-grid li a:hover { color: var(--yellow); }
+.foot-about p { font-size: 14px; line-height: 1.6; color: #ccc; max-width: 380px; }
+.foot-bottom { display: flex; justify-content: space-between; padding-top: 24px; font-size: 12px; color: #666; }
+
+@media (max-width: 960px) {
+  nav.primary { display: none; }
+  .cat-hero-inner { grid-template-columns: 1fr; }
+  .cat-hero-text { padding: 56px 0; }
+  .cat-hero-text .wrap-l { padding: 0 24px; }
+  .cat-hero-img { min-height: 320px; border-left: 0; border-top: 4px solid var(--yellow); }
+  .gold-tier { grid-template-columns: 1fr; }
+  .silver-tier { grid-template-columns: 1fr 1fr; }
+  .bronze-tier { grid-template-columns: 1fr 1fr; }
+  .related-grid { grid-template-columns: 1fr 1fr; }
+  .press-strip-band .wrap { grid-template-columns: 1fr; }
+  .foot-grid { grid-template-columns: 1fr 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<header class="topbar">
+  <div class="wrap">
+    <a class="brand" href="index.html">
+      <div class="brand-mark">E</div>
+      <div class="brand-name">European Hot Sauce Awards<small>Heatawards.eu &middot; the directory</small></div>
+    </a>
+    <nav class="primary">
+      <a href="index.html#directory">Makers</a>
+      <a href="index.html#countries">Countries</a>
+      <a href="index.html#directory">2026 Winners</a>
+      <a href="index.html#press">Press</a>
+      <a class="cta" href="index.html#enter">Enter 2027</a>
+    </nav>
+  </div>
+</header>
+
+<!-- BREADCRUMB -->
+<div class="crumbs">
+  <div class="wrap">
+    <a href="index.html">Home</a>
+    <span class="sep">/</span>
+    <a href="index.html#directory">Categories</a>
+    <span class="sep">/</span>
+    <span class="here">Mild Chili Sauce</span>
+  </div>
+</div>
+
+<!-- CATEGORY HERO -->
+<section class="cat-hero">
+  <div class="cat-hero-inner">
+    <div class="cat-hero-text">
+      <div class="wrap-l">
+        <div class="cat-hero-eyebrow">EHSA 2026 &middot; Gold &middot; Best in Category</div>
+        <div class="cat-hero-category">Mild Chili Sauce</div>
+        <h1 class="display">Peach <span class="pop">Riot</span>.</h1>
+        <div class="cat-hero-meta">Spicepunk &middot; Sursee, Switzerland</div>
+        <div class="cat-hero-score">
+          <strong>7.53</strong>
+          <span>Judges' weighted average<br>out of 10</span>
+        </div>
+        <div class="cat-hero-ctas">
+          <a class="btn-primary" href="maker-spicepunk.html">View Spicepunk &rarr;</a>
+          <a class="btn-ghost" href="#">Where to buy &rarr;</a>
+        </div>
+      </div>
+    </div>
+    <div class="cat-hero-img" style="background-image:url('assets/cat-mild.jpeg')">
+      <div class="best-stamp">
+        <div class="big">Best in<br>Category</div>
+        <div class="small">EHSA 2026 &middot; Gold</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- STATS STRIP -->
+<section class="stats-strip">
+  <div class="wrap">
+    <div class="stat"><strong>12</strong><span>Sauces judged</span></div>
+    <div class="stat"><strong>3</strong><span>Gold</span></div>
+    <div class="stat"><strong>3</strong><span>Silver</span></div>
+    <div class="stat"><strong>6</strong><span>Bronze</span></div>
+    <div class="stat-method">Judged 11&ndash;12 April 2026, Berlin. <a href="#">Read methodology &rarr;</a></div>
+  </div>
+</section>
+
+<!-- GOLD TIER -->
+<section class="band">
+  <div class="wrap">
+    <div class="band-head">
+      <h2>The <span class="pop">Mild</span> Chili Sauce winners.</h2>
+      <span class="sub">Sorted by judges' weighted score</span>
+    </div>
+
+    <div class="tier-block">
+      <div class="tier-head">
+        <h3><span class="medal-dot gold"></span>Gold</h3>
+        <span class="count">3 Gold medals awarded</span>
+      </div>
+      <div class="gold-tier">
+
+        <a class="tier-card featured-tier" href="maker-spicepunk.html">
+          <div class="tier-img" style="background-image:url('assets/cat-mild.jpeg')">
+            <div class="tier-rank-badge">01</div>
+          </div>
+          <div class="tier-body">
+            <div class="tier-medal-line featured"><span class="badge">Best in Category</span> Gold &middot; 1st</div>
+            <div class="tier-sauce">Peach Riot</div>
+            <div class="tier-maker">Spicepunk</div>
+            <div class="tier-foot">
+              <span class="tier-place">Sursee, Switzerland</span>
+              <span class="tier-score">7.53</span>
+            </div>
+          </div>
+          <div class="tier-cta">View maker &rarr;</div>
+        </a>
+
+        <a class="tier-card" href="#">
+          <div class="tier-img" style="background-image:url('assets/mild-g2-peach-chili.jpeg')">
+            <div class="tier-rank-badge">02</div>
+          </div>
+          <div class="tier-body">
+            <div class="tier-medal-line">Gold &middot; 2nd</div>
+            <div class="tier-sauce">Peach Chili</div>
+            <div class="tier-maker">L&oslash;kken G&aring;rd Hvaler</div>
+            <div class="tier-foot">
+              <span class="tier-place">Vester&oslash;y, Norway</span>
+              <span class="tier-score">7.43</span>
+            </div>
+          </div>
+          <div class="tier-cta">View maker &rarr;</div>
+        </a>
+
+        <a class="tier-card" href="#">
+          <div class="tier-img" style="background-image:url('assets/mild-g3-manga-e-mel.jpeg')">
+            <div class="tier-rank-badge">03</div>
+          </div>
+          <div class="tier-body">
+            <div class="tier-medal-line">Gold &middot; 3rd</div>
+            <div class="tier-sauce">Manga e Mel</div>
+            <div class="tier-maker">Piri-Piri &amp; Co</div>
+            <div class="tier-foot">
+              <span class="tier-place">Albufeira, Portugal</span>
+              <span class="tier-score">7.17</span>
+            </div>
+          </div>
+          <div class="tier-cta">View maker &rarr;</div>
+        </a>
+
+      </div>
+    </div>
+
+    <div class="tier-block">
+      <div class="tier-head">
+        <h3><span class="medal-dot silver"></span>Silver</h3>
+        <span class="count">3 Silver medals awarded</span>
+      </div>
+      <div class="silver-tier">
+
+        <a class="tier-card" href="#">
+          <div class="tier-img placeholder"><span>Dill with IT</span><div class="tier-rank-badge silver">04</div></div>
+          <div class="tier-body">
+            <div class="tier-medal-line">Silver &middot; 4th</div>
+            <div class="tier-sauce">Dill with IT</div>
+            <div class="tier-maker">Svilis Pepper Farm</div>
+            <div class="tier-foot">
+              <span class="tier-place">Augsligatne, Latvia</span>
+              <span class="tier-score">7.10</span>
+            </div>
+          </div>
+          <div class="tier-cta">View maker &rarr;</div>
+        </a>
+
+        <a class="tier-card" href="#">
+          <div class="tier-img placeholder"><span>Chocolate Chilli sauce</span><div class="tier-rank-badge silver">05</div></div>
+          <div class="tier-body">
+            <div class="tier-medal-line">Silver &middot; 5th</div>
+            <div class="tier-sauce">Chocolate Chilli Sauce</div>
+            <div class="tier-maker">Chilli Hills Foods</div>
+            <div class="tier-foot">
+              <span class="tier-place">Sofia, Bulgaria</span>
+              <span class="tier-score">7.04</span>
+            </div>
+          </div>
+          <div class="tier-cta">View maker &rarr;</div>
+        </a>
+
+        <a class="tier-card" href="#">
+          <div class="tier-img placeholder"><span>La Pi&ntilde;a Loca</span><div class="tier-rank-badge silver">06</div></div>
+          <div class="tier-body">
+            <div class="tier-medal-line">Silver &middot; 6th</div>
+            <div class="tier-sauce">La Pi&ntilde;a Loca</div>
+            <div class="tier-maker">Zach's Pesto &amp; Chilli</div>
+            <div class="tier-foot">
+              <span class="tier-place">Prague, Czechia</span>
+              <span class="tier-score">6.98</span>
+            </div>
+          </div>
+          <div class="tier-cta">View maker &rarr;</div>
+        </a>
+
+      </div>
+    </div>
+
+    <div class="tier-block">
+      <div class="tier-head">
+        <h3><span class="medal-dot bronze"></span>Bronze</h3>
+        <span class="count">6 Bronze medals awarded</span>
+      </div>
+      <div class="bronze-tier">
+
+        <a class="bronze-card" href="#">
+          <div class="bronze-rank"><span class="rank-num">07</span><span class="rank-label">Bronze</span></div>
+          <div class="bronze-sauce">KIKEBICHE</div>
+          <div class="bronze-maker">HotZeg</div>
+          <div class="bronze-foot"><span class="bronze-place">Uccle, Belgium</span><span class="bronze-score">6.79</span></div>
+        </a>
+
+        <a class="bronze-card" href="#">
+          <div class="bronze-rank"><span class="rank-num">08</span><span class="rank-label">Bronze, tied</span></div>
+          <div class="bronze-sauce">TEARS</div>
+          <div class="bronze-maker">Gaston Chilli</div>
+          <div class="bronze-foot"><span class="bronze-place">Ostrava, Czechia</span><span class="bronze-score">6.64</span></div>
+        </a>
+
+        <a class="bronze-card" href="#">
+          <div class="bronze-rank"><span class="rank-num">08</span><span class="rank-label">Bronze, tied</span></div>
+          <div class="bronze-sauce">Susan's Sorcery</div>
+          <div class="bronze-maker">Not That Spicy</div>
+          <div class="bronze-foot"><span class="bronze-place">Berlin, Germany</span><span class="bronze-score">6.64</span></div>
+        </a>
+
+        <a class="bronze-card" href="#">
+          <div class="bronze-rank"><span class="rank-num">10</span><span class="rank-label">Bronze</span></div>
+          <div class="bronze-sauce">Truffonero</div>
+          <div class="bronze-maker">G.O.A.T.</div>
+          <div class="bronze-foot"><span class="bronze-place">Buzet, Croatia</span><span class="bronze-score">6.62</span></div>
+        </a>
+
+        <a class="bronze-card" href="#">
+          <div class="bronze-rank"><span class="rank-num">11</span><span class="rank-label">Bronze</span></div>
+          <div class="bronze-sauce">Jude Jinn</div>
+          <div class="bronze-maker">Not That Spicy</div>
+          <div class="bronze-foot"><span class="bronze-place">Berlin, Germany</span><span class="bronze-score">6.57</span></div>
+        </a>
+
+        <a class="bronze-card" href="#">
+          <div class="bronze-rank"><span class="rank-num">12</span><span class="rank-label">Bronze</span></div>
+          <div class="bronze-sauce">Red Dynasty</div>
+          <div class="bronze-maker">Spicepunk</div>
+          <div class="bronze-foot"><span class="bronze-place">Sursee, Switzerland</span><span class="bronze-score">6.46</span></div>
+        </a>
+
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- RELATED CATEGORIES -->
+<section class="band related-band">
+  <div class="wrap">
+    <div class="band-head">
+      <h2>Related <span class="pop">categories</span>.</h2>
+      <span class="sub">Heat-adjacent, flavour-adjacent</span>
+    </div>
+    <div class="related-grid">
+      <a class="related-card" href="#">
+        <span class="related-relation">Next up the heat ladder</span>
+        <span class="related-name">Medium</span>
+        <div class="related-winner">Best in Category: <em>Munnvold Yuzu</em><br>MUNNVOLD, Oslo</div>
+        <div class="related-arrow">View Medium &rarr;</div>
+      </a>
+      <a class="related-card" href="#">
+        <span class="related-relation">Also at the gentler end</span>
+        <span class="related-name">Sweet</span>
+        <div class="related-winner">Best in Category: <em>Hot Goddess</em><br>Me and My Hot Sauce, Nuremberg</div>
+        <div class="related-arrow">View Sweet &rarr;</div>
+      </a>
+      <a class="related-card" href="#">
+        <span class="related-relation">For honey-leaning palates</span>
+        <span class="related-name">Chili Honey</span>
+        <div class="related-winner">Best in Category: <em>Hot Honey</em><br>Pohorc Bio Chili, Slovenia</div>
+        <div class="related-arrow">View Chili Honey &rarr;</div>
+      </a>
+      <a class="related-card" href="#">
+        <span class="related-relation">For garlic-leaning palates</span>
+        <span class="related-name">Garlic</span>
+        <div class="related-winner">Best in Category: <em>Garlic Chilli</em><br>Svilis Pepper Farm, Latvia</div>
+        <div class="related-arrow">View Garlic &rarr;</div>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- PRESS STRIP -->
+<section class="press-strip-band">
+  <div class="wrap">
+    <div>
+      <h3>Writing about Mild Chili Sauce?</h3>
+      <p>Per-category press kits include high-res photography, scoring methodology, named maker contacts and embeddable reveal videos. No registration.</p>
+    </div>
+    <div class="press-cta">
+      <a class="btn-primary" href="#">Mild category press kit &rarr;</a>
+      <a class="btn-ghost" href="#">All EHSA press &rarr;</a>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div class="foot-about">
+        <h4>European Hot Sauce Awards</h4>
+        <p>Independent awards programme for European chilli sauce makers. Third edition judged April 2026 in Berlin. Run on behalf of the European craft chilli sauce industry.</p>
+      </div>
+      <div>
+        <h4>Directory</h4>
+        <ul>
+          <li><a href="index.html">All makers</a></li>
+          <li><a href="index.html#countries">By country</a></li>
+          <li><a href="index.html#directory">By category</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Competition</h4>
+        <ul>
+          <li><a href="#">Enter 2027</a></li>
+          <li><a href="#">Judges</a></li>
+          <li><a href="#">Methodology</a></li>
+          <li><a href="#">Past results</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Contact</h4>
+        <ul>
+          <li><a href="#">For press</a></li>
+          <li><a href="#">For sponsors</a></li>
+          <li><a href="#">Instagram</a></li>
+          <li><a href="#">Email</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="foot-bottom">
+      <span>&copy; 2026 European Hot Sauce Awards. Heatawards.eu.</span>
+      <span>Mock category page v0.1 &middot; not production</span>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -8,6 +8,8 @@ export default function GlobalNav() {
   const pathname = usePathname();
 
   if (pathname?.startsWith('/dashboard')) return null;
+  // Homepage ships its own EHSA-2027-style header (see HeatHeader).
+  if (pathname === '/') return null;
 
   return (
     <>
