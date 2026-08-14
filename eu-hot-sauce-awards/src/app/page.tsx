@@ -8,33 +8,7 @@ import HeatHeader from "@/components/HeatHeader";
 import HeatFooter from "@/components/HeatFooter";
 import { createClient } from "@/lib/supabase/server";
 import { COMPETITION_YEAR, PREVIOUS_COMPETITION_YEAR } from "@/lib/config";
-
-// Category grouping matches the mockup's heat-ladder / styles / pantry / wildcard split.
-const CATEGORY_GROUPS = [
-  {
-    title: "Heat ladder",
-    meta: "Mild to extract, 5 categories",
-    categories: [
-      "Mild Chili Sauce",
-      "Medium Chili Sauce",
-      "Hot Chili Sauce",
-      "Extra Hot Chili Sauce",
-      "Extract Based Chili Sauce",
-    ],
-  },
-  {
-    title: "Styles & flavours",
-    meta: "5 categories",
-    categories: ["Sweet", "Chili Honey", "BBQ Chili Sauce", "Asian Style Chili Sauce", "Garlic Chili Sauce"],
-  },
-  {
-    title: "Pantry & condiments",
-    meta: "5 categories",
-    categories: ["Salt & Condiments", "Chili Ketchup", "Chili Oil", "Chili Paste", "Sambal, Chutney & Pickles"],
-  },
-];
-
-const WILDCARD_CATEGORY = "Freestyle";
+import { CATEGORY_GROUPS, CATEGORY_SLUGS, WILDCARD_CATEGORY } from "@/lib/categories";
 
 const milestones = [
   { label: "Applications Close", value: `28 Feb ${COMPETITION_YEAR}` },
@@ -334,7 +308,7 @@ export default async function Home() {
                   return (
                     <Link
                       key={category}
-                      href={`/results/${PREVIOUS_COMPETITION_YEAR}`}
+                      href={`/category/${CATEGORY_SLUGS[category]}`}
                       className="flex flex-col border-2 border-black bg-white transition hover:-translate-y-1 hover:shadow-lg"
                     >
                       <div className="relative aspect-[4/3] border-b-2 border-black bg-[#F5C518]">
@@ -387,7 +361,7 @@ export default async function Home() {
                 </span>
               </div>
               <Link
-                href={`/results/${PREVIOUS_COMPETITION_YEAR}`}
+                href={`/category/${CATEGORY_SLUGS[WILDCARD_CATEGORY]}`}
                 className="relative grid min-h-[180px] grid-cols-1 items-center gap-6 overflow-hidden border-[3px] border-[#F5C518] bg-black p-9 transition hover:-translate-y-1 sm:grid-cols-[auto_1fr_auto] sm:gap-9 sm:p-[36px_44px]"
               >
                 {wildcardWinner.product_image_url && (
