@@ -8,7 +8,7 @@ import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
   title: 'Sponsors',
-  description: 'Meet the sponsors of the EU Hot Sauce Awards and learn about sponsorship opportunities.',
+  description: 'Meet the sponsors of the European Hot Sauce Awards and learn about sponsorship opportunities.',
 };
 
 // Mock data until DB is set up

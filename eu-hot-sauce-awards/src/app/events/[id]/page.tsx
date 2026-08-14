@@ -32,7 +32,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   return {
     title: event.title,
-    description: event.description || 'Find out more about this event from the EU Hot Sauce Awards.',
+    description: event.description || 'Find out more about this event from the European Hot Sauce Awards.',
   };
 }
 

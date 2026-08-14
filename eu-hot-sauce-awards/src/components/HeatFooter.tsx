@@ -32,7 +32,7 @@ export default function HeatFooter() {
         <div className="grid grid-cols-2 gap-9 border-b border-white/10 pb-9 md:grid-cols-4">
           <div className="col-span-2 md:col-span-1">
             <h4 className="mb-3.5 font-[family-name:var(--font-archivo-black)] text-[13px] uppercase tracking-[0.1em] text-[#F5C518]">
-              EU Hot Sauce Awards
+              European Hot Sauce Awards
             </h4>
             <p className="max-w-[380px] text-sm leading-relaxed text-gray-300">
               Independent awards programme for European chilli sauce makers, judged in Berlin.
@@ -65,7 +65,7 @@ export default function HeatFooter() {
           />
         </div>
         <div className="flex flex-col gap-2 pt-6 text-xs text-gray-500 sm:flex-row sm:items-center sm:justify-between">
-          <span>&copy; {new Date().getFullYear()} EU Hot Sauce Awards.</span>
+          <span>&copy; {new Date().getFullYear()} European Hot Sauce Awards.</span>
           <div className="flex gap-5">
             <Link href="/terms" className="hover:text-[#F5C518]">Terms</Link>
             <Link href="/privacy" className="hover:text-[#F5C518]">Privacy</Link>

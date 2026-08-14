@@ -18,23 +18,23 @@ const archivoBlack = Archivo_Black({
 
 export const metadata: Metadata = {
   title: {
-    default: "EU Hot Sauce Awards | Europe's Premier Chili Competition",
-    template: "%s | EU Hot Sauce Awards",
+    default: "European Hot Sauce Awards | Europe's Premier Chili Competition",
+    template: "%s | European Hot Sauce Awards",
   },
   description:
     "The official site for the European Hot Sauce Awards. Enter your sauce, apply to be a judge, and discover the best hot sauces in Europe.",
   openGraph: {
-    title: "EU Hot Sauce Awards | Europe's Premier Chili Competition",
+    title: "European Hot Sauce Awards | Europe's Premier Chili Competition",
     description:
       "The official site for the European Hot Sauce Awards. Enter your sauce, apply to be a judge, and discover the best hot sauces in Europe.",
     url: "https://heatawards.eu",
-    siteName: "EU Hot Sauce Awards",
+    siteName: "European Hot Sauce Awards",
     locale: "en_GB",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "EU Hot Sauce Awards | Europe's Premier Chili Competition",
+    title: "European Hot Sauce Awards | Europe's Premier Chili Competition",
     description:
       "The official site for the European Hot Sauce Awards. Enter your sauce, apply to be a judge, and discover the best hot sauces in Europe.",
   },

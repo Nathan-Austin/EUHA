@@ -5,7 +5,7 @@ const routes = [
     href: "/apply/supplier",
     title: "Supplier Entry",
     description:
-      "Submit your sauce for consideration and receive official EU Hot Sauce Awards QR codes and logistics guidance.",
+      "Submit your sauce for consideration and receive official European Hot Sauce Awards QR codes and logistics guidance.",
     cta: "Enter a Sauce",
   },
 ];
@@ -25,7 +25,7 @@ export default function ApplyLandingPage() {
             Heat Awards • Applications
           </span>
           <h1 className="text-4xl font-semibold leading-tight sm:text-5xl">
-            Bring the Heat to the 2026 EU Hot Sauce Awards
+            Bring the Heat to the 2026 European Hot Sauce Awards
           </h1>
           <p className="mx-auto max-w-3xl text-base text-white/80 sm:text-lg">
             Whether you craft exceptional sauces or you live to judge them, this portal is your gateway to the continent’s definitive celebration of flavour and fire.

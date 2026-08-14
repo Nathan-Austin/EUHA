@@ -148,7 +148,7 @@ export default function JudgeApplyPage() {
             <p className="text-2xl">🌶️</p>
             <h2 className="text-xl font-semibold text-white">Applications are now closed</h2>
             <p className="text-white/70">
-              Judge applications for the 2026 EU Hot Sauce Awards have closed. We look forward to welcoming you as a judge for the 2027 awards.
+              Judge applications for the 2026 European Hot Sauce Awards have closed. We look forward to welcoming you as a judge for the 2027 awards.
             </p>
             <Link
               href="/"

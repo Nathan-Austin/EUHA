@@ -8,7 +8,7 @@ import Image from 'next/image';
 
 export const metadata: Metadata = {
   title: 'Upcoming Events',
-  description: 'Find out about upcoming chili festivals and events related to the EU Hot Sauce Awards.',
+  description: 'Find out about upcoming chili festivals and events related to the European Hot Sauce Awards.',
 };
 
 interface Event {

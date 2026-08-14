@@ -6,7 +6,7 @@ import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
   title: 'Packing & Shipping',
-  description: 'Find instructions for packing and shipping your sauce entries for the EU Hot Sauce Awards, and download the official packing sheet.',
+  description: 'Find instructions for packing and shipping your sauce entries for the European Hot Sauce Awards, and download the official packing sheet.',
 };
 
 const PackingSheetPage = () => {

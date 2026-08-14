@@ -486,7 +486,7 @@ export default function SupplierApplyPage() {
             <p className="text-2xl">🌶️</p>
             <h2 className="text-xl font-semibold text-white">Entries are now closed</h2>
             <p className="text-white/70">
-              Sauce entries for the 2026 EU Hot Sauce Awards have closed. We look forward to welcoming your products for the 2027 awards.
+              Sauce entries for the 2026 European Hot Sauce Awards have closed. We look forward to welcoming your products for the 2027 awards.
             </p>
             <Link
               href="/"
@@ -892,7 +892,7 @@ export default function SupplierApplyPage() {
                 <div className="mt-4 pt-4 border-t border-emerald-300/20">
                   <p className="mb-2 text-emerald-100 font-semibold">🚚 After shipping your sauces:</p>
                   <ol className="list-decimal list-inside space-y-2 text-sm text-emerald-100/90">
-                    <li>Check your email for a login link from the EU Hot Sauce Awards</li>
+                    <li>Check your email for a login link from the European Hot Sauce Awards</li>
                     <li>Click the link to access your supplier dashboard</li>
                     <li>Add your tracking number and postal service information</li>
                   </ol>

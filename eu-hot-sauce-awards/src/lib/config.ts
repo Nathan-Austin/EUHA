@@ -10,7 +10,7 @@
  * - Email campaigns
  */
 
-export const COMPETITION_YEAR = 2026;
+export const COMPETITION_YEAR = 2027;
 
 /**
  * Set to false when judging has closed for the season.
@@ -20,10 +20,12 @@ export const COMPETITION_YEAR = 2026;
 export const JUDGING_OPEN = false;
 
 /**
- * The most recent completed competition year (for rankings and past results pages).
- * Update this after each competition's results are finalised.
+ * The most recently completed competition year — the results currently on display
+ * (rankings, past results, homepage podium/category winners). Update this after each
+ * competition's results are finalised. Kept distinct from COMPETITION_YEAR, which is
+ * the season currently open for entries.
  */
-export const PAST_RESULTS_YEAR = 2026;
+export const PREVIOUS_COMPETITION_YEAR = 2026;
 
 /**
  * Helper to validate that the competition year is current

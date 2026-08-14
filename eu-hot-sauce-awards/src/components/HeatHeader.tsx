@@ -1,10 +1,12 @@
 import Link from 'next/link';
+import { COMPETITION_YEAR, PREVIOUS_COMPETITION_YEAR } from '@/lib/config';
 
 const NAV_LINKS = [
-  { href: '/results', label: 'Results' },
-  { href: '/rankings', label: 'Rankings' },
+  { href: '/results', label: `${PREVIOUS_COMPETITION_YEAR} Winners` },
   { href: '/judges', label: 'Judges' },
   { href: '/prizes', label: 'Prizes' },
+  // Not built yet — press resources page is planned.
+  { href: '/press', label: 'Press' },
 ];
 
 // New EHSA-2027-style header, ported from EHC/ehsa-2027/mock-homepage/index.html.
@@ -18,9 +20,9 @@ export default function HeatHeader() {
             E
           </span>
           <span className="font-[family-name:var(--font-archivo-black)] text-lg uppercase leading-none text-black">
-            EU Hot Sauce Awards
-            <small className="mt-1 block font-sans text-[11px] font-semibold normal-case tracking-[0.12em] text-black/70">
-              heatawards.eu
+            European Hot Sauce Awards
+            <small className="mt-1 block font-sans text-[11px] font-semibold tracking-[0.12em] text-black/70">
+              Heatawards.eu &mdash; the directory
             </small>
           </span>
         </Link>
@@ -36,15 +38,9 @@ export default function HeatHeader() {
           ))}
           <Link
             href="/login"
-            className="text-sm font-bold uppercase tracking-[0.05em] text-black hover:opacity-70"
-          >
-            Login
-          </Link>
-          <Link
-            href="/apply/supplier"
             className="bg-black px-3.5 py-2 font-[family-name:var(--font-archivo-black)] text-sm uppercase tracking-[0.03em] text-[#F5C518] hover:bg-black/80"
           >
-            Enter 2027
+            Enter {COMPETITION_YEAR}
           </Link>
         </nav>
       </div>

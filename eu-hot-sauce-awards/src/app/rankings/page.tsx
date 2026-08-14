@@ -4,11 +4,11 @@ import SectionContainer from '@/components/SectionContainer';
 import type { Metadata } from 'next';
 import { createClient } from '@/lib/supabase/server';
 import Link from 'next/link';
-import { PAST_RESULTS_YEAR } from '@/lib/config';
+import { PREVIOUS_COMPETITION_YEAR } from '@/lib/config';
 import SauceImage from '@/components/SauceImage';
 
 export const metadata: Metadata = {
-  title: 'Global Rankings | EU Hot Sauce Awards',
+  title: 'Global Rankings | European Hot Sauce Awards',
   description: 'Discover the top 20 hot sauces from the European Hot Sauce Awards global rankings.',
 };
 
@@ -49,7 +49,7 @@ async function getTopRankings(year: number) {
 }
 
 const RankingsPage = async ({ searchParams }: { searchParams: { year?: string } }) => {
-  const year = searchParams.year ? parseInt(searchParams.year, 10) : PAST_RESULTS_YEAR;
+  const year = searchParams.year ? parseInt(searchParams.year, 10) : PREVIOUS_COMPETITION_YEAR;
   const rankings = await getTopRankings(year);
   const previousYear = year - 1;
 

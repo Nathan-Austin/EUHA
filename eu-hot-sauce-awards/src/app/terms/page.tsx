@@ -5,7 +5,7 @@ import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
   title: 'Terms & Conditions',
-  description: 'Read the official terms and conditions for entering and participating in the EU Hot Sauce Awards.',
+  description: 'Read the official terms and conditions for entering and participating in the European Hot Sauce Awards.',
 };
 
 const TermsPage = () => {

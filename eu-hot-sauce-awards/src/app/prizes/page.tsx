@@ -6,7 +6,7 @@ import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
   title: 'Prizes & Recognition',
-  description: 'Learn about the awards structure for the EU Hot Sauce Awards, including Gold, Silver, and Bronze medals, and the coveted Global Rankings.',
+  description: 'Learn about the awards structure for the European Hot Sauce Awards, including Gold, Silver, and Bronze medals, and the coveted Global Rankings.',
 };
 
 const PrizesPage = () => {

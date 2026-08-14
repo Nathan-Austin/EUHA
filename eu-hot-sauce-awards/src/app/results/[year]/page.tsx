@@ -36,7 +36,7 @@ interface CategoryResults {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const year = params.year;
     return {
-        title: `${year} Winners | EU Hot Sauce Awards`,
+        title: `${year} Winners | European Hot Sauce Awards`,
         description: `See the full list of award-winning hot sauces from the ${year} European Hot Sauce Awards competition.`,
     };
 }

@@ -5,7 +5,7 @@ import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
   title: 'Privacy Policy',
-  description: 'Read the privacy policy for the EU Hot Sauce Awards.',
+  description: 'Read the privacy policy for the European Hot Sauce Awards.',
 };
 
 const PrivacyPage = () => {

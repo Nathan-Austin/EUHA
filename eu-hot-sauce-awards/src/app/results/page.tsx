@@ -6,7 +6,7 @@ import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
   title: 'Past Results',
-  description: 'Browse the archives of past winners from the EU Hot Sauce Awards.',
+  description: 'Browse the archives of past winners from the European Hot Sauce Awards.',
 };
 
 // Mock data

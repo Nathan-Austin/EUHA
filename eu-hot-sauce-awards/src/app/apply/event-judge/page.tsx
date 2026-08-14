@@ -104,7 +104,7 @@ export default function EventJudgeRegisterPage() {
           <div className="text-4xl">🌶️</div>
           <h1 className="text-2xl font-bold text-gray-900">Event Judge Registration</h1>
           {step === 'register' && (
-            <p className="text-sm text-gray-600">Register to judge at today's EU Hot Sauce Awards event.</p>
+            <p className="text-sm text-gray-600">Register to judge at today's European Hot Sauce Awards event.</p>
           )}
           {step === 'code' && (
             <p className="text-sm text-gray-600">

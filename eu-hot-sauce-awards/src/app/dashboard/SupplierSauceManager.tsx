@@ -241,7 +241,7 @@ export default function SupplierSauceManager({ initialSauces, hasExistingPayment
     return (
       <div className="text-center bg-white rounded-lg border-2 border-dashed border-orange-300 p-8 space-y-4">
         <p className="text-3xl">🌶️</p>
-        <h2 className="text-2xl font-bold text-gray-900">Ready for the {COMPETITION_YEAR} EU Hot Sauce Awards?</h2>
+        <h2 className="text-2xl font-bold text-gray-900">Ready for the {COMPETITION_YEAR} European Hot Sauce Awards?</h2>
         <p className="text-gray-600 max-w-md mx-auto">
           Judging is changing this year — professionals and press will be scoring entries live at an event in Berlin,
           rather than judges scoring at home. Click below to get started: you can resubmit any of your previous

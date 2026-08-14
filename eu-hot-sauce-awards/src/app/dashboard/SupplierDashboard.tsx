@@ -199,7 +199,7 @@ export default function SupplierDashboard({ supplierData, judgeData, enteredSauc
           <p className="text-3xl">🌶️🏆</p>
           <h3 className="text-lg font-bold text-gray-900">Judging is now closed</h3>
           <p className="text-sm text-gray-600">
-            Thank you for entering the 2026 EU Hot Sauce Awards. Winners will be announced on Republic of Heat&apos;s social media channels — follow along so you don&apos;t miss the reveal!
+            Thank you for entering the 2026 European Hot Sauce Awards. Winners will be announced on Republic of Heat&apos;s social media channels — follow along so you don&apos;t miss the reveal!
           </p>
         </div>
       )}
