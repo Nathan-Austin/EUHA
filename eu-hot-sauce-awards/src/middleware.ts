@@ -58,7 +58,8 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
 
   // Protected routes that require authentication
-  const protectedPaths = ['/dashboard', '/judge']
+  // Trailing slash on '/judge/' keeps this from also matching the public /judges marketing page.
+  const protectedPaths = ['/dashboard', '/judge/']
   const isProtectedPath = protectedPaths.some(path => request.nextUrl.pathname.startsWith(path))
 
   // Redirect to login if accessing protected route without auth
@@ -88,7 +89,7 @@ export async function middleware(request: NextRequest) {
       // Community judges must have paid
       if (judge.type === 'community' && judge.stripe_payment_status !== 'succeeded') {
         // Only redirect if not already on dashboard (dashboard shows payment button)
-        if (request.nextUrl.pathname.startsWith('/judge')) {
+        if (request.nextUrl.pathname.startsWith('/judge/')) {
           const redirectUrl = new URL('/dashboard', request.url)
           return NextResponse.redirect(redirectUrl)
         }
@@ -97,7 +98,7 @@ export async function middleware(request: NextRequest) {
       // All judges except admin must be active
       if (!judge.active && !isAdmin) {
         // Allow dashboard access (shows appropriate message)
-        if (request.nextUrl.pathname.startsWith('/judge')) {
+        if (request.nextUrl.pathname.startsWith('/judge/')) {
           const redirectUrl = new URL('/dashboard', request.url)
           return NextResponse.redirect(redirectUrl)
         }
@@ -106,7 +107,7 @@ export async function middleware(request: NextRequest) {
       // CRITICAL: Check year-specific participation for /judge routes
       // This prevents judges from previous years accessing current year judging
       // Event judges bypass this check — they register on the day and have no participation record
-      if (request.nextUrl.pathname.startsWith('/judge') && !isAdmin && judge.type !== 'event') {
+      if (request.nextUrl.pathname.startsWith('/judge/') && !isAdmin && judge.type !== 'event') {
         const { data: participation } = await supabase
           .from('judge_participations')
           .select('accepted')

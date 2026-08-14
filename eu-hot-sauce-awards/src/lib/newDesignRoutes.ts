@@ -18,6 +18,9 @@ export function usesNewDesign(pathname: string | null): boolean {
     pathname === "/cookies" ||
     pathname === "/privacy" ||
     pathname === "/terms" ||
-    pathname.startsWith("/events")
+    pathname.startsWith("/events") ||
+    pathname === "/judges" ||
+    pathname === "/prizes" ||
+    pathname === "/apply/judge"
   );
 }
