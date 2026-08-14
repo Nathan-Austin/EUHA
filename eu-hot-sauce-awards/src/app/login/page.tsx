@@ -3,6 +3,11 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { validateEmail } from '@/lib/validation';
+import { registerNewSupplier } from './actions';
+import HeatHeader from '@/components/HeatHeader';
+import HeatFooter from '@/components/HeatFooter';
+import Breadcrumbs from '@/components/Breadcrumbs';
+import { COMPETITION_YEAR } from '@/lib/config';
 
 async function requestOtpCode(email: string) {
   const trimmedEmail = email.trim();
@@ -52,19 +57,21 @@ async function verifyOtpCode(email: string, token: string) {
   }
 }
 
+const inputClass =
+  'block w-full border-2 border-black px-4 py-3 text-base text-black placeholder-black/40 outline-none focus:border-[#F5C518]';
+
 export default function LoginPage() {
   const router = useRouter();
-  const [step, setStep] = useState<'email' | 'code'>('email');
+  const [mode, setMode] = useState<'returning' | 'new'>('returning');
+  const [step, setStep] = useState<'details' | 'code'>('details');
   const [email, setEmail] = useState('');
+  const [brandName, setBrandName] = useState('');
+  const [contactName, setContactName] = useState('');
+  const [country, setCountry] = useState('');
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [emailError, setEmailError] = useState('');
-
-  const handleEmailChange = (value: string) => {
-    setEmail(value);
-    setEmailError('');
-  };
 
   const handleEmailBlur = () => {
     if (email.trim()) {
@@ -75,7 +82,15 @@ export default function LoginPage() {
     }
   };
 
-  const handleSendCode = async (e: React.FormEvent) => {
+  const switchMode = (next: 'returning' | 'new') => {
+    setMode(next);
+    setStep('details');
+    setError('');
+    setEmailError('');
+    setCode('');
+  };
+
+  const handleReturningSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
@@ -86,6 +101,42 @@ export default function LoginPage() {
       setStep('code');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to send code. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleNewSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    setEmailError('');
+
+    try {
+      const validation = validateEmail(email);
+      if (!validation.isValid) {
+        setEmailError(validation.error || 'Invalid email');
+        setLoading(false);
+        return;
+      }
+
+      const formData = new FormData();
+      formData.set('brandName', brandName);
+      formData.set('contactName', contactName);
+      formData.set('email', email);
+      formData.set('country', country);
+
+      const result = await registerNewSupplier(formData);
+      if (result.error) {
+        setError(result.error);
+        setLoading(false);
+        return;
+      }
+
+      await requestOtpCode(email);
+      setStep('code');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to complete registration. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -121,103 +172,194 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100">
-      <div className="w-full max-w-md p-8 space-y-6 bg-white rounded-lg shadow-md">
-        <h1 className="text-2xl font-bold text-center text-gray-900">Login</h1>
+    <div className="min-h-screen bg-[#faf6ec] text-black">
+      <HeatHeader />
+      <Breadcrumbs items={[{ label: 'Home', href: '/' }, { label: 'Login' }]} />
 
-        {step === 'email' ? (
-          <>
-            <p className="text-center text-gray-600">
-              Enter your email and we&apos;ll send you a 6-digit code to sign in.
-            </p>
-            <form onSubmit={handleSendCode} className="space-y-6">
-              <div>
-                <label htmlFor="email" className="sr-only">
-                  Email address
-                </label>
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  value={email}
-                  onChange={(e) => handleEmailChange(e.target.value)}
-                  onBlur={handleEmailBlur}
-                  className={`relative block w-full px-3 py-2 text-gray-900 placeholder-gray-500 border rounded-md appearance-none focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm ${
-                    emailError ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                  placeholder="Email address"
-                />
-                {emailError && (
-                  <p className="mt-1 text-sm text-red-600">{emailError}</p>
-                )}
-              </div>
+      <section className="flex justify-center px-6 py-16">
+        <div className="w-full max-w-md">
+          {step === 'details' && (
+            <div className="mb-7 flex border-[3px] border-black">
               <button
-                type="submit"
-                disabled={loading}
-                className="relative flex justify-center w-full px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-indigo-400"
+                type="button"
+                onClick={() => switchMode('returning')}
+                className={`flex-1 py-3 font-[family-name:var(--font-archivo-black)] text-xs uppercase tracking-[0.06em] ${
+                  mode === 'returning' ? 'bg-[#F5C518] text-black' : 'bg-white text-black/50'
+                }`}
               >
-                {loading ? 'Sending...' : 'Send Login Code'}
+                Returning
               </button>
-            </form>
-          </>
-        ) : (
-          <>
-            <p className="text-center text-gray-600">
-              We sent a 6-digit code to <strong>{email}</strong>. Check your inbox and enter it below.
-            </p>
-            <form onSubmit={handleVerifyCode} className="space-y-6">
-              <div>
-                <label htmlFor="code" className="sr-only">
-                  Login code
-                </label>
-                <input
-                  id="code"
-                  name="code"
-                  type="text"
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
-                  required
-                  maxLength={6}
-                  value={code}
-                  onChange={(e) => {
-                    setCode(e.target.value.replace(/\D/g, ''));
-                    setError('');
-                  }}
-                  className="relative block w-full px-3 py-2 text-center text-2xl font-mono tracking-widest text-gray-900 placeholder-gray-400 border border-gray-300 rounded-md appearance-none focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                  placeholder="000000"
-                  autoFocus
-                />
-              </div>
               <button
-                type="submit"
-                disabled={loading || code.length !== 6}
-                className="relative flex justify-center w-full px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-indigo-400"
+                type="button"
+                onClick={() => switchMode('new')}
+                className={`flex-1 border-l-[3px] border-black py-3 font-[family-name:var(--font-archivo-black)] text-xs uppercase tracking-[0.06em] ${
+                  mode === 'new' ? 'bg-[#F5C518] text-black' : 'bg-white text-black/50'
+                }`}
               >
-                {loading ? 'Verifying...' : 'Sign In'}
+                New here
               </button>
-            </form>
-            <div className="space-y-2 border-t border-gray-200 pt-4">
-              <p className="text-sm text-center text-gray-600">
-                Didn&apos;t get the code?{' '}
-                <button
-                  type="button"
-                  onClick={handleResend}
-                  disabled={loading}
-                  className="text-indigo-600 hover:text-indigo-500 font-medium disabled:opacity-50"
-                >
-                  {loading ? 'Sending...' : 'Send a new one'}
-                </button>
-              </p>
             </div>
-          </>
-        )}
+          )}
 
-        {error && (
-          <p className="mt-2 text-sm text-center text-red-600">{error}</p>
-        )}
-      </div>
+          <div className="border-[3px] border-black bg-white p-8">
+            {step === 'details' && mode === 'returning' && (
+              <>
+                <h1 className="mb-3 font-[family-name:var(--font-archivo-black)] text-2xl uppercase leading-tight">
+                  Welcome back to EHSA {COMPETITION_YEAR}.
+                </h1>
+                <p className="mb-6 text-sm leading-relaxed text-black/70">
+                  If you entered before, use the same email address you used previously — all
+                  your past entries will be ready to bring across to this year&rsquo;s awards if
+                  you&rsquo;d like to re-enter them.
+                </p>
+                <form onSubmit={handleReturningSubmit} className="space-y-4">
+                  <div>
+                    <label htmlFor="email" className="sr-only">
+                      Email address
+                    </label>
+                    <input
+                      id="email"
+                      name="email"
+                      type="email"
+                      autoComplete="email"
+                      required
+                      value={email}
+                      onChange={(e) => {
+                        setEmail(e.target.value);
+                        setEmailError('');
+                      }}
+                      onBlur={handleEmailBlur}
+                      className={inputClass}
+                      placeholder="Email address"
+                    />
+                    {emailError && <p className="mt-1.5 text-sm text-red-600">{emailError}</p>}
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full bg-black py-3.5 font-[family-name:var(--font-archivo-black)] text-sm uppercase tracking-[0.06em] text-[#F5C518] hover:bg-black/80 disabled:opacity-50"
+                  >
+                    {loading ? 'Sending…' : 'Send login code'}
+                  </button>
+                </form>
+              </>
+            )}
+
+            {step === 'details' && mode === 'new' && (
+              <>
+                <h1 className="mb-3 font-[family-name:var(--font-archivo-black)] text-2xl uppercase leading-tight">
+                  New to EHSA?
+                </h1>
+                <p className="mb-6 text-sm leading-relaxed text-black/70">
+                  Tell us a little about your business and we&rsquo;ll email you a code to set up
+                  your dashboard, where you can enter your sauces for {COMPETITION_YEAR}.
+                </p>
+                <form onSubmit={handleNewSubmit} className="space-y-4">
+                  <input
+                    type="text"
+                    required
+                    value={brandName}
+                    onChange={(e) => setBrandName(e.target.value)}
+                    className={inputClass}
+                    placeholder="Brand / business name"
+                  />
+                  <input
+                    type="text"
+                    required
+                    value={contactName}
+                    onChange={(e) => setContactName(e.target.value)}
+                    className={inputClass}
+                    placeholder="Contact name"
+                  />
+                  <div>
+                    <input
+                      type="email"
+                      required
+                      value={email}
+                      onChange={(e) => {
+                        setEmail(e.target.value);
+                        setEmailError('');
+                      }}
+                      onBlur={handleEmailBlur}
+                      className={inputClass}
+                      placeholder="Email address"
+                    />
+                    {emailError && <p className="mt-1.5 text-sm text-red-600">{emailError}</p>}
+                  </div>
+                  <input
+                    type="text"
+                    required
+                    value={country}
+                    onChange={(e) => setCountry(e.target.value)}
+                    className={inputClass}
+                    placeholder="Country"
+                  />
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full bg-black py-3.5 font-[family-name:var(--font-archivo-black)] text-sm uppercase tracking-[0.06em] text-[#F5C518] hover:bg-black/80 disabled:opacity-50"
+                  >
+                    {loading ? 'Creating account…' : 'Create account & send code'}
+                  </button>
+                </form>
+              </>
+            )}
+
+            {step === 'code' && (
+              <>
+                <h1 className="mb-3 font-[family-name:var(--font-archivo-black)] text-2xl uppercase leading-tight">
+                  Check your email.
+                </h1>
+                <p className="mb-6 text-sm leading-relaxed text-black/70">
+                  We sent a 6-digit code to <strong className="text-black">{email}</strong>. Enter
+                  it below to access your dashboard.
+                </p>
+                <form onSubmit={handleVerifyCode} className="space-y-4">
+                  <input
+                    id="code"
+                    name="code"
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    required
+                    maxLength={6}
+                    value={code}
+                    onChange={(e) => {
+                      setCode(e.target.value.replace(/\D/g, ''));
+                      setError('');
+                    }}
+                    className={`${inputClass} text-center font-mono text-2xl tracking-[0.3em]`}
+                    placeholder="000000"
+                    autoFocus
+                  />
+                  <button
+                    type="submit"
+                    disabled={loading || code.length !== 6}
+                    className="w-full bg-[#F5C518] py-3.5 font-[family-name:var(--font-archivo-black)] text-sm uppercase tracking-[0.06em] text-black hover:bg-[#e0a800] disabled:opacity-50"
+                  >
+                    {loading ? 'Verifying…' : 'Sign in'}
+                  </button>
+                </form>
+                <p className="mt-5 border-t border-black/10 pt-4 text-center text-sm text-black/60">
+                  Didn&rsquo;t get the code?{' '}
+                  <button
+                    type="button"
+                    onClick={handleResend}
+                    disabled={loading}
+                    className="font-semibold text-black underline disabled:opacity-50"
+                  >
+                    {loading ? 'Sending…' : 'Send a new one'}
+                  </button>
+                </p>
+              </>
+            )}
+
+            {error && <p className="mt-4 text-center text-sm text-red-600">{error}</p>}
+          </div>
+        </div>
+      </section>
+
+      <HeatFooter />
     </div>
   );
 }
