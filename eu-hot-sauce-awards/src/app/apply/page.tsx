@@ -2,11 +2,11 @@ import Link from "next/link";
 
 const routes = [
   {
-    href: "/apply/supplier",
+    href: "/login",
     title: "Supplier Entry",
     description:
-      "Submit your sauce for consideration and receive official European Hot Sauce Awards QR codes and logistics guidance.",
-    cta: "Enter a Sauce",
+      "Log in (or create an account) to enter your sauces for this year's European Hot Sauce Awards from your dashboard.",
+    cta: "Log In to Enter",
   },
 ];
 

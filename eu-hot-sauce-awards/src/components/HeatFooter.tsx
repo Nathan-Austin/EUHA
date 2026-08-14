@@ -41,7 +41,7 @@ export default function HeatFooter() {
           <FooterCol
             title="Competition"
             links={[
-              { href: '/apply/supplier', label: 'Enter' },
+              { href: '/login', label: 'Enter' },
               { href: '/prizes', label: 'Prizes' },
               { href: '/judges', label: 'Judges' },
               { href: '/terms', label: 'Terms' },

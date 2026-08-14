@@ -32,7 +32,7 @@ const Footer = () => {
           <div>
             <h3 className="text-sm font-semibold text-gray-200 tracking-wider uppercase">Competition</h3>
             <ul className="mt-4 space-y-4">
-              <li><FooterLink href="/apply/supplier">Enter</FooterLink></li>
+              <li><FooterLink href="/login">Enter</FooterLink></li>
               <li><FooterLink href="/prizes">Prizes</FooterLink></li>
               <li><FooterLink href="/terms">Terms</FooterLink></li>
             </ul>

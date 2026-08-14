@@ -84,8 +84,8 @@ const PrizesPage = () => {
 
         <SectionContainer>
           <div className="text-center">
-            <Link href="/apply/supplier" className="rounded-full bg-gradient-to-r from-[#ff4d00] to-[#f1b12e] px-8 py-4 text-sm font-semibold uppercase tracking-[0.2em] text-white transition hover:from-[#ff7033] hover:to-[#ffd060]">
-              Enter Competition
+            <Link href="/login" className="rounded-full bg-gradient-to-r from-[#ff4d00] to-[#f1b12e] px-8 py-4 text-sm font-semibold uppercase tracking-[0.2em] text-white transition hover:from-[#ff7033] hover:to-[#ffd060]">
+              Log In to Enter
             </Link>
           </div>
         </SectionContainer>
