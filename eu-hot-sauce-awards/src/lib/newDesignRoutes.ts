@@ -13,6 +13,11 @@ export function usesNewDesign(pathname: string | null): boolean {
     pathname.startsWith("/results") ||
     pathname.startsWith("/rankings") ||
     pathname.startsWith("/sponsors") ||
-    pathname === "/login"
+    pathname === "/login" ||
+    pathname === "/contact" ||
+    pathname === "/cookies" ||
+    pathname === "/privacy" ||
+    pathname === "/terms" ||
+    pathname.startsWith("/events")
   );
 }

@@ -1,12 +1,13 @@
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { cookies } from 'next/headers';
-import Hero from '@/components/Hero';
-import SectionContainer from '@/components/SectionContainer';
 import Image from 'next/image';
 import Link from 'next/link';
 import LinkifyText from '@/components/LinkifyText';
 import type { Metadata } from 'next';
+import HeatHeader from '@/components/HeatHeader';
+import HeatFooter from '@/components/HeatFooter';
+import Breadcrumbs from '@/components/Breadcrumbs';
 
 interface Props {
   params: {
@@ -51,107 +52,107 @@ export default async function EventDetailPage({ params }: Props) {
   }
 
   return (
-    <div className="bg-[#08040e] min-h-screen">
-      <Hero title={event.title} />
+    <div className="min-h-screen bg-[#faf6ec] text-black">
+      <HeatHeader />
+      <Breadcrumbs items={[{ label: 'Home', href: '/' }, { label: 'Events', href: '/events' }, { label: event.title }]} />
 
-      <div className="py-10 md:py-16">
-        <SectionContainer>
-          <div className="space-y-8">
-            {event.image_url && (
-              <div className="flex justify-center">
-                <div className="relative h-[500px] w-[500px] overflow-hidden rounded-3xl">
-                  <Image
-                    src={event.image_url}
-                    alt={event.title}
-                    fill
-                    className="object-cover"
-                    priority
-                  />
+      <section className="bg-black py-16 text-white">
+        <div className="mx-auto max-w-[1240px] px-6">
+          <h1 className="font-[family-name:var(--font-archivo-black)] text-[clamp(32px,5vw,52px)] uppercase leading-[0.95] text-white">
+            {event.title}
+          </h1>
+        </div>
+      </section>
+
+      <section className="py-16">
+        <div className="mx-auto max-w-[1240px] px-6">
+          {event.image_url && (
+            <div className="relative mx-auto mb-10 aspect-[16/9] w-full max-w-3xl border-[3px] border-black">
+              <Image src={event.image_url} alt={event.title} fill className="object-cover" priority />
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 gap-9 lg:grid-cols-3">
+            <div className="lg:col-span-2">
+              <h2 className="mb-4 font-[family-name:var(--font-archivo-black)] text-xl uppercase tracking-[0.03em]">
+                About this event
+              </h2>
+              {event.description ? (
+                <div className="whitespace-pre-wrap text-base leading-relaxed text-black/75">
+                  <LinkifyText text={event.description} />
                 </div>
-              </div>
-            )}
+              ) : (
+                <p className="italic text-black/50">No description available.</p>
+              )}
+            </div>
 
-            <div className="grid md:grid-cols-3 gap-8">
-              <div className="md:col-span-2 space-y-6">
+            <div className="space-y-6">
+              <div className="space-y-4 border-[3px] border-black bg-white p-6">
+                <h3 className="font-[family-name:var(--font-archivo-black)] text-sm uppercase tracking-[0.08em] text-black/50">
+                  Event details
+                </h3>
+
                 <div>
-                  <h2 className="text-2xl font-bold text-white mb-4">About This Event</h2>
-                  {event.description ? (
-                    <div className="text-white/75 leading-relaxed text-lg whitespace-pre-wrap">
-                      <LinkifyText text={event.description} />
-                    </div>
-                  ) : (
-                    <p className="text-white/50 italic">No description available.</p>
-                  )}
-                </div>
-              </div>
-
-              <div className="space-y-6">
-                <div className="rounded-2xl border border-white/15 bg-white/[0.07] p-6 backdrop-blur space-y-4">
-                  <h3 className="text-lg font-semibold text-amber-400">Event Details</h3>
-
-                  <div>
-                    <p className="text-xs uppercase tracking-wider text-white/50 mb-1">Date & Time</p>
-                    <p className="text-white font-medium">
-                      {new Date(event.event_date).toLocaleDateString('en-GB', {
+                  <p className="mb-1 text-xs font-semibold uppercase tracking-[0.1em] text-black/50">Date &amp; time</p>
+                  <p className="font-semibold">
+                    {new Date(event.event_date).toLocaleDateString('en-GB', {
+                      weekday: 'long',
+                      day: '2-digit',
+                      month: '2-digit',
+                      year: 'numeric',
+                    })}
+                    {event.event_time && ` · ${event.event_time.slice(0, 5)}`}
+                  </p>
+                  {event.end_date && (
+                    <p className="mt-1 text-sm text-black/60">
+                      to {new Date(event.end_date).toLocaleDateString('en-GB', {
                         weekday: 'long',
                         day: '2-digit',
                         month: '2-digit',
                         year: 'numeric',
                       })}
-                      {event.event_time && ` • ${event.event_time.slice(0, 5)}`}
+                      {event.end_time && ` · ${event.end_time.slice(0, 5)}`}
                     </p>
-                    {event.end_date && (
-                      <p className="text-white/60 text-sm mt-1">
-                        to {new Date(event.end_date).toLocaleDateString('en-GB', {
-                          weekday: 'long',
-                          day: '2-digit',
-                          month: '2-digit',
-                          year: 'numeric',
-                        })}
-                        {event.end_time && ` • ${event.end_time.slice(0, 5)}`}
-                      </p>
-                    )}
-                  </div>
-
-                  {event.location && (
-                    <div>
-                      <p className="text-xs uppercase tracking-wider text-white/50 mb-1">Location</p>
-                      <p className="text-amber-200 font-semibold">📍 {event.location}</p>
-                    </div>
-                  )}
-
-                  {event.venue && (
-                    <div>
-                      <p className="text-xs uppercase tracking-wider text-white/50 mb-1">Venue</p>
-                      <p className="text-white/90">{event.venue}</p>
-                    </div>
-                  )}
-
-                  {event.url && (
-                    <div className="pt-4 border-t border-white/10">
-                      <Link
-                        href={event.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block w-full text-center rounded-full bg-gradient-to-r from-[#ff4d00] to-[#f1b12e] px-6 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-white transition hover:from-[#ff7033] hover:to-[#ffd060]"
-                      >
-                        Visit Event Website
-                      </Link>
-                    </div>
                   )}
                 </div>
 
-                <Link
-                  href="/events"
-                  className="block text-center text-sm text-amber-200/70 transition hover:text-amber-200"
-                >
-                  ← Back to All Events
-                </Link>
+                {event.location && (
+                  <div>
+                    <p className="mb-1 text-xs font-semibold uppercase tracking-[0.1em] text-black/50">Location</p>
+                    <p className="font-semibold">{event.location}</p>
+                  </div>
+                )}
+
+                {event.venue && (
+                  <div>
+                    <p className="mb-1 text-xs font-semibold uppercase tracking-[0.1em] text-black/50">Venue</p>
+                    <p>{event.venue}</p>
+                  </div>
+                )}
+
+                {event.url && (
+                  <div className="border-t border-black/10 pt-4">
+                    <Link
+                      href={event.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block bg-black py-3 text-center font-[family-name:var(--font-archivo-black)] text-sm uppercase tracking-[0.06em] text-[#F5C518] hover:bg-black/80"
+                    >
+                      Visit event website
+                    </Link>
+                  </div>
+                )}
               </div>
+
+              <Link href="/events" className="block text-center text-sm font-semibold underline">
+                &larr; Back to all events
+              </Link>
             </div>
           </div>
-        </SectionContainer>
-      </div>
+        </div>
+      </section>
+
+      <HeatFooter />
     </div>
   );
 }
