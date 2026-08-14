@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useTransition } from 'react';
-import { createSauceEntry, deleteSauce, createPaymentBatch, enterCompetitionYear, getSupplierPastSauces, reuseSauceEntry } from '@/app/actions';
+import { createSauceEntry, deleteSauce, createPaymentBatch, enterCompetitionYear, getSupplierPastSauces, reuseSauceEntry, updateSauceInfo } from '@/app/actions';
 import { createClient } from '@/lib/supabase/client';
 import { COMPETITION_YEAR } from '@/lib/config';
 
@@ -13,6 +13,7 @@ interface UnpaidSauce {
   ingredients: string;
   allergens: string;
   webshop_link: string | null;
+  tasting_notes: string | null;
   created_at: string;
 }
 
@@ -22,6 +23,7 @@ interface PastSauce {
   category: string;
   image_path: string | null;
   competition_year: number;
+  reenteredCategories: string[];
 }
 
 interface SupplierSauceManagerProps {
@@ -47,6 +49,26 @@ const CATEGORIES = [
   'Asian Style Chili Sauce',
   'Chili Paste',
   'Salt & Condiments',
+];
+
+// The EU's standard 14 allergens (Food Information to Consumers Regulation) —
+// this is a pan-European competition, so this list applies regardless of
+// where an individual supplier ships from.
+const ALLERGENS = [
+  'Cereals containing gluten',
+  'Crustaceans',
+  'Eggs',
+  'Fish',
+  'Peanuts',
+  'Soybeans',
+  'Milk',
+  'Tree nuts',
+  'Celery',
+  'Mustard',
+  'Sesame seeds',
+  'Sulphur dioxide/sulphites',
+  'Lupin',
+  'Molluscs',
 ];
 
 const BASE_PRICE = 50; // €50 per entry
@@ -83,6 +105,41 @@ const formatCurrency = (amount: number) =>
     minimumFractionDigits: 2,
   }).format(amount);
 
+const inputClass =
+  'block w-full border-2 border-black px-4 py-2.5 text-base text-black placeholder-black/40 outline-none focus:border-[#F5C518]';
+const labelClass = 'mb-1 block text-xs font-semibold uppercase tracking-[0.08em] text-black/60';
+const checkboxRowClass = 'flex items-center gap-2 text-sm text-black';
+const checkboxClass = 'h-4 w-4 flex-shrink-0 accent-black';
+
+function allergensToList(allergens: string): string[] {
+  if (!allergens || allergens === 'None') return [];
+  return allergens.split(',').map((a) => a.trim()).filter(Boolean);
+}
+
+function AllergenCheckboxes({
+  selected,
+  onToggle,
+}: {
+  selected: Set<string>;
+  onToggle: (allergen: string) => void;
+}) {
+  return (
+    <div className="grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-2">
+      {ALLERGENS.map((allergen) => (
+        <label key={allergen} className={checkboxRowClass}>
+          <input
+            type="checkbox"
+            checked={selected.has(allergen)}
+            onChange={() => onToggle(allergen)}
+            className={checkboxClass}
+          />
+          {allergen}
+        </label>
+      ))}
+    </div>
+  );
+}
+
 export default function SupplierSauceManager({ initialSauces, hasExistingPayment = false, hasOptedIn }: SupplierSauceManagerProps) {
   const [sauces, setSauces] = useState<UnpaidSauce[]>(initialSauces);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -97,7 +154,18 @@ export default function SupplierSauceManager({ initialSauces, hasExistingPayment
   const [entering, setEntering] = useState(false);
   const [pastSauces, setPastSauces] = useState<PastSauce[] | null>(null);
   const [loadingPastSauces, setLoadingPastSauces] = useState(false);
-  const [reusingId, setReusingId] = useState<string | null>(null);
+
+  const [addAllergens, setAddAllergens] = useState<Set<string>>(new Set());
+
+  const [reenterTarget, setReenterTarget] = useState<PastSauce | null>(null);
+  const [reenterSelected, setReenterSelected] = useState<Set<string>>(new Set());
+  const [reenterSubmitting, setReenterSubmitting] = useState(false);
+
+  const [editTarget, setEditTarget] = useState<UnpaidSauce | null>(null);
+  const [editCategory, setEditCategory] = useState('');
+  const [editAllergens, setEditAllergens] = useState<Set<string>>(new Set());
+  const [editTastingNotes, setEditTastingNotes] = useState('');
+  const [editSubmitting, setEditSubmitting] = useState(false);
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const imageBucket = process.env.NEXT_PUBLIC_SAUCE_IMAGE_BUCKET || 'sauce-media';
@@ -129,17 +197,36 @@ export default function SupplierSauceManager({ initialSauces, hasExistingPayment
     });
   };
 
-  const handleReuseSauce = (sauceId: string) => {
+  const openReenterModal = (sauce: PastSauce) => {
     setError(null);
-    setSuccess(null);
-    setReusingId(sauceId);
+    setReenterTarget(sauce);
+    // Pre-select the sauce's original category, unless it's already been re-entered there.
+    setReenterSelected(
+      sauce.reenteredCategories.includes(sauce.category) ? new Set() : new Set([sauce.category])
+    );
+  };
+
+  const toggleReenterCategory = (category: string) => {
+    setReenterSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(category)) next.delete(category);
+      else next.add(category);
+      return next;
+    });
+  };
+
+  const handleConfirmReenter = () => {
+    if (!reenterTarget || reenterSelected.size === 0) return;
+    setError(null);
+    setReenterSubmitting(true);
     startTransition(async () => {
-      const result = await reuseSauceEntry(sauceId);
-      setReusingId(null);
+      const result = await reuseSauceEntry(reenterTarget.id, Array.from(reenterSelected));
+      setReenterSubmitting(false);
       if ('error' in result) {
         setError(result.error);
       } else {
-        setSuccess(`Sauce re-entered for ${COMPETITION_YEAR}! Code: ${result.data.sauce_code}`);
+        setReenterTarget(null);
+        setSuccess(`Added ${result.data.length} ${result.data.length === 1 ? 'entry' : 'entries'} for ${COMPETITION_YEAR}.`);
         window.location.reload();
       }
     });
@@ -151,6 +238,7 @@ export default function SupplierSauceManager({ initialSauces, hasExistingPayment
     setSuccess(null);
 
     const formData = new FormData(e.currentTarget);
+    formData.set('allergens', Array.from(addAllergens).join(', '));
     const imageFile = formData.get('image') as File;
 
     // Upload image to Supabase Storage if provided
@@ -197,7 +285,7 @@ export default function SupplierSauceManager({ initialSauces, hasExistingPayment
           await supabase.storage.from(process.env.NEXT_PUBLIC_SAUCE_IMAGE_BUCKET || 'sauce-media').remove([imagePath]);
         }
       } else {
-        setSuccess(`Sauce entry created successfully! Code: ${result.data.sauce_code}`);
+        setSuccess('Sauce entry created successfully!');
         // Refresh the page to get updated sauces (no need to reset form, reload will clear it)
         window.location.reload();
       }
@@ -216,6 +304,34 @@ export default function SupplierSauceManager({ initialSauces, hasExistingPayment
         setSuccess('Sauce entry deleted successfully!');
         setSauces(sauces.filter(s => s.id !== sauceId));
         setDeleteConfirm(null);
+      }
+    });
+  };
+
+  const openEditModal = (sauce: UnpaidSauce) => {
+    setError(null);
+    setEditTarget(sauce);
+    setEditCategory(sauce.category);
+    setEditAllergens(new Set(allergensToList(sauce.allergens)));
+    setEditTastingNotes(sauce.tasting_notes || '');
+  };
+
+  const handleSaveEdit = () => {
+    if (!editTarget) return;
+    setEditSubmitting(true);
+    setError(null);
+    startTransition(async () => {
+      const result = await updateSauceInfo(editTarget.id, {
+        category: editCategory,
+        allergens: Array.from(editAllergens).join(', '),
+        tastingNotes: editTastingNotes,
+      });
+      setEditSubmitting(false);
+      if ('error' in result) {
+        setError(result.error);
+      } else {
+        setEditTarget(null);
+        window.location.reload();
       }
     });
   };
@@ -239,21 +355,23 @@ export default function SupplierSauceManager({ initialSauces, hasExistingPayment
 
   if (!optedIn) {
     return (
-      <div className="text-center bg-white rounded-lg border-2 border-dashed border-orange-300 p-8 space-y-4">
+      <div className="border-[3px] border-dashed border-black bg-white p-8 text-center space-y-4">
         <p className="text-3xl">🌶️</p>
-        <h2 className="text-2xl font-bold text-gray-900">Ready for the {COMPETITION_YEAR} European Hot Sauce Awards?</h2>
-        <p className="text-gray-600 max-w-md mx-auto">
-          Judging is changing this year — professionals and press will be scoring entries live at an event in Berlin,
-          rather than judges scoring at home. Click below to get started: you can resubmit any of your previous
-          sauces in one click, or add new ones.
+        <h2 className="font-[family-name:var(--font-archivo-black)] text-2xl uppercase">
+          Ready for EHSA {COMPETITION_YEAR}?
+        </h2>
+        <p className="mx-auto max-w-md text-black/70">
+          Judging is changing this year — professionals and press will be scoring entries live at a congress in
+          Berlin, rather than judges scoring at home. Click below to get started: you can resubmit any of your
+          previous sauces in one click, or add new ones.
         </p>
         {error && <p className="text-sm text-red-600">{error}</p>}
         <button
           onClick={handleEnterCompetition}
           disabled={entering}
-          className="px-6 py-3 bg-orange-600 text-white font-semibold rounded-lg hover:bg-orange-700 disabled:bg-orange-400 transition-colors"
+          className="bg-[#F5C518] px-6 py-3 font-[family-name:var(--font-archivo-black)] text-sm uppercase tracking-[0.06em] text-black hover:bg-black hover:text-[#F5C518] disabled:opacity-50"
         >
-          {entering ? 'Starting...' : `Enter ${COMPETITION_YEAR} Competition`}
+          {entering ? 'Starting…' : `Enter ${COMPETITION_YEAR} Competition`}
         </button>
       </div>
     );
@@ -261,111 +379,222 @@ export default function SupplierSauceManager({ initialSauces, hasExistingPayment
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Manage Your Sauce Entries</h2>
-          <p className="text-sm text-gray-600 mt-1">
-            Add new sauce entries or remove unpaid entries
-          </p>
+          <h2 className="font-[family-name:var(--font-archivo-black)] text-xl uppercase">Manage your sauce entries</h2>
+          <p className="mt-1 text-sm text-black/60">Add new sauce entries or remove unpaid entries</p>
         </div>
         <button
           onClick={() => setShowAddForm((prev) => !prev)}
-          className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors"
+          className="bg-black px-4 py-2.5 font-[family-name:var(--font-archivo-black)] text-sm uppercase tracking-[0.06em] text-[#F5C518] hover:bg-black/80"
         >
-          {showAddForm ? 'Cancel' : '+ Add Sauce Entry'}
+          {showAddForm ? 'Cancel' : '+ Add sauce entry'}
         </button>
       </div>
 
-      <div className="bg-amber-50 border border-amber-200 rounded-md p-4 text-sm text-amber-900 space-y-1">
-        <p><strong>Delivery window:</strong> ship your samples between 1 January and 28 February {COMPETITION_YEAR}.</p>
-        <p>
-          <strong>Shipping from outside Europe?</strong> Include your EORI number on the customs paperwork and ship
-          via UPS — UPS clears customs and delivers directly to us, rather than us having to track the parcel down.
-        </p>
-      </div>
-
       {pastSauces && pastSauces.length > 0 && (
-        <div className="bg-white border border-gray-200 rounded-lg p-6 space-y-4">
+        <div className="border-2 border-black bg-white p-6 space-y-4">
           <div>
-            <h3 className="text-lg font-semibold text-gray-900">Re-enter a Previous Sauce</h3>
-            <p className="text-sm text-gray-600 mt-1">
-              Pick one of your past entries to resubmit as-is for {COMPETITION_YEAR} — no retyping needed.
+            <h3 className="font-[family-name:var(--font-archivo-black)] text-base uppercase">Re-enter a previous sauce</h3>
+            <p className="mt-1 text-sm text-black/60">
+              Pick one of your past entries to resubmit for {COMPETITION_YEAR} — no retyping needed. You can enter
+              the same sauce into more than one category if it fits.
             </p>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {pastSauces.map((sauce) => (
-              <div key={sauce.id} className="flex items-center justify-between gap-3 border border-gray-200 rounded-lg p-3">
-                <div className="flex items-center gap-3 min-w-0">
-                  {sauce.image_path && supabaseUrl ? (
-                    <img
-                      src={`${supabaseUrl}/storage/v1/object/public/${imageBucket}/${sauce.image_path}`}
-                      alt={sauce.name}
-                      className="w-12 h-12 rounded-md object-cover flex-shrink-0"
-                    />
-                  ) : (
-                    <div className="w-12 h-12 rounded-md bg-gray-100 flex-shrink-0" />
-                  )}
-                  <div className="min-w-0">
-                    <p className="font-medium text-gray-900 truncate">{sauce.name}</p>
-                    <p className="text-xs text-gray-500">{sauce.category} · {sauce.competition_year}</p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {pastSauces.map((sauce) => {
+              const alreadyEntered = sauce.reenteredCategories.length > 0;
+              return (
+                <div key={sauce.id} className="flex items-center justify-between gap-3 border-2 border-black/10 p-3">
+                  <div className="flex min-w-0 items-center gap-3">
+                    {sauce.image_path && supabaseUrl ? (
+                      <img
+                        src={`${supabaseUrl}/storage/v1/object/public/${imageBucket}/${sauce.image_path}`}
+                        alt={sauce.name}
+                        className="h-12 w-12 flex-shrink-0 object-cover"
+                      />
+                    ) : (
+                      <div className="h-12 w-12 flex-shrink-0 bg-black/5" />
+                    )}
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold text-black">{sauce.name}</p>
+                      <p className="text-xs text-black/50">{sauce.category} · {sauce.competition_year}</p>
+                      {alreadyEntered && (
+                        <p className="mt-0.5 text-xs font-semibold text-green-700">
+                          Entered in {sauce.reenteredCategories.length} {sauce.reenteredCategories.length === 1 ? 'category' : 'categories'} this year
+                        </p>
+                      )}
+                    </div>
                   </div>
+                  <button
+                    onClick={() => openReenterModal(sauce)}
+                    className={`flex-shrink-0 px-3 py-1.5 text-sm font-bold uppercase tracking-[0.04em] ${
+                      alreadyEntered
+                        ? 'bg-black/10 text-black/60 hover:bg-black/20'
+                        : 'bg-[#F5C518] text-black hover:bg-black hover:text-[#F5C518]'
+                    }`}
+                  >
+                    {alreadyEntered ? 'Add another category' : 'Confirm category & re-enter'}
+                  </button>
                 </div>
-                <button
-                  onClick={() => handleReuseSauce(sauce.id)}
-                  disabled={isPending && reusingId === sauce.id}
-                  className="px-3 py-1.5 bg-green-600 text-white text-sm font-semibold rounded hover:bg-green-700 disabled:bg-green-400 flex-shrink-0"
-                >
-                  {reusingId === sauce.id ? 'Adding...' : 'Re-enter'}
-                </button>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
       {loadingPastSauces && (
-        <p className="text-sm text-gray-500">Loading your previous entries…</p>
+        <p className="text-sm text-black/50">Loading your previous entries…</p>
       )}
 
       {error && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-md text-sm text-red-700">
+        <div className="border-2 border-red-600 bg-red-50 p-4 text-sm text-red-700">
           {error}
         </div>
       )}
 
       {success && (
-        <div className="p-4 bg-green-50 border border-green-200 rounded-md text-sm text-green-700">
+        <div className="border-2 border-black bg-[#F5C518]/30 p-4 text-sm text-black">
           {success}
+        </div>
+      )}
+
+      {/* Re-enter category picker modal */}
+      {reenterTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto border-[3px] border-black bg-white p-6 space-y-4">
+            <div>
+              <h3 className="font-[family-name:var(--font-archivo-black)] text-lg uppercase">{reenterTarget.name}</h3>
+              <p className="mt-1 text-sm text-black/60">
+                Select every category you want to enter this sauce in for {COMPETITION_YEAR}.
+              </p>
+            </div>
+
+            <div className="border-2 border-[#F5C518] bg-[#F5C518]/20 p-3 text-sm text-black">
+              Each category selected is a <strong>separate paid entry</strong> and counts toward your total —
+              entering the same sauce in 3 categories costs the same as 3 different sauces.
+            </div>
+
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {CATEGORIES.map((category) => {
+                const already = reenterTarget.reenteredCategories.includes(category);
+                return (
+                  <label
+                    key={category}
+                    className={`${checkboxRowClass} ${already ? 'opacity-50' : ''}`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={already || reenterSelected.has(category)}
+                      disabled={already}
+                      onChange={() => toggleReenterCategory(category)}
+                      className={checkboxClass}
+                    />
+                    {category}
+                    {already && <span className="text-xs text-green-700">(already entered)</span>}
+                  </label>
+                );
+              })}
+            </div>
+
+            {error && <p className="text-sm text-red-600">{error}</p>}
+
+            <div className="flex justify-end gap-3 border-t border-black/10 pt-4">
+              <button
+                onClick={() => setReenterTarget(null)}
+                className="border-2 border-black px-4 py-2 text-sm font-semibold uppercase tracking-[0.04em] hover:bg-black/5"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmReenter}
+                disabled={reenterSelected.size === 0 || reenterSubmitting}
+                className="bg-black px-4 py-2 text-sm font-bold uppercase tracking-[0.04em] text-[#F5C518] hover:bg-black/80 disabled:opacity-50"
+              >
+                {reenterSubmitting ? 'Adding…' : `Confirm ${reenterSelected.size || ''} ${reenterSelected.size === 1 ? 'entry' : 'entries'}`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit sauce info modal */}
+      {editTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto border-[3px] border-black bg-white p-6 space-y-4">
+            <h3 className="font-[family-name:var(--font-archivo-black)] text-lg uppercase">Edit {editTarget.name}</h3>
+
+            <div>
+              <label className={labelClass}>Category</label>
+              <select value={editCategory} onChange={(e) => setEditCategory(e.target.value)} className={inputClass}>
+                {CATEGORIES.map((cat) => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className={labelClass}>Allergens</label>
+              <AllergenCheckboxes
+                selected={editAllergens}
+                onToggle={(a) => setEditAllergens((prev) => {
+                  const next = new Set(prev);
+                  if (next.has(a)) next.delete(a); else next.add(a);
+                  return next;
+                })}
+              />
+            </div>
+
+            <div>
+              <label className={labelClass}>
+                Tasting notes <span className="normal-case text-black/40">(what should judges experience?)</span>
+              </label>
+              <textarea
+                value={editTastingNotes}
+                onChange={(e) => setEditTastingNotes(e.target.value)}
+                rows={4}
+                placeholder="Describe the sauce — how it tastes, the heat profile, and what judges should notice when they taste it."
+                className={`${inputClass} resize-none`}
+              />
+            </div>
+
+            {error && <p className="text-sm text-red-600">{error}</p>}
+
+            <div className="flex justify-end gap-3 border-t border-black/10 pt-4">
+              <button
+                onClick={() => setEditTarget(null)}
+                className="border-2 border-black px-4 py-2 text-sm font-semibold uppercase tracking-[0.04em] hover:bg-black/5"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveEdit}
+                disabled={editSubmitting}
+                className="bg-black px-4 py-2 text-sm font-bold uppercase tracking-[0.04em] text-[#F5C518] hover:bg-black/80 disabled:opacity-50"
+              >
+                {editSubmitting ? 'Saving…' : 'Save changes'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
       {/* Add Sauce Form */}
       {showAddForm && (
-        <form onSubmit={handleAddSauce} className="bg-blue-50 border-2 border-blue-200 rounded-lg p-6 space-y-4">
-          <h3 className="text-lg font-semibold text-blue-900">Add New Sauce Entry</h3>
+        <form onSubmit={handleAddSauce} className="border-[3px] border-black bg-white p-6 space-y-4">
+          <h3 className="font-[family-name:var(--font-archivo-black)] text-base uppercase">Add new sauce entry</h3>
 
           <div>
-            <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-              Sauce Name <span className="text-red-500">*</span>
+            <label htmlFor="name" className={labelClass}>
+              Sauce name <span className="text-red-600">*</span>
             </label>
-            <input
-              type="text"
-              id="name"
-              name="name"
-              required
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
+            <input type="text" id="name" name="name" required className={inputClass} />
           </div>
 
           <div>
-            <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-1">
-              Category <span className="text-red-500">*</span>
+            <label htmlFor="category" className={labelClass}>
+              Category <span className="text-red-600">*</span>
             </label>
-            <select
-              id="category"
-              name="category"
-              required
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
+            <select id="category" name="category" required className={inputClass}>
               <option value="">Select a category...</option>
               {CATEGORIES.map((cat) => (
                 <option key={cat} value={cat}>{cat}</option>
@@ -374,66 +603,60 @@ export default function SupplierSauceManager({ initialSauces, hasExistingPayment
           </div>
 
           <div>
-            <label htmlFor="ingredients" className="block text-sm font-medium text-gray-700 mb-1">
-              Ingredients <span className="text-red-500">*</span>
+            <label htmlFor="ingredients" className={labelClass}>
+              Ingredients <span className="text-red-600">*</span>
+            </label>
+            <textarea id="ingredients" name="ingredients" required rows={3} className={`${inputClass} resize-none`} />
+          </div>
+
+          <div>
+            <label className={labelClass}>Allergens</label>
+            <AllergenCheckboxes
+              selected={addAllergens}
+              onToggle={(a) => setAddAllergens((prev) => {
+                const next = new Set(prev);
+                if (next.has(a)) next.delete(a); else next.add(a);
+                return next;
+              })}
+            />
+          </div>
+
+          <div>
+            <label htmlFor="tastingNotes" className={labelClass}>
+              Tasting notes <span className="normal-case text-black/40">(what should judges experience?)</span>
             </label>
             <textarea
-              id="ingredients"
-              name="ingredients"
-              required
-              rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              id="tastingNotes"
+              name="tastingNotes"
+              rows={4}
+              placeholder="Describe the sauce — how it tastes, the heat profile, and what judges should notice when they taste it."
+              className={`${inputClass} resize-none`}
             />
           </div>
 
           <div>
-            <label htmlFor="allergens" className="block text-sm font-medium text-gray-700 mb-1">
-              Allergens
-            </label>
-            <input
-              type="text"
-              id="allergens"
-              name="allergens"
-              placeholder="None"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
+            <label htmlFor="webshopLink" className={labelClass}>Webshop link</label>
+            <input type="url" id="webshopLink" name="webshopLink" placeholder="https://..." className={inputClass} />
           </div>
 
           <div>
-            <label htmlFor="webshopLink" className="block text-sm font-medium text-gray-700 mb-1">
-              Webshop Link
-            </label>
-            <input
-              type="url"
-              id="webshopLink"
-              name="webshopLink"
-              placeholder="https://..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="image" className="block text-sm font-medium text-gray-700 mb-1">
-              Sauce Image
-            </label>
+            <label htmlFor="image" className={labelClass}>Sauce image</label>
             <input
               type="file"
               id="image"
               name="image"
               accept="image/*"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+              className="block w-full border-2 border-black px-4 py-2.5 text-sm text-black file:mr-4 file:border-0 file:bg-black file:px-3 file:py-1.5 file:text-xs file:font-bold file:uppercase file:text-[#F5C518] hover:file:bg-black/80"
             />
-            <p className="text-xs text-gray-500 mt-1">
-              Recommended: Square image, at least 500x500px
-            </p>
+            <p className="mt-1 text-xs text-black/40">Recommended: Square image, at least 500x500px</p>
           </div>
 
           <button
             type="submit"
             disabled={isPending || uploadingImage}
-            className="w-full px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:bg-blue-400 transition-colors"
+            className="w-full bg-black py-3 font-[family-name:var(--font-archivo-black)] text-sm uppercase tracking-[0.06em] text-[#F5C518] hover:bg-black/80 disabled:opacity-50"
           >
-            {uploadingImage ? 'Uploading image...' : isPending ? 'Creating...' : 'Create Sauce Entry'}
+            {uploadingImage ? 'Uploading image…' : isPending ? 'Creating…' : 'Create sauce entry'}
           </button>
         </form>
       )}
@@ -441,60 +664,63 @@ export default function SupplierSauceManager({ initialSauces, hasExistingPayment
       {/* Unpaid Sauces List */}
       {sauces.length > 0 ? (
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-gray-900">
-            Unpaid Sauce Entries ({sauces.length})
+          <h3 className="font-[family-name:var(--font-archivo-black)] text-base uppercase">
+            Unpaid sauce entries ({sauces.length})
           </h3>
 
           <div className="space-y-3">
             {sauces.map((sauce) => (
-              <div key={sauce.id} className="bg-white border border-gray-200 rounded-lg p-4 hover:border-gray-300 transition-colors">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3">
-                      <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs font-mono">
-                        {sauce.sauce_code}
-                      </span>
-                      <h4 className="font-semibold text-gray-900">{sauce.name}</h4>
-                    </div>
-                    <p className="text-sm text-gray-600 mt-1">{sauce.category}</p>
-                    <p className="text-xs text-gray-500 mt-2 line-clamp-2">{sauce.ingredients}</p>
+              <div key={sauce.id} className="border-2 border-black bg-white p-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0 flex-1">
+                    <h4 className="font-semibold text-black">{sauce.name}</h4>
+                    <p className="mt-1 text-sm text-black/60">{sauce.category}</p>
+                    <p className="mt-2 line-clamp-2 text-xs text-black/50">{sauce.ingredients}</p>
                     {sauce.webshop_link && (
                       <a
                         href={sauce.webshop_link}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-xs text-blue-600 hover:underline mt-1 inline-block"
+                        className="mt-1 inline-block text-xs font-semibold underline hover:text-[#F5C518]"
                       >
                         View in webshop →
                       </a>
                     )}
                   </div>
 
-                  {deleteConfirm === sauce.id ? (
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleDeleteSauce(sauce.id)}
-                        disabled={isPending}
-                        className="px-3 py-1 bg-red-600 text-white text-sm font-semibold rounded hover:bg-red-700 disabled:bg-red-400"
-                      >
-                        Confirm
-                      </button>
-                      <button
-                        onClick={() => setDeleteConfirm(null)}
-                        disabled={isPending}
-                        className="px-3 py-1 bg-gray-200 text-gray-700 text-sm font-semibold rounded hover:bg-gray-300"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  ) : (
+                  <div className="flex flex-shrink-0 flex-col items-end gap-2">
                     <button
-                      onClick={() => setDeleteConfirm(sauce.id)}
-                      className="px-3 py-1 bg-red-50 text-red-700 text-sm font-semibold rounded hover:bg-red-100 transition-colors"
+                      onClick={() => openEditModal(sauce)}
+                      className="border-2 border-black px-3 py-1.5 text-sm font-semibold uppercase tracking-[0.04em] hover:bg-black hover:text-[#F5C518]"
                     >
-                      Delete
+                      Edit sauce info
                     </button>
-                  )}
+                    {deleteConfirm === sauce.id ? (
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleDeleteSauce(sauce.id)}
+                          disabled={isPending}
+                          className="bg-red-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+                        >
+                          Confirm
+                        </button>
+                        <button
+                          onClick={() => setDeleteConfirm(null)}
+                          disabled={isPending}
+                          className="bg-black/10 px-3 py-1.5 text-sm font-semibold text-black hover:bg-black/20"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setDeleteConfirm(sauce.id)}
+                        className="border-2 border-red-600 px-3 py-1.5 text-sm font-semibold text-red-700 hover:bg-red-50"
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
@@ -502,11 +728,11 @@ export default function SupplierSauceManager({ initialSauces, hasExistingPayment
 
           {/* Payment Summary */}
           {payment && (
-            <div className="bg-gradient-to-br from-orange-50 to-orange-100 border-2 border-orange-300 rounded-lg p-6 space-y-4">
-              <h3 className="text-lg font-semibold text-orange-900">Payment Summary</h3>
+            <div className="border-[3px] border-black bg-[#F5C518]/20 p-6 space-y-4">
+              <h3 className="font-[family-name:var(--font-archivo-black)] text-base uppercase">Payment summary</h3>
 
               <div className="space-y-2 text-sm">
-                <div className="flex justify-between text-gray-700">
+                <div className="flex justify-between text-black/70">
                   <span>{sauces.length} {sauces.length === 1 ? 'entry' : 'entries'} × {formatCurrency(BASE_PRICE)}:</span>
                   <span>{formatCurrency(payment.subtotal)}</span>
                 </div>
@@ -516,8 +742,8 @@ export default function SupplierSauceManager({ initialSauces, hasExistingPayment
                     <span>-{formatCurrency(payment.discount)}</span>
                   </div>
                 )}
-                <div className="flex justify-between text-lg font-semibold text-gray-900 pt-2 border-t border-orange-200">
-                  <span>Total Due:</span>
+                <div className="flex justify-between border-t-2 border-black pt-2 text-lg font-semibold text-black">
+                  <span>Total due:</span>
                   <span>{formatCurrency(payment.total)}</span>
                 </div>
               </div>
@@ -525,14 +751,14 @@ export default function SupplierSauceManager({ initialSauces, hasExistingPayment
               <button
                 onClick={handleCreatePayment}
                 disabled={isPending}
-                className="w-full px-4 py-3 bg-orange-600 text-white font-semibold rounded-lg hover:bg-orange-700 disabled:bg-orange-400 transition-colors"
+                className="w-full bg-black py-3 font-[family-name:var(--font-archivo-black)] text-sm uppercase tracking-[0.06em] text-[#F5C518] hover:bg-black/80 disabled:opacity-50"
               >
                 {isPending
-                  ? (hasExistingPayment ? 'Updating Payment...' : 'Creating Payment...')
-                  : (hasExistingPayment ? 'Update Payment Batch' : 'Proceed to Payment')}
+                  ? (hasExistingPayment ? 'Updating payment…' : 'Creating payment…')
+                  : (hasExistingPayment ? 'Update payment batch' : 'Proceed to payment')}
               </button>
 
-              <p className="text-xs text-orange-800 text-center">
+              <p className="text-center text-xs text-black/50">
                 {hasExistingPayment
                   ? 'This will update your payment batch with the new discount'
                   : 'This will create a payment batch for all unpaid entries above'}
@@ -541,9 +767,9 @@ export default function SupplierSauceManager({ initialSauces, hasExistingPayment
           )}
         </div>
       ) : (
-        <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-          <p className="text-gray-600">No unpaid sauce entries</p>
-          <p className="text-sm text-gray-500 mt-1">Click "Add Sauce Entry" to create a new entry</p>
+        <div className="border-[3px] border-dashed border-black/20 bg-white py-12 text-center">
+          <p className="text-black/70">No unpaid sauce entries</p>
+          <p className="mt-1 text-sm text-black/40">Click &quot;Add sauce entry&quot; to create a new entry</p>
         </div>
       )}
     </div>

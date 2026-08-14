@@ -3306,6 +3306,7 @@ export type UnpaidSauceRecord = {
   ingredients: string;
   allergens: string;
   webshop_link: string | null;
+  tasting_notes: string | null;
   created_at: string;
 };
 
@@ -3335,7 +3336,7 @@ export async function getSupplierUnpaidSauces(): Promise<
   // Fetch this season's unpaid sauces
   const { data: sauces, error: saucesError } = await supabase
     .from('sauces')
-    .select('id, name, category, sauce_code, ingredients, allergens, webshop_link, created_at')
+    .select('id, name, category, sauce_code, ingredients, allergens, webshop_link, tasting_notes, created_at')
     .eq('supplier_id', supplier.id)
     .eq('payment_status', 'pending_payment')
     .eq('competition_year', COMPETITION_YEAR)
@@ -3354,6 +3355,8 @@ type SauceEntryFields = {
   ingredients: string;
   allergens: string | null;
   webshopLink: string | null;
+  tastingNotes?: string | null;
+  reusedFromSauceId?: string | null;
 };
 
 /**
@@ -3373,23 +3376,13 @@ async function insertSauceEntry(
     return { error: `Unknown category: ${fields.category}` };
   }
 
-  // Generate sauce code
-  const { data: existingSauces, error: countError } = await serviceSupabase
-    .from('sauces')
-    .select('sauce_code')
-    .like('sauce_code', `${categoryCode}%`)
-    .order('sauce_code', { ascending: false })
-    .limit(1);
+  // Generate sauce code from a persistent per-category counter (never rewinds,
+  // even if an earlier sauce holding a code gets deleted) via an atomic RPC.
+  const { data: nextNumber, error: counterError } = await serviceSupabase
+    .rpc('increment_sauce_code_counter', { p_category_code: categoryCode });
 
-  if (countError) {
-    return { error: countError.message };
-  }
-
-  let nextNumber = 1;
-  if (existingSauces && existingSauces.length > 0) {
-    const lastCode = existingSauces[0].sauce_code;
-    const lastNumber = parseInt(lastCode.substring(1), 10);
-    nextNumber = lastNumber + 1;
+  if (counterError) {
+    return { error: counterError.message };
   }
 
   const sauceCode = `${categoryCode}${String(nextNumber).padStart(3, '0')}`;
@@ -3404,6 +3397,8 @@ async function insertSauceEntry(
       ingredients: fields.ingredients,
       allergens: fields.allergens || 'None',
       webshop_link: fields.webshopLink || null,
+      tasting_notes: fields.tastingNotes || null,
+      reused_from_sauce_id: fields.reusedFromSauceId || null,
       sauce_code: sauceCode,
       status: 'registered',
       payment_status: 'pending_payment',
@@ -3477,6 +3472,7 @@ export async function createSauceEntry(formData: FormData): Promise<
   const ingredients = formData.get('ingredients') as string;
   const allergens = formData.get('allergens') as string;
   const webshopLink = formData.get('webshopLink') as string;
+  const tastingNotes = formData.get('tastingNotes') as string;
   const imagePath = formData.get('imagePath') as string | null;
 
   if (!name || !category || !ingredients) {
@@ -3515,6 +3511,7 @@ export async function createSauceEntry(formData: FormData): Promise<
     ingredients,
     allergens,
     webshopLink,
+    tastingNotes,
   });
 
   if ('error' in result) {
@@ -3553,12 +3550,21 @@ export async function createSauceEntry(formData: FormData): Promise<
 
 /**
  * Re-enter a sauce the supplier previously submitted in an earlier competition
- * year: clones its identity fields (and image, if any) into a fresh row for
- * the current competition year, leaving the original row untouched as history.
+ * year: clones its identity fields (and image, if any) into one fresh row per
+ * selected category for the current competition year, leaving the original
+ * row(s) untouched as history. A sauce can be entered into more than one
+ * category — each is a separate row (and a separate paid entry). Categories
+ * already re-entered from this source this year are skipped rather than
+ * erroring, so re-calling with an overlapping selection is safe.
  */
-export async function reuseSauceEntry(sourceSauceId: string): Promise<
-  { error: string } | { success: true; data: { id: string; sauce_code: string } }
+export async function reuseSauceEntry(sourceSauceId: string, categories: string[]): Promise<
+  { error: string } | { success: true; data: { id: string; sauce_code: string; category: string }[] }
 > {
+  const uniqueCategories = Array.from(new Set(categories));
+  if (uniqueCategories.length === 0) {
+    return { error: 'Select at least one category.' };
+  }
+
   const cookieStore = cookies();
   const supabase = createClient(cookieStore);
 
@@ -3585,7 +3591,7 @@ export async function reuseSauceEntry(sourceSauceId: string): Promise<
   // Fetch the source sauce, scoped to this supplier so one supplier can't clone another's entry
   const { data: sourceSauce, error: sourceError } = await serviceSupabase
     .from('sauces')
-    .select('name, category, ingredients, allergens, webshop_link, image_path, competition_year')
+    .select('name, ingredients, allergens, webshop_link, image_path, competition_year')
     .eq('id', sourceSauceId)
     .eq('supplier_id', supplier.id)
     .single();
@@ -3598,43 +3604,63 @@ export async function reuseSauceEntry(sourceSauceId: string): Promise<
     return { error: 'This sauce has already been entered for this competition year.' };
   }
 
-  const result = await insertSauceEntry(serviceSupabase, supplier.id, {
-    name: sourceSauce.name,
-    category: sourceSauce.category,
-    ingredients: sourceSauce.ingredients,
-    allergens: sourceSauce.allergens,
-    webshopLink: sourceSauce.webshop_link,
-  });
+  // Skip categories already re-entered from this exact source this year
+  const { data: existingReentries } = await serviceSupabase
+    .from('sauces')
+    .select('category')
+    .eq('reused_from_sauce_id', sourceSauceId)
+    .eq('competition_year', COMPETITION_YEAR);
 
-  if ('error' in result) {
-    return result;
+  const alreadyEntered = new Set((existingReentries || []).map((r: { category: string }) => r.category));
+  const categoriesToCreate = uniqueCategories.filter((c) => !alreadyEntered.has(c));
+
+  if (categoriesToCreate.length === 0) {
+    return { error: 'This sauce has already been entered in the selected category(ies).' };
   }
 
-  // Copy the previous image across, if there was one
-  if (sourceSauce.image_path) {
-    const bucket = process.env.NEXT_PUBLIC_SAUCE_IMAGE_BUCKET || 'sauce-media';
-    const targetPath = `suppliers/${supplier.id}/${result.sauceId}.webp`;
+  const created: { id: string; sauce_code: string; category: string }[] = [];
+  const bucket = process.env.NEXT_PUBLIC_SAUCE_IMAGE_BUCKET || 'sauce-media';
 
-    const { error: copyError } = await serviceSupabase.storage
-      .from(bucket)
-      .copy(sourceSauce.image_path, targetPath);
+  for (const category of categoriesToCreate) {
+    const result = await insertSauceEntry(serviceSupabase, supplier.id, {
+      name: sourceSauce.name,
+      category,
+      ingredients: sourceSauce.ingredients,
+      allergens: sourceSauce.allergens,
+      webshopLink: sourceSauce.webshop_link,
+      reusedFromSauceId: sourceSauceId,
+    });
 
-    if (copyError) {
-      console.error('Failed to copy sauce image for reuse:', copyError);
-    } else {
-      const { error: updateError } = await serviceSupabase
-        .from('sauces')
-        .update({ image_path: targetPath })
-        .eq('id', result.sauceId);
+    if ('error' in result) {
+      // Surface the first failure; entries already created above remain (unpaid, editable/deletable).
+      return { error: `Failed to add ${category}: ${result.error}` };
+    }
 
-      if (updateError) {
-        console.error('Failed to update reused sauce with image path:', updateError);
+    if (sourceSauce.image_path) {
+      const targetPath = `suppliers/${supplier.id}/${result.sauceId}.webp`;
+      const { error: copyError } = await serviceSupabase.storage
+        .from(bucket)
+        .copy(sourceSauce.image_path, targetPath);
+
+      if (copyError) {
+        console.error('Failed to copy sauce image for reuse:', copyError);
+      } else {
+        const { error: updateError } = await serviceSupabase
+          .from('sauces')
+          .update({ image_path: targetPath })
+          .eq('id', result.sauceId);
+
+        if (updateError) {
+          console.error('Failed to update reused sauce with image path:', updateError);
+        }
       }
     }
+
+    created.push({ id: result.sauceId, sauce_code: result.sauceCode, category });
   }
 
   revalidatePath('/dashboard');
-  return { success: true, data: { id: result.sauceId, sauce_code: result.sauceCode } };
+  return { success: true, data: created };
 }
 
 export type PastSauceRecord = {
@@ -3643,6 +3669,7 @@ export type PastSauceRecord = {
   category: string;
   image_path: string | null;
   competition_year: number;
+  reenteredCategories: string[];
 };
 
 /**
@@ -3682,7 +3709,27 @@ export async function getSupplierPastSauces(): Promise<
     return { error: saucesError.message };
   }
 
-  return { success: true, data: (sauces || []) as PastSauceRecord[] };
+  // Which categories has each past sauce already been re-entered into this year?
+  const { data: reentries } = await supabase
+    .from('sauces')
+    .select('reused_from_sauce_id, category')
+    .eq('supplier_id', supplier.id)
+    .eq('competition_year', COMPETITION_YEAR)
+    .not('reused_from_sauce_id', 'is', null);
+
+  const reenteredByCategorySource = new Map<string, string[]>();
+  for (const row of (reentries || []) as { reused_from_sauce_id: string; category: string }[]) {
+    const list = reenteredByCategorySource.get(row.reused_from_sauce_id) || [];
+    list.push(row.category);
+    reenteredByCategorySource.set(row.reused_from_sauce_id, list);
+  }
+
+  const data = ((sauces || []) as Omit<PastSauceRecord, 'reenteredCategories'>[]).map((sauce) => ({
+    ...sauce,
+    reenteredCategories: reenteredByCategorySource.get(sauce.id) || [],
+  }));
+
+  return { success: true, data };
 }
 
 /**
@@ -4056,6 +4103,78 @@ export async function deleteSauce(sauceId: string) {
           .eq('id', paymentIdToUpdate);
       }
     }
+  }
+
+  revalidatePath('/dashboard');
+  return { success: true };
+}
+
+/**
+ * Update category/allergens/tasting notes on an unpaid sauce entry. Scoped to
+ * the entry's own supplier and to pending_payment status, matching deleteSauce
+ * — once an entry is paid its details are locked (it may already be in the
+ * judging/print pipeline).
+ */
+export async function updateSauceInfo(
+  sauceId: string,
+  fields: { category: string; allergens: string; tastingNotes: string }
+): Promise<{ error: string } | { success: true }> {
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user?.email) {
+    return { error: 'You must be logged in to edit a sauce.' };
+  }
+
+  const { data: supplier, error: supplierError } = await supabase
+    .from('suppliers')
+    .select('id')
+    .ilike('email', user.email)
+    .single();
+
+  if (supplierError || !supplier) {
+    return { error: 'Supplier account not found.' };
+  }
+
+  if (!CATEGORY_CODES[fields.category]) {
+    return { error: `Unknown category: ${fields.category}` };
+  }
+
+  const serviceSupabase = createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
+  const { data: sauce, error: sauceError } = await serviceSupabase
+    .from('sauces')
+    .select('id, supplier_id, payment_status')
+    .eq('id', sauceId)
+    .single();
+
+  if (sauceError || !sauce) {
+    return { error: 'Sauce not found.' };
+  }
+
+  if (sauce.supplier_id !== supplier.id) {
+    return { error: 'You are not authorized to edit this sauce.' };
+  }
+
+  if (sauce.payment_status !== 'pending_payment') {
+    return { error: 'Only unpaid sauces can be edited.' };
+  }
+
+  const { error: updateError } = await serviceSupabase
+    .from('sauces')
+    .update({
+      category: fields.category,
+      allergens: fields.allergens || 'None',
+      tasting_notes: fields.tastingNotes || null,
+    })
+    .eq('id', sauceId);
+
+  if (updateError) {
+    return { error: updateError.message };
   }
 
   revalidatePath('/dashboard');

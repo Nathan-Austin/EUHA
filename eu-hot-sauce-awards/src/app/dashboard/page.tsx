@@ -132,16 +132,6 @@ export default async function DashboardPage() {
             packageStatus: supplier.package_status || 'pending',
             packageReceivedAt: supplier.package_received_at,
           }}
-          judgeData={{
-            address: judge.address,
-            address_line2: judge.address_line2,
-            city: judge.city,
-            postal_code: judge.postal_code,
-            state: judge.state,
-            country: judge.country,
-            dhl_tracking_number: judge.dhl_tracking_number,
-            dhl_label_url: judge.dhl_label_url,
-          }}
           enteredSauces={enteredSauces || []}
           hasOptedIn={hasOptedIn}
           unpaidSauces={unpaidSauces}
@@ -203,6 +193,30 @@ export default async function DashboardPage() {
         <main className="w-full px-4 py-8 sm:px-6 lg:px-10">
           <div className="w-full">{dashboardContent}</div>
         </main>
+      </div>
+    )
+  }
+
+  if (judge.type === 'supplier') {
+    return (
+      <div className="min-h-screen bg-[#faf6ec] text-black">
+        <header className="border-b-4 border-black bg-[#F5C518]">
+          <div className="mx-auto flex max-w-[1240px] flex-wrap items-center justify-between gap-4 px-6 py-4">
+            <div className="flex items-center gap-3.5">
+              <span className="grid h-11 w-11 flex-shrink-0 place-items-center rounded-full bg-black font-[family-name:var(--font-archivo-black)] text-xl text-[#F5C518]">
+                E
+              </span>
+              <span className="font-[family-name:var(--font-archivo-black)] text-lg uppercase leading-none text-black">
+                Supplier dashboard
+                <small className="mt-1 block font-sans text-[11px] font-semibold tracking-[0.12em] text-black/70">
+                  Logged in as {user.email}
+                </small>
+              </span>
+            </div>
+            <LogoutButton />
+          </div>
+        </header>
+        <main className="mx-auto max-w-[1240px] px-6 py-10">{dashboardContent}</main>
       </div>
     )
   }
