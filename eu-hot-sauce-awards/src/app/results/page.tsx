@@ -11,17 +11,6 @@ export const metadata: Metadata = {
   description: "Browse the archive of past winners from the European Hot Sauce Awards, by year.",
 };
 
-// TODO: total submitted entries per year, to show alongside award-winning counts (growth
-// story). sauces.competition_year only has data for 2026 (386, confirmed real via direct
-// DB query — RLS-locked from anon queries same as the /makers page, so it'd need a static
-// snapshot like EUROPEAN_ENTRANTS in page.tsx). 2024/2025 have no total-entries figure
-// anywhere in this DB — that column was never backfilled for older years. Come back to
-// this once real 2024/2025 totals are sourced (e.g. old spreadsheets, Simon/Neil's
-// records) — do not fabricate them in the meantime.
-const TOTAL_ENTRIES_BY_YEAR: Record<number, number | null> = {
-  2026: 386,
-};
-
 async function getAvailableYears() {
   const { cookies } = await import("next/headers");
   const supabase = createClient(cookies());
@@ -74,9 +63,6 @@ export default async function ResultsPage() {
                 </span>
                 <span className="text-xs font-semibold uppercase tracking-[0.12em] text-black/50">
                   {count} award-winning entries
-                </span>
-                <span className="text-xs uppercase tracking-[0.1em] text-black/35">
-                  {TOTAL_ENTRIES_BY_YEAR[year] ? `${TOTAL_ENTRIES_BY_YEAR[year]} total entries` : "Total entries: TBC"}
                 </span>
               </Link>
             ))}

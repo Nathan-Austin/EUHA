@@ -107,11 +107,14 @@ const PressPage = async () => {
 
               return (
                 <li key={p.id} className="py-5">
-                  <div className="grid grid-cols-12 items-baseline gap-4">
-                    <div className="col-span-6 sm:col-span-2">
+                  <div className="flex flex-col gap-1.5 sm:grid sm:grid-cols-12 sm:items-baseline sm:gap-4">
+                    <div className="flex items-baseline justify-between gap-4 sm:col-span-2 sm:block">
                       <p className="text-sm text-black/50">{formatDate(p.pickupDate)}</p>
+                      <span className="text-xs font-semibold uppercase tracking-[0.08em] text-black/50 sm:hidden">
+                        {p.country || '—'}
+                      </span>
                     </div>
-                    <div className="col-span-12 order-last sm:order-none sm:col-span-6">
+                    <div className="sm:col-span-6">
                       {linkUrl ? (
                         <a
                           href={linkUrl}
@@ -128,7 +131,7 @@ const PressPage = async () => {
                         <p className="mt-1 break-all text-xs text-black/40">{hostname(linkUrl)}</p>
                       )}
                     </div>
-                    <div className="col-span-6 sm:col-span-2">
+                    <div className="sm:col-span-2">
                       {p.makerName ? (
                         hasMakerPage ? (
                           <Link href={`/maker/${makerSlug}`} className="text-sm hover:text-[#F5C518] hover:underline">
@@ -141,7 +144,7 @@ const PressPage = async () => {
                         <span className="text-sm text-black/40">—</span>
                       )}
                     </div>
-                    <div className="col-span-6 text-right text-xs font-semibold uppercase tracking-[0.08em] text-black/50 sm:col-span-2">
+                    <div className="hidden text-right text-xs font-semibold uppercase tracking-[0.08em] text-black/50 sm:col-span-2 sm:block">
                       {p.country || '—'}
                     </div>
                   </div>
