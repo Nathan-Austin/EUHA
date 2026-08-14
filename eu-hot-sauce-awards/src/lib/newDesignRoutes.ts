@@ -3,5 +3,10 @@
 // here as they're built, rather than hardcoding checks in multiple places.
 export function usesNewDesign(pathname: string | null): boolean {
   if (!pathname) return false;
-  return pathname === "/" || pathname.startsWith("/category/") || pathname.startsWith("/maker/");
+  return (
+    pathname === "/" ||
+    pathname.startsWith("/category/") ||
+    pathname.startsWith("/maker/") ||
+    pathname.startsWith("/makers")
+  );
 }

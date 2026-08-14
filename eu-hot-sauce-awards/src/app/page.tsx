@@ -91,6 +91,15 @@ const EUROPEAN_ENTRANTS = [
   { country: "Bulgaria", makers: 1 },
 ].sort((a, b) => b.makers - a.makers);
 
+// EUROPEAN_ENTRANTS above is sourced from sauces+suppliers (RLS-blocked for public
+// queries, hence the static snapshot); /makers and every past_results-backed page
+// use past_results, which spells country names slightly differently in places
+// (e.g. "UK" not "United Kingdom"). Maps the pill's label to the string /makers
+// actually needs to match on, so the link doesn't silently return zero results.
+const PAST_RESULTS_COUNTRY_NAME: Record<string, string> = {
+  "United Kingdom": "UK",
+};
+
 async function getHomepageData() {
   const { cookies } = await import("next/headers");
   const supabase = createClient(cookies());
@@ -249,7 +258,7 @@ export default async function Home() {
                 Browse by <span className="bg-[#F5C518] px-2">country</span>.
               </h2>
               <Link
-                href={`/results/${PREVIOUS_COMPETITION_YEAR}`}
+                href="/makers"
                 className="border-b-[3px] border-black pb-1 text-xs font-bold uppercase tracking-[0.1em]"
               >
                 All {stats.countries} countries &rarr;
@@ -259,7 +268,7 @@ export default async function Home() {
               {countries.map(({ country, makers }) => (
                 <Link
                   key={country}
-                  href={`/results/${PREVIOUS_COMPETITION_YEAR}`}
+                  href={`/makers?country=${encodeURIComponent(PAST_RESULTS_COUNTRY_NAME[country] ?? country)}`}
                   className={`inline-flex items-baseline gap-3 border-2 border-black bg-[#F5C518] transition hover:-translate-y-0.5 hover:shadow-lg ${TIER_STYLES[countryTier(makers)]}`}
                 >
                   <span className="font-[family-name:var(--font-archivo-black)] leading-none">{makers}</span>

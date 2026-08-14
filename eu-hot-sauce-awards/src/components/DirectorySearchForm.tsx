@@ -1,15 +1,28 @@
 'use client';
 
-// TODO: wire up once the maker/sauce directory + search results page exists.
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
+
 export default function DirectorySearchForm() {
+  const router = useRouter();
+  const [value, setValue] = useState('');
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const q = value.trim();
+    router.push(q ? `/makers?q=${encodeURIComponent(q)}` : '/makers');
+  };
+
   return (
     <form
-      onSubmit={(e) => e.preventDefault()}
+      onSubmit={handleSubmit}
       className="flex min-w-[320px] max-w-[520px] flex-1 border-[3px] border-[#F5C518] bg-white"
     >
       <input
         type="text"
-        placeholder="Search a maker, sauce, country or chilli"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        placeholder="Search a maker, country or category"
         className="flex-1 border-0 px-[22px] py-[18px] text-[17px] outline-none"
       />
       <button
