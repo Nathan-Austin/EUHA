@@ -21,7 +21,6 @@ const milestones = [
 const SHOW_SPONSORS = false;
 
 const sponsors = [
-  { name: "Flying Goose", logo_url: "/sponsors/flying-goose.png", url: "https://flyinggoosesriracha.com/?utm_source=heatawards&utm_medium=referral&utm_campaign=2026_awards" },
   { name: "Chilisaus.be", logo_url: "/sponsors/chilisaus.png", url: "https://chilisaus.be/?utm_source=heatawards&utm_medium=referral&utm_campaign=2026_awards" },
   { name: "Republic of Heat", logo_url: "/sponsors/ROH_LOGO.png", url: "https://republicofheat.com/?utm_source=heatawards&utm_medium=referral&utm_campaign=2026_awards" },
 ];

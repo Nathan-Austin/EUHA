@@ -11,6 +11,7 @@ export function usesNewDesign(pathname: string | null): boolean {
     pathname.startsWith("/country/") ||
     pathname.startsWith("/countries") ||
     pathname.startsWith("/results") ||
-    pathname.startsWith("/rankings")
+    pathname.startsWith("/rankings") ||
+    pathname.startsWith("/sponsors")
   );
 }
