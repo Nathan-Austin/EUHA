@@ -9,6 +9,8 @@ import SauceImage from "@/components/SauceImage";
 import { createClient } from "@/lib/supabase/server";
 import { PREVIOUS_COMPETITION_YEAR } from "@/lib/config";
 import { CATEGORY_SLUGS, slugifyMaker } from "@/lib/categories";
+import { getMakerProfile } from "@/lib/makerProfiles";
+import { getPressPickups } from "@/lib/press";
 
 interface ResultRow {
   code: string;
@@ -68,9 +70,11 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 }
 
 export default async function MakerPage({ params }: { params: { slug: string } }) {
-  const allRows = await getYearData();
+  const [allRows, pickups] = await Promise.all([getYearData(), getPressPickups()]);
   const makerRows = allRows.filter((r) => slugifyMaker(r.company_name) === params.slug);
   if (makerRows.length === 0) notFound();
+
+  const coverage = pickups.filter((p) => p.makerName && slugifyMaker(p.makerName) === params.slug);
 
   const maker = makerRows[0];
   const sortedByRank = [...makerRows].sort((a, b) => (a.position ?? 99) - (b.position ?? 99));
@@ -110,6 +114,8 @@ export default async function MakerPage({ params }: { params: { slug: string } }
     ...sameCountry.map((r) => ({ ...r, relation: "Same country" })),
     ...sameCategory.map((r) => ({ ...r, relation: `Same category (${r.category})` })),
   ];
+
+  const profile = getMakerProfile(params.slug);
 
   const aboutSentences = sortedByRank.map((row) => {
     const tier = medalTier(row.award);
@@ -261,13 +267,59 @@ export default async function MakerPage({ params }: { params: { slug: string } }
           </div>
           <div className="grid grid-cols-1 gap-9 lg:grid-cols-[1.6fr_1fr]">
             <div className="space-y-3.5 text-base leading-relaxed text-black/80">
-              <p>
-                {maker.company_name} is based in <strong className="text-black">{maker.country}</strong>.
-              </p>
-              <p>
-                The brand entered EHSA {PREVIOUS_COMPETITION_YEAR} with {makerRows.length} sauce
-                {makerRows.length === 1 ? "" : "s"}. {aboutSentences.join(" ")}
-              </p>
+              {profile ? (
+                <>
+                  <p className="font-semibold text-black">{profile.intro}</p>
+                  {profile.story.map((para, i) => (
+                    <p key={i}>{para}</p>
+                  ))}
+                  <p>
+                    <strong className="text-black">The sauce: </strong>
+                    {profile.sauceNote}
+                  </p>
+                  <p>
+                    <strong className="text-black">Peppers: </strong>
+                    {profile.peppers}
+                  </p>
+                  {profile.pairing && (
+                    <p>
+                      <strong className="text-black">Pairs with: </strong>
+                      {profile.pairing}
+                    </p>
+                  )}
+                  {profile.quote && (
+                    <blockquote className="border-l-4 border-[#F5C518] py-1 pl-5 italic text-black/70">
+                      &ldquo;{profile.quote.text}&rdquo;
+                      <footer className="mt-2 text-sm not-italic font-semibold text-black">
+                        &mdash; {profile.quote.attrib}
+                      </footer>
+                    </blockquote>
+                  )}
+                  {profile.find.length > 0 && (
+                    <p className="text-sm">
+                      <strong className="text-black">Find {profile.makerPerson.split(" ")[0]}: </strong>
+                      {profile.find.map((f, i) => (
+                        <span key={f.url}>
+                          {i > 0 && ', '}
+                          <a href={f.url} target="_blank" rel="noopener noreferrer" className="underline hover:text-[#F5C518]">
+                            {f.label}
+                          </a>
+                        </span>
+                      ))}
+                    </p>
+                  )}
+                </>
+              ) : (
+                <>
+                  <p>
+                    {maker.company_name} is based in <strong className="text-black">{maker.country}</strong>.
+                  </p>
+                  <p>
+                    The brand entered EHSA {PREVIOUS_COMPETITION_YEAR} with {makerRows.length} sauce
+                    {makerRows.length === 1 ? "" : "s"}. {aboutSentences.join(" ")}
+                  </p>
+                </>
+              )}
             </div>
             <aside className="border-2 border-black bg-white p-6">
               <h4 className="mb-4 border-b-2 border-black pb-3 font-[family-name:var(--font-archivo-black)] text-[13px] uppercase tracking-[0.1em]">
@@ -275,8 +327,14 @@ export default async function MakerPage({ params }: { params: { slug: string } }
               </h4>
               <div className="flex justify-between gap-4 border-b border-black/10 py-2.5 text-sm">
                 <span className="text-[11px] font-semibold uppercase tracking-[0.04em] text-black/50">Based</span>
-                <span className="text-right font-semibold">{maker.country}</span>
+                <span className="text-right font-semibold">{profile?.region ?? maker.country}</span>
               </div>
+              {profile && (
+                <div className="flex justify-between gap-4 border-b border-black/10 py-2.5 text-sm">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.04em] text-black/50">Maker</span>
+                  <span className="text-right font-semibold">{profile.makerPerson}</span>
+                </div>
+              )}
               {maker.contact_name && (
                 <div className="flex justify-between gap-4 border-b border-black/10 py-2.5 text-sm">
                   <span className="text-[11px] font-semibold uppercase tracking-[0.04em] text-black/50">Contact</span>
@@ -307,6 +365,51 @@ export default async function MakerPage({ params }: { params: { slug: string } }
           </div>
         </div>
       </section>
+
+      {/* PRESS COVERAGE */}
+      {coverage.length > 0 && (
+        <section className="py-20">
+          <div className="mx-auto max-w-[1240px] px-6">
+            <div className="mb-9 flex flex-wrap items-end justify-between gap-8">
+              <h2 className="font-[family-name:var(--font-archivo-black)] text-[clamp(28px,4vw,44px)] uppercase leading-[0.95]">
+                In the <span className="bg-[#F5C518] px-2">press</span>.
+              </h2>
+              <Link href="/press" className="text-xs font-semibold uppercase tracking-[0.1em] text-black/50 hover:text-black">
+                All press coverage &rarr;
+              </Link>
+            </div>
+            <ol className="divide-y divide-black/10 border-y border-black/10">
+              {coverage.map((p) => {
+                const linkUrl = p.articleUrl || p.outletUrl;
+                return (
+                  <li key={p.id} className="flex flex-wrap items-baseline justify-between gap-4 py-4">
+                    <div>
+                      {linkUrl ? (
+                        <a
+                          href={linkUrl}
+                          target="_blank"
+                          rel="noopener noreferrer nofollow"
+                          className="font-semibold hover:text-[#F5C518] hover:underline"
+                        >
+                          {p.outletName}
+                        </a>
+                      ) : (
+                        <span className="font-semibold">{p.outletName}</span>
+                      )}
+                      {p.country && <span className="ml-2 text-xs text-black/40">{p.country}</span>}
+                    </div>
+                    <span className="text-sm text-black/50">
+                      {p.pickupDate
+                        ? new Date(p.pickupDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+                        : ''}
+                    </span>
+                  </li>
+                );
+              })}
+            </ol>
+          </div>
+        </section>
+      )}
 
       {/* RELATED MAKERS */}
       {relatedMakers.length > 0 && (

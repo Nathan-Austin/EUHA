@@ -5,7 +5,6 @@ const NAV_LINKS = [
   { href: '/results', label: `${PREVIOUS_COMPETITION_YEAR} Winners` },
   { href: '/judges', label: 'Judges' },
   { href: '/prizes', label: 'Prizes' },
-  // Not built yet — press resources page is planned.
   { href: '/press', label: 'Press' },
 ];
 

@@ -21,6 +21,7 @@ export function usesNewDesign(pathname: string | null): boolean {
     pathname.startsWith("/events") ||
     pathname === "/judges" ||
     pathname === "/prizes" ||
-    pathname === "/apply/judge"
+    pathname === "/apply/judge" ||
+    pathname === "/press"
   );
 }
