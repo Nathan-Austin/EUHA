@@ -8,7 +8,7 @@ import HeatHeader from "@/components/HeatHeader";
 import HeatFooter from "@/components/HeatFooter";
 import { createClient } from "@/lib/supabase/server";
 import { COMPETITION_YEAR, PREVIOUS_COMPETITION_YEAR } from "@/lib/config";
-import { CATEGORY_GROUPS, CATEGORY_SLUGS, WILDCARD_CATEGORY } from "@/lib/categories";
+import { CATEGORY_GROUPS, CATEGORY_SLUGS, WILDCARD_CATEGORY, slugify } from "@/lib/categories";
 
 const milestones = [
   { label: "Applications Close", value: `28 Feb ${COMPETITION_YEAR}` },
@@ -258,7 +258,7 @@ export default async function Home() {
                 Browse by <span className="bg-[#F5C518] px-2">country</span>.
               </h2>
               <Link
-                href="/makers"
+                href="/countries"
                 className="border-b-[3px] border-black pb-1 text-xs font-bold uppercase tracking-[0.1em]"
               >
                 All {stats.countries} countries &rarr;
@@ -268,7 +268,7 @@ export default async function Home() {
               {countries.map(({ country, makers }) => (
                 <Link
                   key={country}
-                  href={`/makers?country=${encodeURIComponent(PAST_RESULTS_COUNTRY_NAME[country] ?? country)}`}
+                  href={`/country/${slugify(PAST_RESULTS_COUNTRY_NAME[country] ?? country)}`}
                   className={`inline-flex items-baseline gap-3 border-2 border-black bg-[#F5C518] transition hover:-translate-y-0.5 hover:shadow-lg ${TIER_STYLES[countryTier(makers)]}`}
                 >
                   <span className="font-[family-name:var(--font-archivo-black)] leading-none">{makers}</span>

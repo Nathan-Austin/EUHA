@@ -8,6 +8,8 @@ export function usesNewDesign(pathname: string | null): boolean {
     pathname.startsWith("/category/") ||
     pathname.startsWith("/maker/") ||
     pathname.startsWith("/makers") ||
+    pathname.startsWith("/country/") ||
+    pathname.startsWith("/countries") ||
     pathname.startsWith("/results") ||
     pathname.startsWith("/rankings")
   );

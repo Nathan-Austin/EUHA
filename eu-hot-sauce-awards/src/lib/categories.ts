@@ -63,15 +63,19 @@ export function categoryGroupFor(category: string): CategoryGroup | undefined {
   return CATEGORY_GROUPS.find((g) => g.categories.includes(category));
 }
 
+export function slugify(name: string): string {
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
 // Maker slugs aren't a fixed set like categories, so this is a best-effort
 // slugify + case-insensitive match against company_name. Real limitation:
 // the same maker can appear with slightly different capitalisation/spacing
 // across years/entries (e.g. "Pandemonic hot sauce" vs "Pandemonic Hot
 // Sauce") — this will only match rows whose slug happens to collide.
 export function slugifyMaker(name: string): string {
-  return name
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
+  return slugify(name);
 }

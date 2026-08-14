@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { PREVIOUS_COMPETITION_YEAR } from "@/lib/config";
-import { slugifyMaker } from "@/lib/categories";
+import { slugify, slugifyMaker } from "@/lib/categories";
 
 export interface ResultRow {
   code: string;
@@ -73,4 +73,40 @@ export function summarizeMakers(rows: ResultRow[]): MakerSummary[] {
       bestRow: best,
     };
   });
+}
+
+export interface CountrySummary {
+  slug: string;
+  country: string;
+  makers: number;
+  medals: number;
+  gold: number;
+  silver: number;
+  bronze: number;
+  bestRow: ResultRow;
+}
+
+export function summarizeCountries(rows: ResultRow[]): CountrySummary[] {
+  const byCountry = new Map<string, ResultRow[]>();
+  for (const row of rows) {
+    if (!row.country) continue;
+    if (!byCountry.has(row.country)) byCountry.set(row.country, []);
+    byCountry.get(row.country)!.push(row);
+  }
+
+  return Array.from(byCountry.entries())
+    .map(([country, countryRows]) => {
+      const sorted = [...countryRows].sort((a, b) => (a.position ?? 99) - (b.position ?? 99));
+      return {
+        slug: slugify(country),
+        country,
+        makers: new Set(countryRows.map((r) => slugifyMaker(r.company_name))).size,
+        medals: countryRows.length,
+        gold: countryRows.filter((r) => medalTier(r.award) === "gold").length,
+        silver: countryRows.filter((r) => medalTier(r.award) === "silver").length,
+        bronze: countryRows.filter((r) => medalTier(r.award) === "bronze").length,
+        bestRow: sorted[0],
+      };
+    })
+    .sort((a, b) => b.makers - a.makers);
 }
