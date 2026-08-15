@@ -1,6 +1,7 @@
 'use client';
 
 import SupplierSauceManager from './SupplierSauceManager';
+import ProducerInfoModal from './ProducerInfoModal';
 import RohFollowCTA from '@/components/RohFollowCTA';
 import { COMPETITION_YEAR } from '@/lib/config';
 import { COMPANY_INFO } from '@/lib/company';
@@ -22,7 +23,32 @@ interface UnpaidSauce {
   allergens: string;
   webshop_link: string | null;
   tasting_notes: string | null;
+  image_path: string | null;
   created_at: string;
+}
+
+interface EhcData {
+  ehcId: string | null;
+  ehcStatus: string | null;
+  ehcVerifiedAt: string | null;
+}
+
+interface ProducerInfo {
+  brandName: string;
+  contactName: string;
+  addressStreet: string | null;
+  addressHouseNumber: string | null;
+  addressLine2: string | null;
+  city: string | null;
+  state: string | null;
+  postalCode: string | null;
+  country: string | null;
+  phone: string | null;
+  bio: string | null;
+  website: string | null;
+  instagram: string | null;
+  logoPath: string | null;
+  ehcSyncConsent: boolean;
 }
 
 interface SupplierDashboardProps {
@@ -31,10 +57,15 @@ interface SupplierDashboardProps {
     packageStatus: string;
     packageReceivedAt: string | null;
   };
+  ehcData: EhcData;
+  producerInfo: ProducerInfo;
   enteredSauces: EnteredSauce[];
   hasOptedIn: boolean;
   unpaidSauces: UnpaidSauce[];
   hasExistingPayment: boolean;
+  paymentStatus: string | null;
+  confirmedEntryCount: number | null;
+  shippingOpen: boolean;
 }
 
 const PACKAGE_STATUS: Record<string, { label: string; className: string }> = {
@@ -43,7 +74,7 @@ const PACKAGE_STATUS: Record<string, { label: string; className: string }> = {
   received: { label: 'Received', className: 'bg-green-600 text-white' },
 };
 
-export default function SupplierDashboard({ supplierData, enteredSauces, hasOptedIn, unpaidSauces, hasExistingPayment }: SupplierDashboardProps) {
+export default function SupplierDashboard({ supplierData, ehcData, producerInfo, enteredSauces, hasOptedIn, unpaidSauces, hasExistingPayment, paymentStatus, confirmedEntryCount, shippingOpen }: SupplierDashboardProps) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const imageBucket = process.env.NEXT_PUBLIC_SAUCE_IMAGE_BUCKET || 'sauce-media';
   const status = PACKAGE_STATUS[supplierData.packageStatus] ?? PACKAGE_STATUS.pending;
@@ -61,8 +92,13 @@ export default function SupplierDashboard({ supplierData, enteredSauces, hasOpte
       <SupplierSauceManager
         initialSauces={unpaidSauces}
         hasExistingPayment={hasExistingPayment}
+        paymentStatus={paymentStatus}
+        confirmedEntryCount={confirmedEntryCount}
         hasOptedIn={hasOptedIn}
+        ehcData={ehcData}
       />
+
+      <ProducerInfoModal info={producerInfo} />
 
       {enteredSauces.length > 0 && (
         <div className="border-[3px] border-black bg-white p-6">
@@ -95,27 +131,37 @@ export default function SupplierDashboard({ supplierData, enteredSauces, hasOpte
       )}
 
       {hasOptedIn && hasEntries && (
-        <div className="border-[3px] border-black bg-white p-6 space-y-4">
-          <h2 className="font-[family-name:var(--font-archivo-black)] text-lg uppercase">Ship your samples</h2>
-          <p className="text-sm text-black/70">
-            Send one bottle of each entered sauce to our Berlin address between 1 January and 28 February {COMPETITION_YEAR}.
-            Shipping from outside Europe? Include your EORI number on the customs paperwork and ship via UPS — UPS
-            clears customs and delivers directly to us, rather than us having to track the parcel down.
-          </p>
-          <address className="not-italic border-l-4 border-[#F5C518] pl-4 text-sm leading-relaxed text-black">
-            {COMPANY_INFO.address.line1}<br />
-            {COMPANY_INFO.address.line2}<br />
-            {COMPANY_INFO.address.street}<br />
-            {COMPANY_INFO.address.postalCode} {COMPANY_INFO.address.city}<br />
-            {COMPANY_INFO.address.country}
-          </address>
-          <div className="flex items-center gap-2 border-t border-black/10 pt-4">
-            <span className="text-xs font-semibold uppercase tracking-[0.08em] text-black/50">Status:</span>
-            <span className={`px-2 py-0.5 text-xs font-bold uppercase tracking-[0.04em] ${status.className}`}>
-              {status.label}
-            </span>
+        shippingOpen ? (
+          <div className="border-[3px] border-black bg-white p-6 space-y-4">
+            <h2 className="font-[family-name:var(--font-archivo-black)] text-lg uppercase">Ship your samples</h2>
+            <p className="text-sm text-black/70">
+              Send one bottle of each entered sauce to our Berlin address between 1 January and 28 February {COMPETITION_YEAR}.
+              Shipping from outside Europe? Include your EORI number on the customs paperwork and ship via UPS — UPS
+              clears customs and delivers directly to us, rather than us having to track the parcel down.
+            </p>
+            <address className="not-italic border-l-4 border-[#F5C518] pl-4 text-sm leading-relaxed text-black">
+              {COMPANY_INFO.address.line1}<br />
+              {COMPANY_INFO.address.line2}<br />
+              {COMPANY_INFO.address.street}<br />
+              {COMPANY_INFO.address.postalCode} {COMPANY_INFO.address.city}<br />
+              {COMPANY_INFO.address.country}
+            </address>
+            <div className="flex items-center gap-2 border-t border-black/10 pt-4">
+              <span className="text-xs font-semibold uppercase tracking-[0.08em] text-black/50">Status:</span>
+              <span className={`px-2 py-0.5 text-xs font-bold uppercase tracking-[0.04em] ${status.className}`}>
+                {status.label}
+              </span>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="border-[3px] border-dashed border-black/30 bg-white p-6 space-y-2">
+            <h2 className="font-[family-name:var(--font-archivo-black)] text-lg uppercase">Ship your samples</h2>
+            <p className="text-sm text-black/70">
+              Shipping instructions aren&apos;t open yet — we&apos;ll email you as soon as payment and shipment info
+              is ready, along with our Berlin shipping address and the shipping window.
+            </p>
+          </div>
+        )
       )}
 
       <RohFollowCTA />

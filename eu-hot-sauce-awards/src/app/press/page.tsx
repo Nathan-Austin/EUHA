@@ -4,6 +4,7 @@ import { PREVIOUS_COMPETITION_YEAR } from '@/lib/config';
 import { getPressPickups, getPressStats } from '@/lib/press';
 import { getYearEntrants, summarizeMakers } from '@/lib/pastResults';
 import { slugifyMaker } from '@/lib/categories';
+import Image from 'next/image';
 import HeatHeader from '@/components/HeatHeader';
 import HeatFooter from '@/components/HeatFooter';
 import Breadcrumbs from '@/components/Breadcrumbs';
@@ -70,6 +71,7 @@ const PressPage = async () => {
             </dl>
 
             <div className="flex max-w-md flex-col items-start gap-3 border-[3px] border-black bg-white p-6">
+              <Image src="/ehc-icon.png" alt="European Heat Council" width={36} height={36} className="h-9 w-9" />
               <p className="text-sm leading-relaxed text-black/70">
                 Need high-res photography, full release text, and scoring detail for every {PREVIOUS_COMPETITION_YEAR}{' '}
                 medallist? Request access to the EHSA press kit — a quick form gets verified press a searchable

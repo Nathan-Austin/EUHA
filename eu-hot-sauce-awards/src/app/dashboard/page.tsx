@@ -9,7 +9,7 @@ import AdminDashboard from './AdminDashboard'
 import CommunityJudgeDashboard from './CommunityJudgeDashboard'
 import SupplierDashboard from './SupplierDashboard'
 import StripeCheckoutButton from './StripeCheckoutButton'
-import { getSupplierUnpaidSauces } from '@/app/actions'
+import { getSupplierUnpaidSauces, getCompetitionSetting } from '@/app/actions'
 
 export const dynamic = 'force-dynamic'
 
@@ -85,7 +85,12 @@ export default async function DashboardPage() {
         // Fetch supplier data for dashboard
         const { data: supplier } = await supabase
           .from('suppliers')
-          .select('id, brand_name, package_status, package_received_at')
+          .select(`
+            id, brand_name, contact_name, package_status, package_received_at,
+            ehc_id, ehc_status, ehc_verified_at,
+            address_street, address_house_number, address_line2, city, state, postal_code, country, phone,
+            bio, website, instagram, logo_path, ehc_sync_consent
+          `)
           .ilike('email', user.email!)
           .single();
 
@@ -121,7 +126,7 @@ export default async function DashboardPage() {
 
         const { data: pendingPayment, error: pendingPaymentError } = await supabase
           .from('supplier_payments')
-          .select('id')
+          .select('id, stripe_payment_status, entry_count')
           .eq('supplier_id', supplier.id)
           .eq('competition_year', COMPETITION_YEAR)
           .neq('stripe_payment_status', 'succeeded')
@@ -131,16 +136,43 @@ export default async function DashboardPage() {
           console.error('Failed to look up pending payment:', pendingPaymentError);
         }
 
+        const shippingOpen = await getCompetitionSetting('shipping_open');
+
         return <SupplierDashboard
           supplierData={{
             brandName: supplier.brand_name,
             packageStatus: supplier.package_status || 'pending',
             packageReceivedAt: supplier.package_received_at,
           }}
+          ehcData={{
+            ehcId: supplier.ehc_id,
+            ehcStatus: supplier.ehc_status,
+            ehcVerifiedAt: supplier.ehc_verified_at,
+          }}
+          producerInfo={{
+            brandName: supplier.brand_name,
+            contactName: supplier.contact_name,
+            addressStreet: supplier.address_street,
+            addressHouseNumber: supplier.address_house_number,
+            addressLine2: supplier.address_line2,
+            city: supplier.city,
+            state: supplier.state,
+            postalCode: supplier.postal_code,
+            country: supplier.country,
+            phone: supplier.phone,
+            bio: supplier.bio,
+            website: supplier.website,
+            instagram: supplier.instagram,
+            logoPath: supplier.logo_path,
+            ehcSyncConsent: supplier.ehc_sync_consent,
+          }}
           enteredSauces={enteredSauces || []}
           hasOptedIn={hasOptedIn}
           unpaidSauces={unpaidSauces}
           hasExistingPayment={Boolean(pendingPayment)}
+          paymentStatus={pendingPayment?.stripe_payment_status ?? null}
+          confirmedEntryCount={pendingPayment?.entry_count ?? null}
+          shippingOpen={shippingOpen}
         />;
       }
       case 'community':
@@ -208,9 +240,8 @@ export default async function DashboardPage() {
         <header className="border-b-4 border-black bg-[#F5C518]">
           <div className="mx-auto flex max-w-[1240px] flex-wrap items-center justify-between gap-4 px-6 py-4">
             <div className="flex items-center gap-3.5">
-              <span className="grid h-11 w-11 flex-shrink-0 place-items-center rounded-full bg-black font-[family-name:var(--font-archivo-black)] text-xl text-[#F5C518]">
-                E
-              </span>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/ehsa-badge.png" alt="European Hot Sauce Awards" className="h-11 w-11 flex-shrink-0" />
               <span className="font-[family-name:var(--font-archivo-black)] text-lg uppercase leading-none text-black">
                 Supplier dashboard
                 <small className="mt-1 block font-sans text-[11px] font-semibold tracking-[0.12em] text-black/70">

@@ -1,9 +1,11 @@
 'use client';
 
 import { useState, useEffect, useTransition } from 'react';
-import { createSauceEntry, deleteSauce, createPaymentBatch, enterCompetitionYear, getSupplierPastSauces, reuseSauceEntry, updateSauceInfo } from '@/app/actions';
+import Image from 'next/image';
+import { createSauceEntry, deleteSauce, createPaymentBatch, enterCompetitionYear, getSupplierPastSauces, reuseSauceEntry, updateSauceInfo, verifyEhcMembership } from '@/app/actions';
 import { createClient } from '@/lib/supabase/client';
 import { COMPETITION_YEAR } from '@/lib/config';
+import type { EhcVerifyResult } from '@/lib/ehc/types';
 
 interface UnpaidSauce {
   id: string;
@@ -14,6 +16,7 @@ interface UnpaidSauce {
   allergens: string;
   webshop_link: string | null;
   tasting_notes: string | null;
+  image_path: string | null;
   created_at: string;
 }
 
@@ -26,10 +29,19 @@ interface PastSauce {
   reenteredCategories: string[];
 }
 
+interface EhcData {
+  ehcId: string | null;
+  ehcStatus: string | null;
+  ehcVerifiedAt: string | null;
+}
+
 interface SupplierSauceManagerProps {
   initialSauces: UnpaidSauce[];
   hasExistingPayment?: boolean;
+  paymentStatus?: string | null;
+  confirmedEntryCount?: number | null;
   hasOptedIn: boolean;
+  ehcData: EhcData;
 }
 
 const CATEGORIES = [
@@ -90,12 +102,41 @@ function resolveDiscount(entryCount: number) {
   return band ? band.discount : DISCOUNT_BANDS[DISCOUNT_BANDS.length - 1].discount;
 }
 
-function calculatePayment(entryCount: number) {
+// Mirrors calculatePaymentTotals in actions.ts — kept in sync manually since
+// this one runs client-side for the live preview before any server round-trip.
+function calculatePayment(entryCount: number, ehcQualifies: boolean) {
   const subtotal = entryCount * BASE_PRICE;
   const discountRate = resolveDiscount(entryCount);
-  const discount = subtotal * discountRate;
-  const total = subtotal - discount;
-  return { subtotal, discount, discountRate, total };
+  const volumeDiscount = subtotal * discountRate;
+  const ehcDiscount = ehcQualifies && entryCount >= 3 ? BASE_PRICE : 0;
+  const total = subtotal - volumeDiscount - ehcDiscount;
+  return { subtotal, volumeDiscount, discountRate, ehcDiscount, total };
+}
+
+const EHC_QUALIFYING_STATUSES = new Set(['pending', 'member']);
+
+const EHC_STATUS_CHIP: Record<string, { label: string; className: string }> = {
+  member: { label: 'Verified — EHC member', className: 'bg-green-600 text-white' },
+  pending: { label: 'EHC payment pending — discount applied', className: 'bg-[#F5C518] text-black' },
+  new: { label: 'Not an active EHC member', className: 'bg-black/10 text-black/60' },
+  lapsed: { label: 'EHC membership lapsed', className: 'bg-black/10 text-black/60' },
+  declined: { label: 'Not an active EHC member', className: 'bg-black/10 text-black/60' },
+  not_found: { label: 'EHC ID not found', className: 'bg-red-600 text-white' },
+  mismatch: { label: "Email/company doesn't match this EHC ID", className: 'bg-red-600 text-white' },
+  unavailable: { label: 'Verification temporarily unavailable — try again shortly', className: 'bg-black/10 text-black/60' },
+};
+
+function chipForResult(result: EhcVerifyResult | null, fallbackStatus: string | null): { label: string; className: string } | null {
+  if (result) {
+    if (result.outcome === 'verified') return EHC_STATUS_CHIP.member;
+    if (result.outcome === 'pending_payment') return EHC_STATUS_CHIP.pending;
+    if (result.outcome === 'not_qualifying') return EHC_STATUS_CHIP[result.status] ?? EHC_STATUS_CHIP.new;
+    if (result.outcome === 'not_found') return EHC_STATUS_CHIP.not_found;
+    if (result.outcome === 'mismatch') return EHC_STATUS_CHIP.mismatch;
+    if (result.outcome === 'unavailable') return EHC_STATUS_CHIP.unavailable;
+  }
+  if (fallbackStatus && EHC_STATUS_CHIP[fallbackStatus]) return EHC_STATUS_CHIP[fallbackStatus];
+  return null;
 }
 
 const formatCurrency = (amount: number) =>
@@ -140,7 +181,7 @@ function AllergenCheckboxes({
   );
 }
 
-export default function SupplierSauceManager({ initialSauces, hasExistingPayment = false, hasOptedIn }: SupplierSauceManagerProps) {
+export default function SupplierSauceManager({ initialSauces, hasExistingPayment = false, paymentStatus = null, confirmedEntryCount = null, hasOptedIn, ehcData }: SupplierSauceManagerProps) {
   const [sauces, setSauces] = useState<UnpaidSauce[]>(initialSauces);
   const [showAddForm, setShowAddForm] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
@@ -163,9 +204,48 @@ export default function SupplierSauceManager({ initialSauces, hasExistingPayment
 
   const [editTarget, setEditTarget] = useState<UnpaidSauce | null>(null);
   const [editCategory, setEditCategory] = useState('');
+  const [editIngredients, setEditIngredients] = useState('');
   const [editAllergens, setEditAllergens] = useState<Set<string>>(new Set());
   const [editTastingNotes, setEditTastingNotes] = useState('');
+  const [editImageFile, setEditImageFile] = useState<File | null>(null);
+  const [editImagePreview, setEditImagePreview] = useState<string | null>(null);
   const [editSubmitting, setEditSubmitting] = useState(false);
+  const [editUploadingImage, setEditUploadingImage] = useState(false);
+
+  // Lock background scroll while a full-screen (mobile) modal is open.
+  useEffect(() => {
+    if (reenterTarget || editTarget) {
+      document.body.style.overflow = 'hidden';
+      return () => { document.body.style.overflow = ''; };
+    }
+  }, [reenterTarget, editTarget]);
+
+  const [ehcIdInput, setEhcIdInput] = useState(ehcData.ehcId ?? '');
+  const [ehcResult, setEhcResult] = useState<EhcVerifyResult | null>(null);
+  const [ehcVerifying, setEhcVerifying] = useState(false);
+  const [ehcError, setEhcError] = useState<string | null>(null);
+
+  const handleVerifyEhc = () => {
+    if (!ehcIdInput.trim()) return;
+    setEhcVerifying(true);
+    setEhcError(null);
+    startTransition(async () => {
+      const result = await verifyEhcMembership(ehcIdInput);
+      setEhcVerifying(false);
+      if ('error' in result) {
+        setEhcError(result.error);
+      } else {
+        setEhcResult(result.result);
+      }
+    });
+  };
+
+  const ehcChip = chipForResult(ehcResult, ehcData.ehcStatus);
+  const ehcQualifies = EHC_QUALIFYING_STATUSES.has(
+    ehcResult
+      ? ('status' in ehcResult ? ehcResult.status ?? '' : '')
+      : (ehcData.ehcStatus ?? '')
+  );
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const imageBucket = process.env.NEXT_PUBLIC_SAUCE_IMAGE_BUCKET || 'sauce-media';
@@ -312,20 +392,53 @@ export default function SupplierSauceManager({ initialSauces, hasExistingPayment
     setError(null);
     setEditTarget(sauce);
     setEditCategory(sauce.category);
+    setEditIngredients(sauce.ingredients);
     setEditAllergens(new Set(allergensToList(sauce.allergens)));
     setEditTastingNotes(sauce.tasting_notes || '');
+    setEditImageFile(null);
+    setEditImagePreview(null);
   };
 
-  const handleSaveEdit = () => {
+  const handleEditImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setEditImageFile(file);
+    setEditImagePreview(URL.createObjectURL(file));
+  };
+
+  const handleSaveEdit = async () => {
     if (!editTarget) return;
-    setEditSubmitting(true);
     setError(null);
+
+    let pendingImagePath: string | null = null;
+    if (editImageFile) {
+      setEditUploadingImage(true);
+      const bucket = process.env.NEXT_PUBLIC_SAUCE_IMAGE_BUCKET || 'sauce-media';
+      const pendingPath = `pending/${Date.now()}_${editImageFile.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+      const { error: uploadError } = await supabase.storage
+        .from(bucket)
+        .upload(pendingPath, editImageFile, { contentType: editImageFile.type, upsert: false });
+      setEditUploadingImage(false);
+
+      if (uploadError) {
+        setError(`Photo upload failed: ${uploadError.message}`);
+        return;
+      }
+      pendingImagePath = pendingPath;
+    }
+
+    setEditSubmitting(true);
     startTransition(async () => {
-      const result = await updateSauceInfo(editTarget.id, {
-        category: editCategory,
-        allergens: Array.from(editAllergens).join(', '),
-        tastingNotes: editTastingNotes,
-      });
+      const result = await updateSauceInfo(
+        editTarget.id,
+        {
+          category: editCategory,
+          ingredients: editIngredients,
+          allergens: Array.from(editAllergens).join(', '),
+          tastingNotes: editTastingNotes,
+        },
+        pendingImagePath
+      );
       setEditSubmitting(false);
       if ('error' in result) {
         setError(result.error);
@@ -345,13 +458,15 @@ export default function SupplierSauceManager({ initialSauces, hasExistingPayment
       if (result.error) {
         setError(result.error);
       } else {
-        setSuccess('Payment batch created! Redirecting to dashboard...');
+        setSuccess('Entries confirmed! Redirecting to dashboard...');
         setTimeout(() => window.location.reload(), 1500);
       }
     });
   };
 
-  const payment = sauces.length > 0 ? calculatePayment(sauces.length) : null;
+  const payment = sauces.length > 0 ? calculatePayment(sauces.length, ehcQualifies) : null;
+  const isConfirmed = hasExistingPayment && paymentStatus === 'deferred';
+  const needsReconfirm = isConfirmed && confirmedEntryCount !== sauces.length;
 
   if (!optedIn) {
     return (
@@ -460,8 +575,8 @@ export default function SupplierSauceManager({ initialSauces, hasExistingPayment
 
       {/* Re-enter category picker modal */}
       {reenterTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto border-[3px] border-black bg-white p-6 space-y-4">
+        <div className="fixed inset-0 z-50 bg-black/60 sm:flex sm:items-center sm:justify-center sm:p-4">
+          <div className="h-full w-full overflow-y-auto bg-white p-6 space-y-4 sm:h-auto sm:max-h-[90vh] sm:w-full sm:max-w-lg sm:border-[3px] sm:border-black">
             <div>
               <h3 className="font-[family-name:var(--font-archivo-black)] text-lg uppercase">{reenterTarget.name}</h3>
               <p className="mt-1 text-sm text-black/60">
@@ -519,8 +634,8 @@ export default function SupplierSauceManager({ initialSauces, hasExistingPayment
 
       {/* Edit sauce info modal */}
       {editTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto border-[3px] border-black bg-white p-6 space-y-4">
+        <div className="fixed inset-0 z-50 bg-black/60 sm:flex sm:items-center sm:justify-center sm:p-4">
+          <div className="h-full w-full overflow-y-auto bg-white p-6 space-y-4 sm:h-auto sm:max-h-[90vh] sm:w-full sm:max-w-lg sm:border-[3px] sm:border-black">
             <h3 className="font-[family-name:var(--font-archivo-black)] text-lg uppercase">Edit {editTarget.name}</h3>
 
             <div>
@@ -530,6 +645,40 @@ export default function SupplierSauceManager({ initialSauces, hasExistingPayment
                   <option key={cat} value={cat}>{cat}</option>
                 ))}
               </select>
+            </div>
+
+            <div>
+              <label className={labelClass}>
+                Ingredients <span className="text-red-600">*</span>
+              </label>
+              <textarea
+                value={editIngredients}
+                onChange={(e) => setEditIngredients(e.target.value)}
+                required
+                rows={3}
+                className={`${inputClass} resize-none`}
+              />
+            </div>
+
+            <div>
+              <label className={labelClass}>
+                Photo <span className="normal-case text-black/40">(replace with an updated photo if you have one)</span>
+              </label>
+              <div className="flex items-center gap-3">
+                {(editImagePreview || (editTarget.image_path && supabaseUrl)) && (
+                  <img
+                    src={editImagePreview || `${supabaseUrl}/storage/v1/object/public/${imageBucket}/${editTarget.image_path}`}
+                    alt=""
+                    className="h-14 w-14 flex-shrink-0 border-2 border-black/10 object-cover"
+                  />
+                )}
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleEditImageSelect}
+                  className="block w-full text-sm text-black file:mr-4 file:border-0 file:bg-black file:px-3 file:py-1.5 file:text-xs file:font-bold file:uppercase file:text-[#F5C518] hover:file:bg-black/80"
+                />
+              </div>
             </div>
 
             <div>
@@ -568,10 +717,10 @@ export default function SupplierSauceManager({ initialSauces, hasExistingPayment
               </button>
               <button
                 onClick={handleSaveEdit}
-                disabled={editSubmitting}
+                disabled={editSubmitting || editUploadingImage}
                 className="bg-black px-4 py-2 text-sm font-bold uppercase tracking-[0.04em] text-[#F5C518] hover:bg-black/80 disabled:opacity-50"
               >
-                {editSubmitting ? 'Saving…' : 'Save changes'}
+                {editUploadingImage ? 'Uploading photo…' : editSubmitting ? 'Saving…' : 'Save changes'}
               </button>
             </div>
           </div>
@@ -672,11 +821,21 @@ export default function SupplierSauceManager({ initialSauces, hasExistingPayment
             {sauces.map((sauce) => (
               <div key={sauce.id} className="border-2 border-black bg-white p-4">
                 <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0 flex-1">
-                    <h4 className="font-semibold text-black">{sauce.name}</h4>
-                    <p className="mt-1 text-sm text-black/60">{sauce.category}</p>
-                    <p className="mt-2 line-clamp-2 text-xs text-black/50">{sauce.ingredients}</p>
-                    {sauce.webshop_link && (
+                  <div className="flex min-w-0 flex-1 gap-3">
+                    {sauce.image_path && supabaseUrl ? (
+                      <img
+                        src={`${supabaseUrl}/storage/v1/object/public/${imageBucket}/${sauce.image_path}`}
+                        alt={sauce.name}
+                        className="h-14 w-14 flex-shrink-0 object-cover"
+                      />
+                    ) : (
+                      <div className="h-14 w-14 flex-shrink-0 bg-black/5" />
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <h4 className="font-semibold text-black">{sauce.name}</h4>
+                      <p className="mt-1 text-sm text-black/60">{sauce.category}</p>
+                      <p className="mt-2 line-clamp-2 text-xs text-black/50">{sauce.ingredients}</p>
+                      {sauce.webshop_link && (
                       <a
                         href={sauce.webshop_link}
                         target="_blank"
@@ -685,7 +844,8 @@ export default function SupplierSauceManager({ initialSauces, hasExistingPayment
                       >
                         View in webshop →
                       </a>
-                    )}
+                      )}
+                    </div>
                   </div>
 
                   <div className="flex flex-shrink-0 flex-col items-end gap-2">
@@ -726,42 +886,132 @@ export default function SupplierSauceManager({ initialSauces, hasExistingPayment
             ))}
           </div>
 
+          {/* EHC Membership */}
+          <div className="border-2 border-black bg-white p-6">
+            <div className="flex flex-col gap-5 sm:flex-row sm:items-stretch">
+              <div className="flex-1 space-y-3">
+                <h3 className="font-[family-name:var(--font-archivo-black)] text-base uppercase">
+                  European Heat Council membership
+                </h3>
+                <p className="text-sm text-black/60">
+                  EHC members get their 3rd entry free. Enter your membership number to apply the discount.
+                </p>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
+                  <input
+                    type="text"
+                    value={ehcIdInput}
+                    onChange={(e) => setEhcIdInput(e.target.value)}
+                    onBlur={handleVerifyEhc}
+                    placeholder="EHC-2026-00001"
+                    className={`${inputClass} sm:max-w-xs`}
+                  />
+                  <button
+                    onClick={handleVerifyEhc}
+                    disabled={ehcVerifying || !ehcIdInput.trim()}
+                    className="flex-shrink-0 border-2 border-black px-4 py-2.5 text-sm font-semibold uppercase tracking-[0.04em] hover:bg-black hover:text-[#F5C518] disabled:opacity-50"
+                  >
+                    {ehcVerifying ? 'Checking…' : 'Verify'}
+                  </button>
+                </div>
+                {ehcError && <p className="text-sm text-red-600">{ehcError}</p>}
+                {ehcChip && (
+                  <span className={`inline-block px-2 py-0.5 text-xs font-bold uppercase tracking-[0.04em] ${ehcChip.className}`}>
+                    {ehcChip.label}
+                  </span>
+                )}
+                {!ehcIdInput.trim() && !ehcChip && (
+                  <a
+                    href="https://europeanheatcouncil.eu/membership"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-block text-sm font-semibold underline hover:text-[#F5C518]"
+                  >
+                    Not a member? Join EHC →
+                  </a>
+                )}
+              </div>
+              <div className="relative h-32 flex-shrink-0 sm:h-auto sm:w-56">
+                <Image
+                  src="/ehc-logo-transparent.png"
+                  alt="European Heat Council"
+                  fill
+                  className="object-contain"
+                />
+              </div>
+            </div>
+          </div>
+
           {/* Payment Summary */}
           {payment && (
             <div className="border-[3px] border-black bg-[#F5C518]/20 p-6 space-y-4">
               <h3 className="font-[family-name:var(--font-archivo-black)] text-base uppercase">Payment summary</h3>
+
+              {isConfirmed && !needsReconfirm && (
+                <p className="border-2 border-black bg-white px-3 py-2 text-sm font-semibold uppercase tracking-[0.04em] text-black">
+                  Confirmed — payment due January
+                </p>
+              )}
+              {needsReconfirm && (
+                <p className="border-2 border-[#F5C518] bg-white px-3 py-2 text-sm text-black">
+                  You've changed your entries since confirming — update your confirmation to lock in the new total.
+                </p>
+              )}
+
+              <div className="border-2 border-black/10 bg-white">
+                <p className="border-b border-black/10 px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-black/50">
+                  Sauces in this total
+                </p>
+                <ul className="divide-y divide-black/10">
+                  {sauces.map((sauce) => (
+                    <li key={sauce.id} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
+                      <span className="min-w-0 truncate text-black">{sauce.name}</span>
+                      <span className="flex-shrink-0 text-black/50">{sauce.category}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
 
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between text-black/70">
                   <span>{sauces.length} {sauces.length === 1 ? 'entry' : 'entries'} × {formatCurrency(BASE_PRICE)}:</span>
                   <span>{formatCurrency(payment.subtotal)}</span>
                 </div>
-                {payment.discount > 0 && (
+                {payment.volumeDiscount > 0 && (
                   <div className="flex justify-between text-green-700">
-                    <span>Discount ({(payment.discountRate * 100).toFixed(0)}%):</span>
-                    <span>-{formatCurrency(payment.discount)}</span>
+                    <span>Volume discount ({(payment.discountRate * 100).toFixed(0)}%):</span>
+                    <span>-{formatCurrency(payment.volumeDiscount)}</span>
+                  </div>
+                )}
+                {payment.ehcDiscount > 0 && (
+                  <div className="flex justify-between text-green-700">
+                    <span>EHC member — 3rd entry free:</span>
+                    <span>-{formatCurrency(payment.ehcDiscount)}</span>
                   </div>
                 )}
                 <div className="flex justify-between border-t-2 border-black pt-2 text-lg font-semibold text-black">
-                  <span>Total due:</span>
+                  <span>Total due (January):</span>
                   <span>{formatCurrency(payment.total)}</span>
                 </div>
               </div>
 
               <button
                 onClick={handleCreatePayment}
-                disabled={isPending}
+                disabled={isPending || (isConfirmed && !needsReconfirm)}
                 className="w-full bg-black py-3 font-[family-name:var(--font-archivo-black)] text-sm uppercase tracking-[0.06em] text-[#F5C518] hover:bg-black/80 disabled:opacity-50"
               >
                 {isPending
-                  ? (hasExistingPayment ? 'Updating payment…' : 'Creating payment…')
-                  : (hasExistingPayment ? 'Update payment batch' : 'Proceed to payment')}
+                  ? (isConfirmed ? 'Updating confirmation…' : 'Confirming…')
+                  : needsReconfirm
+                    ? 'Update confirmation'
+                    : isConfirmed
+                      ? 'Confirmed'
+                      : 'Confirm entries'}
               </button>
 
               <p className="text-center text-xs text-black/50">
-                {hasExistingPayment
-                  ? 'This will update your payment batch with the new discount'
-                  : 'This will create a payment batch for all unpaid entries above'}
+                {isConfirmed
+                  ? "This locks in your entries — you won't be charged until January. You can still add or remove entries any time before then."
+                  : "This confirms your entries — you won't be charged until January. You can still add or remove entries any time before then."}
               </p>
             </div>
           )}

@@ -32,6 +32,8 @@ import JudgeShippingManager from './JudgeShippingManager'
 import RequestShippingAddressButton from './RequestShippingAddressButton'
 import DhlLabelScanner from './DhlLabelScanner'
 import PackageReceiveScanner from './PackageReceiveScanner'
+import ShippingGateToggle from './ShippingGateToggle'
+import { getCompetitionSetting } from '@/app/actions'
 
 const formatStatusLabel = (status: string) =>
   status
@@ -68,12 +70,24 @@ export default async function AdminDashboard() {
         sauce_code,
         status,
         payment_status,
+        payment_id,
         category,
         suppliers ( brand_name )
       `
     )
     .eq('competition_year', COMPETITION_YEAR)
     .order('created_at', { ascending: false }) as { data: any[] | null; error: any }
+
+  // Distinguish "confirmed, payment due January" from plain unconfirmed-unpaid —
+  // that state lives on the linked supplier_payments row, not on the sauce itself.
+  const paymentIds = Array.from(new Set((sauces || []).map((s) => s.payment_id).filter(Boolean)))
+  const { data: linkedPayments } = paymentIds.length > 0
+    ? await supabase
+        .from('supplier_payments')
+        .select('id, stripe_payment_status')
+        .in('id', paymentIds)
+    : { data: [] as { id: string; stripe_payment_status: string }[] }
+  const paymentStatusById = new Map((linkedPayments || []).map((p) => [p.id, p.stripe_payment_status]))
 
   // Suppliers active this season: since suppliers persist across years (an
   // account created in a prior year is reused when they re-enter), filtering
@@ -114,6 +128,7 @@ export default async function AdminDashboard() {
     .eq('event_open', true)
 
   const resultsData = await getResultsData()
+  const shippingOpen = await getCompetitionSetting('shipping_open')
   const resultsResults = 'results' in resultsData ? resultsData.results : []
   const resultsScoringCategories = 'scoringCategories' in resultsData ? resultsData.scoringCategories : []
 
@@ -127,7 +142,10 @@ export default async function AdminDashboard() {
 
   const totalSauces = sauces.length
   const paidSauces = sauces.filter((sauce) => sauce.payment_status === 'paid').length
-  const unpaidSauces = sauces.filter((sauce) => sauce.payment_status === 'pending_payment').length
+  const confirmedDeferredSauces = sauces.filter(
+    (sauce) => sauce.payment_status === 'pending_payment' && paymentStatusById.get(sauce.payment_id) === 'deferred'
+  ).length
+  const unpaidSauces = sauces.filter((sauce) => sauce.payment_status === 'pending_payment').length - confirmedDeferredSauces
   const statusCounts = sauces.reduce((acc, sauce) => {
     const statusKey = sauce.status || 'unknown'
     acc[statusKey] = (acc[statusKey] || 0) + 1
@@ -154,7 +172,8 @@ export default async function AdminDashboard() {
   const overviewStats = [
     { label: 'Total Sauces', value: totalSauces },
     { label: 'Paid Sauces', value: paidSauces, highlight: true },
-    { label: 'Unpaid Sauces', value: unpaidSauces, warning: unpaidSauces > 0 },
+    { label: 'Confirmed (Due Jan)', value: confirmedDeferredSauces },
+    { label: 'Unconfirmed / Unpaid', value: unpaidSauces, warning: unpaidSauces > 0 },
     { label: 'Missing Codes', value: missingCodes },
     { label: 'Packages In Transit', value: packagesInTransit },
     { label: 'Awaiting Check-In', value: packagesAwaitingCheckIn },
@@ -258,17 +277,31 @@ export default async function AdminDashboard() {
                       <td className="px-4 py-3 text-gray-900">{sauce.name}</td>
                       <td className="px-4 py-3 text-gray-600">{sauce.category}</td>
                       <td className="px-4 py-3">
-                        <span
-                          className={`rounded-full px-2 py-1 text-xs font-semibold ${
-                            sauce.payment_status === 'paid'
-                              ? 'bg-green-100 text-green-800'
-                              : sauce.payment_status === 'pending_payment'
-                              ? 'bg-orange-100 text-orange-800'
-                              : 'bg-gray-100 text-gray-800'
-                          }`}
-                        >
-                          {sauce.payment_status === 'paid' ? '✓ Paid' : sauce.payment_status === 'pending_payment' ? '⚠ Unpaid' : 'Waived'}
-                        </span>
+                        {(() => {
+                          const isConfirmedDeferred =
+                            sauce.payment_status === 'pending_payment' && paymentStatusById.get(sauce.payment_id) === 'deferred'
+                          return (
+                            <span
+                              className={`rounded-full px-2 py-1 text-xs font-semibold ${
+                                sauce.payment_status === 'paid'
+                                  ? 'bg-green-100 text-green-800'
+                                  : isConfirmedDeferred
+                                  ? 'bg-blue-100 text-blue-800'
+                                  : sauce.payment_status === 'pending_payment'
+                                  ? 'bg-orange-100 text-orange-800'
+                                  : 'bg-gray-100 text-gray-800'
+                              }`}
+                            >
+                              {sauce.payment_status === 'paid'
+                                ? '✓ Paid'
+                                : isConfirmedDeferred
+                                ? '📅 Confirmed (Jan)'
+                                : sauce.payment_status === 'pending_payment'
+                                ? '⚠ Unconfirmed'
+                                : 'Waived'}
+                            </span>
+                          )
+                        })()}
                       </td>
                       <td className="px-4 py-3">
                         <span
@@ -316,6 +349,7 @@ export default async function AdminDashboard() {
             title="Logistics & Packing"
             description="Stay on top of supplier shipments and keep judging boxes moving."
           />
+          <ShippingGateToggle initialEnabled={shippingOpen} competitionYear={COMPETITION_YEAR} />
           <Card>
             <PackageReceiveScanner />
           </Card>

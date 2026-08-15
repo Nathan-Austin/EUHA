@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 
 const FooterCol = ({
   title,
@@ -31,9 +32,12 @@ export default function HeatFooter() {
       <div className="mx-auto max-w-[1240px] px-6">
         <div className="grid grid-cols-2 gap-9 border-b border-white/10 pb-9 md:grid-cols-4">
           <div className="col-span-2 md:col-span-1">
-            <h4 className="mb-3.5 font-[family-name:var(--font-archivo-black)] text-[13px] uppercase tracking-[0.1em] text-[#F5C518]">
-              European Hot Sauce Awards
-            </h4>
+            <div className="mb-3.5 flex items-center gap-2.5">
+              <Image src="/ehsa-badge.png" alt="" width={28} height={28} className="h-7 w-7 flex-shrink-0" />
+              <h4 className="font-[family-name:var(--font-archivo-black)] text-[13px] uppercase tracking-[0.1em] text-[#F5C518]">
+                European Hot Sauce Awards
+              </h4>
+            </div>
             <p className="max-w-[380px] text-sm leading-relaxed text-gray-300">
               Independent awards programme for European chilli sauce makers, judged in Berlin.
             </p>
@@ -64,8 +68,17 @@ export default function HeatFooter() {
             ]}
           />
         </div>
-        <div className="flex flex-col gap-2 pt-6 text-xs text-gray-500 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-4 pt-6 text-xs text-gray-500 sm:flex-row sm:items-center sm:justify-between">
           <span>&copy; {new Date().getFullYear()} European Hot Sauce Awards.</span>
+          <a
+            href="https://europeanheatcouncil.eu"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 hover:text-[#F5C518]"
+          >
+            <Image src="/ehc-icon.png" alt="" width={20} height={20} className="h-5 w-5 flex-shrink-0" />
+            In partnership with the European Heat Council
+          </a>
           <div className="flex gap-5">
             <Link href="/terms" className="hover:text-[#F5C518]">Terms</Link>
             <Link href="/privacy" className="hover:text-[#F5C518]">Privacy</Link>
