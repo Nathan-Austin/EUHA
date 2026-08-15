@@ -23,12 +23,15 @@ interface Row {
 async function getResultsByYear(year: number) {
   const { cookies } = await import("next/headers");
   const supabase = createClient(cookies());
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("past_results")
     .select("code, entry_name, company_name, country, category, area, award, position, score")
     .eq("year", year)
     .order("category", { ascending: true })
     .order("position", { ascending: true, nullsFirst: false });
+  if (error) {
+    throw new Error(`Failed to load results for ${year}: ${error.message}`);
+  }
   return (data as Row[]) ?? [];
 }
 

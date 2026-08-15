@@ -14,14 +14,15 @@ export const metadata: Metadata = {
 async function getAvailableYears() {
   const { cookies } = await import("next/headers");
   const supabase = createClient(cookies());
-  const { data } = await supabase.from("past_results").select("year, code");
-  const counts = new Map<number, number>();
-  for (const row of (data as { year: number; code: string }[]) ?? []) {
-    counts.set(row.year, (counts.get(row.year) ?? 0) + 1);
+  const { data, error } = await supabase.rpc("get_past_results_year_counts");
+  if (error) {
+    console.error("Failed to load available result years:", error);
+    return [];
   }
-  return Array.from(counts.entries())
-    .map(([year, count]) => ({ year, count }))
-    .sort((a, b) => b.year - a.year);
+  return (data as { year: number; count: number }[]).map((row) => ({
+    year: row.year,
+    count: Number(row.count),
+  }));
 }
 
 export default async function ResultsPage() {

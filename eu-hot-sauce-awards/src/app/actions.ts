@@ -3408,6 +3408,11 @@ async function insertSauceEntry(
     .single();
 
   if (insertError) {
+    // Unique violation on (reused_from_sauce_id, category, competition_year) means a
+    // duplicate submission (double-click / two tabs) raced this one to the insert.
+    if (insertError.code === '23505' && fields.reusedFromSauceId) {
+      return { error: `This sauce has already been entered in the ${fields.category} category.` };
+    }
     return { error: insertError.message };
   }
 
@@ -3887,11 +3892,13 @@ export async function createPaymentBatch() {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-  // Check for existing pending payment and delete it (we'll create a new one with all sauces)
+  // Check for existing pending payment and delete it (we'll create a new one with all sauces).
+  // Scoped to this competition year so a prior season's abandoned payment is never touched.
   const { data: existingPayments } = await serviceSupabase
     .from('supplier_payments')
     .select('id')
     .eq('supplier_id', supplier.id)
+    .eq('competition_year', COMPETITION_YEAR)
     .neq('stripe_payment_status', 'succeeded');
 
   if (existingPayments && existingPayments.length > 0) {
@@ -3939,6 +3946,7 @@ export async function createPaymentBatch() {
     .from('supplier_payments')
     .insert({
       supplier_id: supplier.id,
+      competition_year: COMPETITION_YEAR,
       entry_count: entryCount,
       discount_percent: Number((discountRate * 100).toFixed(2)),
       subtotal_cents: subtotalCents,

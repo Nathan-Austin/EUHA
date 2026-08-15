@@ -119,12 +119,17 @@ export default async function DashboardPage() {
           || (enteredSauces?.length ?? 0) > 0
           || unpaidSauces.length > 0;
 
-        const { data: pendingPayment } = await supabase
+        const { data: pendingPayment, error: pendingPaymentError } = await supabase
           .from('supplier_payments')
           .select('id')
           .eq('supplier_id', supplier.id)
+          .eq('competition_year', COMPETITION_YEAR)
           .neq('stripe_payment_status', 'succeeded')
           .maybeSingle();
+
+        if (pendingPaymentError) {
+          console.error('Failed to look up pending payment:', pendingPaymentError);
+        }
 
         return <SupplierDashboard
           supplierData={{

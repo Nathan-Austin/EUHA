@@ -1,6 +1,7 @@
 'use server';
 
 import { createClient as createServiceClient } from '@supabase/supabase-js';
+import { validateEmail } from '@/lib/validation';
 
 // Broad but not exhaustive — good enough for a default; admins can correct via
 // updateSupplierCountryRegion (src/app/actions.ts) if a country lands wrong.
@@ -25,6 +26,11 @@ export async function registerNewSupplier(formData: FormData): Promise<RegisterR
 
   if (!brandName || !contactName || !email || !country) {
     return { error: 'Please fill in all fields.' };
+  }
+
+  const emailValidation = validateEmail(email);
+  if (!emailValidation.isValid) {
+    return { error: emailValidation.error || 'Please enter a valid email address.' };
   }
 
   const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;

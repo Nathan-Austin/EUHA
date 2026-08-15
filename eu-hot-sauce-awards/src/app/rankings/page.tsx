@@ -33,13 +33,16 @@ function formatScore(score: string | number | null) {
 async function getTopRankings(year: number) {
   const { cookies } = await import("next/headers");
   const supabase = createClient(cookies());
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("past_results")
     .select("code, global_rank, entry_name, company_name, country, category, award, product_image_url, score")
     .eq("year", year)
     .not("global_rank", "is", null)
     .order("global_rank", { ascending: true })
     .limit(20);
+  if (error) {
+    console.error(`Failed to load rankings for ${year}:`, error);
+  }
   return (data as RankedSauce[]) ?? [];
 }
 

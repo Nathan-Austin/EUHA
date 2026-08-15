@@ -86,6 +86,17 @@ export default async function CategoryPage({ params }: { params: { slug: string 
     return isTied ? `${medal}, tied` : medal;
   };
 
+  const ordinal = (n: number) => {
+    const mod100 = n % 100;
+    if (mod100 >= 11 && mod100 <= 13) return `${n}th`;
+    switch (n % 10) {
+      case 1: return `${n}st`;
+      case 2: return `${n}nd`;
+      case 3: return `${n}rd`;
+      default: return `${n}th`;
+    }
+  };
+
   return (
     <div className="bg-[#faf6ec] text-black">
       <HeatHeader />
@@ -231,7 +242,7 @@ export default async function CategoryPage({ params }: { params: { slug: string 
                         </div>
                       ) : (
                         <div className="text-xs font-[family-name:var(--font-archivo-black)] uppercase tracking-[0.1em] text-black/50">
-                          Gold &middot; {row.position === 2 ? "2nd" : "3rd"}
+                          Gold &middot; {row.position != null ? ordinal(row.position) : "—"}
                         </div>
                       )}
                       <div className={`font-[family-name:var(--font-archivo-black)] uppercase leading-none ${i === 0 ? "text-[34px]" : "text-[28px]"}`}>
