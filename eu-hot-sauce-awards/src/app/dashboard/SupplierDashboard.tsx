@@ -23,6 +23,7 @@ interface UnpaidSauce {
   allergens: string;
   webshop_link: string | null;
   tasting_notes: string | null;
+  product_description: string | null;
   image_path: string | null;
   created_at: string;
 }

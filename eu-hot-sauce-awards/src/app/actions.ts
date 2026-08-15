@@ -3330,6 +3330,7 @@ export type UnpaidSauceRecord = {
   allergens: string;
   webshop_link: string | null;
   tasting_notes: string | null;
+  product_description: string | null;
   image_path: string | null;
   created_at: string;
 };
@@ -3360,7 +3361,7 @@ export async function getSupplierUnpaidSauces(): Promise<
   // Fetch this season's unpaid sauces
   const { data: sauces, error: saucesError } = await supabase
     .from('sauces')
-    .select('id, name, category, sauce_code, ingredients, allergens, webshop_link, tasting_notes, image_path, created_at')
+    .select('id, name, category, sauce_code, ingredients, allergens, webshop_link, tasting_notes, product_description, image_path, created_at')
     .eq('supplier_id', supplier.id)
     .eq('payment_status', 'pending_payment')
     .eq('competition_year', COMPETITION_YEAR)
@@ -3380,6 +3381,7 @@ type SauceEntryFields = {
   allergens: string | null;
   webshopLink: string | null;
   tastingNotes?: string | null;
+  productDescription?: string | null;
   reusedFromSauceId?: string | null;
 };
 
@@ -3422,6 +3424,7 @@ async function insertSauceEntry(
       allergens: fields.allergens || 'None',
       webshop_link: fields.webshopLink || null,
       tasting_notes: fields.tastingNotes || null,
+      product_description: fields.productDescription || null,
       reused_from_sauce_id: fields.reusedFromSauceId || null,
       sauce_code: sauceCode,
       status: 'registered',
@@ -3513,6 +3516,7 @@ export async function createSauceEntry(formData: FormData): Promise<
   const allergens = formData.get('allergens') as string;
   const webshopLink = formData.get('webshopLink') as string;
   const tastingNotes = formData.get('tastingNotes') as string;
+  const productDescription = formData.get('productDescription') as string;
   const imagePath = formData.get('imagePath') as string | null;
 
   if (!name || !category || !ingredients) {
@@ -3552,6 +3556,7 @@ export async function createSauceEntry(formData: FormData): Promise<
     allergens,
     webshopLink,
     tastingNotes,
+    productDescription,
   });
 
   if ('error' in result) {
@@ -4170,7 +4175,7 @@ export async function deleteSauce(sauceId: string) {
  */
 export async function updateSauceInfo(
   sauceId: string,
-  fields: { category: string; ingredients: string; allergens: string; tastingNotes: string },
+  fields: { category: string; ingredients: string; allergens: string; tastingNotes: string; productDescription: string },
   pendingImagePath?: string | null
 ): Promise<{ error: string } | { success: true; imagePath?: string }> {
   const cookieStore = cookies();
@@ -4253,6 +4258,7 @@ export async function updateSauceInfo(
       ingredients: fields.ingredients.trim(),
       allergens: fields.allergens || 'None',
       tasting_notes: fields.tastingNotes || null,
+      product_description: fields.productDescription || null,
       ...(imagePath && { image_path: imagePath }),
     })
     .eq('id', sauceId);

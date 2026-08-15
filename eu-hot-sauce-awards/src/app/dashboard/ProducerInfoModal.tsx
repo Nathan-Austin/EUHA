@@ -163,6 +163,12 @@ export default function ProducerInfoModal({ info }: { info: ProducerInfo }) {
         </p>
       )}
 
+      <p className="border-2 border-black/10 bg-black/[0.03] p-3 text-sm text-black/70">
+        The European Heat Council is building an EU hot sauce compendium for trade buyers and retailers.
+        If you consent to sharing your data with EHC below, the more detail you add here — bio, website,
+        Instagram, logo, and each sauce&apos;s product description — the more visibility your brand gets in it.
+      </p>
+
       <div className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.08em] text-black/50">Delivery address</p>
@@ -261,6 +267,9 @@ export default function ProducerInfoModal({ info }: { info: ProducerInfo }) {
               <h4 className="text-xs font-bold uppercase tracking-[0.1em] text-black/50">
                 Producer profile <span className="normal-case text-black/40">(for promo &amp; press use)</span>
               </h4>
+              <p className="text-xs text-black/50">
+                This is what appears in the EHC compendium if you consent to data sharing below — worth filling in.
+              </p>
               <div>
                 <label className={labelClass}>Bio</label>
                 <textarea

@@ -16,6 +16,7 @@ interface UnpaidSauce {
   allergens: string;
   webshop_link: string | null;
   tasting_notes: string | null;
+  product_description: string | null;
   image_path: string | null;
   created_at: string;
 }
@@ -207,6 +208,7 @@ export default function SupplierSauceManager({ initialSauces, hasExistingPayment
   const [editIngredients, setEditIngredients] = useState('');
   const [editAllergens, setEditAllergens] = useState<Set<string>>(new Set());
   const [editTastingNotes, setEditTastingNotes] = useState('');
+  const [editProductDescription, setEditProductDescription] = useState('');
   const [editImageFile, setEditImageFile] = useState<File | null>(null);
   const [editImagePreview, setEditImagePreview] = useState<string | null>(null);
   const [editSubmitting, setEditSubmitting] = useState(false);
@@ -395,6 +397,7 @@ export default function SupplierSauceManager({ initialSauces, hasExistingPayment
     setEditIngredients(sauce.ingredients);
     setEditAllergens(new Set(allergensToList(sauce.allergens)));
     setEditTastingNotes(sauce.tasting_notes || '');
+    setEditProductDescription(sauce.product_description || '');
     setEditImageFile(null);
     setEditImagePreview(null);
   };
@@ -436,6 +439,7 @@ export default function SupplierSauceManager({ initialSauces, hasExistingPayment
           ingredients: editIngredients,
           allergens: Array.from(editAllergens).join(', '),
           tastingNotes: editTastingNotes,
+          productDescription: editProductDescription,
         },
         pendingImagePath
       );
@@ -706,6 +710,19 @@ export default function SupplierSauceManager({ initialSauces, hasExistingPayment
               />
             </div>
 
+            <div>
+              <label className={labelClass}>
+                Product description <span className="normal-case text-black/40">(as you'd describe it on your own site)</span>
+              </label>
+              <textarea
+                value={editProductDescription}
+                onChange={(e) => setEditProductDescription(e.target.value)}
+                rows={3}
+                placeholder="Your own marketing description for this sauce — used for trade/press materials, not shown to judges."
+                className={`${inputClass} resize-none`}
+              />
+            </div>
+
             {error && <p className="text-sm text-red-600">{error}</p>}
 
             <div className="flex justify-end gap-3 border-t border-black/10 pt-4">
@@ -779,6 +796,19 @@ export default function SupplierSauceManager({ initialSauces, hasExistingPayment
               name="tastingNotes"
               rows={4}
               placeholder="Describe the sauce — how it tastes, the heat profile, and what judges should notice when they taste it."
+              className={`${inputClass} resize-none`}
+            />
+          </div>
+
+          <div>
+            <label htmlFor="productDescription" className={labelClass}>
+              Product description <span className="normal-case text-black/40">(as you'd describe it on your own site)</span>
+            </label>
+            <textarea
+              id="productDescription"
+              name="productDescription"
+              rows={3}
+              placeholder="Your own marketing description for this sauce — used for trade/press materials, not shown to judges."
               className={`${inputClass} resize-none`}
             />
           </div>
