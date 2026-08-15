@@ -268,6 +268,7 @@ export default function VatInvoiceSender() {
                 <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">Email</th>
                 <th className="px-4 py-2 text-center text-xs font-semibold text-gray-600 uppercase tracking-wide">Entries</th>
                 <th className="px-4 py-2 text-right text-xs font-semibold text-gray-600 uppercase tracking-wide">Amount</th>
+                <th className="px-4 py-2 text-center text-xs font-semibold text-gray-600 uppercase tracking-wide">VAT</th>
                 <th className="px-4 py-2 text-center text-xs font-semibold text-gray-600 uppercase tracking-wide">Status</th>
                 <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">Receipt #</th>
               </tr>
@@ -279,6 +280,15 @@ export default function VatInvoiceSender() {
                   <td className="px-4 py-2 text-gray-600">{r.email}</td>
                   <td className="px-4 py-2 text-center text-gray-700">{r.entry_count}</td>
                   <td className="px-4 py-2 text-right text-gray-700">{r.gross_amount}</td>
+                  <td className="px-4 py-2 text-center">
+                    <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${
+                      r.vat_treatment === 'standard'
+                        ? 'bg-gray-100 text-gray-700'
+                        : 'bg-blue-100 text-blue-800'
+                    }`}>
+                      {r.vat_treatment === 'standard' ? '19%' : r.vat_treatment === 'reverse_charge' ? 'Reverse charge' : 'Outside scope'}
+                    </span>
+                  </td>
                   <td className="px-4 py-2 text-center">
                     <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${
                       r.status === 'sent'

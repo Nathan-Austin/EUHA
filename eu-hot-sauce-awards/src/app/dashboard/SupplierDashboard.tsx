@@ -4,7 +4,7 @@ import SupplierSauceManager from './SupplierSauceManager';
 import ProducerInfoModal from './ProducerInfoModal';
 import RohFollowCTA from '@/components/RohFollowCTA';
 import { COMPETITION_YEAR } from '@/lib/config';
-import { COMPANY_INFO } from '@/lib/company';
+import { COMPANY_INFO, type VatTreatment } from '@/lib/company';
 
 interface EnteredSauce {
   id: string;
@@ -50,6 +50,15 @@ interface ProducerInfo {
   instagram: string | null;
   logoPath: string | null;
   ehcSyncConsent: boolean;
+  vatNumber: string | null;
+  invoiceCompanyName: string | null;
+  invoiceAddressStreet: string | null;
+  invoiceAddressHouseNumber: string | null;
+  invoiceAddressLine2: string | null;
+  invoiceCity: string | null;
+  invoiceState: string | null;
+  invoicePostalCode: string | null;
+  invoiceCountry: string | null;
 }
 
 interface SupplierDashboardProps {
@@ -67,6 +76,7 @@ interface SupplierDashboardProps {
   paymentStatus: string | null;
   confirmedEntryCount: number | null;
   shippingOpen: boolean;
+  vatTreatment: VatTreatment;
 }
 
 const PACKAGE_STATUS: Record<string, { label: string; className: string }> = {
@@ -75,7 +85,7 @@ const PACKAGE_STATUS: Record<string, { label: string; className: string }> = {
   received: { label: 'Received', className: 'bg-green-600 text-white' },
 };
 
-export default function SupplierDashboard({ supplierData, ehcData, producerInfo, enteredSauces, hasOptedIn, unpaidSauces, hasExistingPayment, paymentStatus, confirmedEntryCount, shippingOpen }: SupplierDashboardProps) {
+export default function SupplierDashboard({ supplierData, ehcData, producerInfo, enteredSauces, hasOptedIn, unpaidSauces, hasExistingPayment, paymentStatus, confirmedEntryCount, shippingOpen, vatTreatment }: SupplierDashboardProps) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const imageBucket = process.env.NEXT_PUBLIC_SAUCE_IMAGE_BUCKET || 'sauce-media';
   const status = PACKAGE_STATUS[supplierData.packageStatus] ?? PACKAGE_STATUS.pending;
@@ -97,6 +107,7 @@ export default function SupplierDashboard({ supplierData, ehcData, producerInfo,
         confirmedEntryCount={confirmedEntryCount}
         hasOptedIn={hasOptedIn}
         ehcData={ehcData}
+        vatTreatment={vatTreatment}
       />
 
       <ProducerInfoModal info={producerInfo} />

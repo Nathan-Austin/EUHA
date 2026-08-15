@@ -20,6 +20,15 @@ interface ProducerInfo {
   instagram: string | null;
   logoPath: string | null;
   ehcSyncConsent: boolean;
+  vatNumber: string | null;
+  invoiceCompanyName: string | null;
+  invoiceAddressStreet: string | null;
+  invoiceAddressHouseNumber: string | null;
+  invoiceAddressLine2: string | null;
+  invoiceCity: string | null;
+  invoiceState: string | null;
+  invoicePostalCode: string | null;
+  invoiceCountry: string | null;
 }
 
 const inputClass =
@@ -47,6 +56,11 @@ export default function ProducerInfoModal({ info }: { info: ProducerInfo }) {
     }
   }, [open]);
 
+  const hasDistinctInvoiceAddress = Boolean(
+    info.invoiceAddressStreet || info.invoiceAddressHouseNumber || info.invoiceCity
+    || info.invoicePostalCode || info.invoiceCountry
+  );
+
   const [fields, setFields] = useState<SupplierProfileFields>({
     brandName: info.brandName,
     contactName: info.contactName,
@@ -62,9 +76,19 @@ export default function ProducerInfoModal({ info }: { info: ProducerInfo }) {
     website: info.website || '',
     instagram: info.instagram || '',
     ehcSyncConsent: info.ehcSyncConsent,
+    vatNumber: info.vatNumber || '',
+    invoiceCompanyName: info.invoiceCompanyName || '',
+    invoiceSameAsDelivery: !hasDistinctInvoiceAddress,
+    invoiceAddressStreet: info.invoiceAddressStreet || '',
+    invoiceAddressHouseNumber: info.invoiceAddressHouseNumber || '',
+    invoiceAddressLine2: info.invoiceAddressLine2 || '',
+    invoiceCity: info.invoiceCity || '',
+    invoiceState: info.invoiceState || '',
+    invoicePostalCode: info.invoicePostalCode || '',
+    invoiceCountry: info.invoiceCountry || '',
   });
 
-  const set = (field: keyof Omit<SupplierProfileFields, 'ehcSyncConsent'>) => (
+  const set = (field: keyof Omit<SupplierProfileFields, 'ehcSyncConsent' | 'invoiceSameAsDelivery'>) => (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => setFields((prev) => ({ ...prev, [field]: e.target.value }));
 
@@ -121,6 +145,15 @@ export default function ProducerInfoModal({ info }: { info: ProducerInfo }) {
       instagram: fields.instagram || null,
       logoPath: result.logoPath ?? saved.logoPath,
       ehcSyncConsent: fields.ehcSyncConsent,
+      vatNumber: fields.vatNumber || null,
+      invoiceCompanyName: fields.invoiceCompanyName || null,
+      invoiceAddressStreet: fields.invoiceSameAsDelivery ? fields.addressStreet : (fields.invoiceAddressStreet || null),
+      invoiceAddressHouseNumber: fields.invoiceSameAsDelivery ? fields.addressHouseNumber : (fields.invoiceAddressHouseNumber || null),
+      invoiceAddressLine2: fields.invoiceSameAsDelivery ? (fields.addressLine2 || null) : (fields.invoiceAddressLine2 || null),
+      invoiceCity: fields.invoiceSameAsDelivery ? fields.city : (fields.invoiceCity || null),
+      invoiceState: fields.invoiceSameAsDelivery ? (fields.state || null) : (fields.invoiceState || null),
+      invoicePostalCode: fields.invoiceSameAsDelivery ? fields.postalCode : (fields.invoicePostalCode || null),
+      invoiceCountry: fields.invoiceSameAsDelivery ? fields.country : (fields.invoiceCountry || null),
     });
     setLogoFile(null);
     setOpen(false);
@@ -198,6 +231,17 @@ export default function ProducerInfoModal({ info }: { info: ProducerInfo }) {
             EHC data sharing: <span className="font-semibold">{saved.ehcSyncConsent ? 'Consented' : 'Not consented'}</span>
           </p>
         </div>
+        <div className="sm:col-span-2">
+          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-black/50">Billing</p>
+          {saved.vatNumber || saved.invoiceCompanyName ? (
+            <p className="text-black/80">
+              {saved.invoiceCompanyName && <>{saved.invoiceCompanyName}<br /></>}
+              {saved.vatNumber ? `VAT: ${saved.vatNumber}` : 'No VAT number on file'}
+            </p>
+          ) : (
+            <p className="text-black/40">No VAT number on file</p>
+          )}
+        </div>
       </div>
 
       {open && (
@@ -243,7 +287,7 @@ export default function ProducerInfoModal({ info }: { info: ProducerInfo }) {
                   <input type="text" value={fields.city} onChange={set('city')} className={inputClass} />
                 </div>
                 <div>
-                  <label className={labelClass}>State/province <span className="normal-case text-black/40">(optional)</span></label>
+                  <label className={labelClass}>State/province</label>
                   <input type="text" value={fields.state} onChange={set('state')} className={inputClass} />
                 </div>
                 <div>
@@ -261,6 +305,73 @@ export default function ProducerInfoModal({ info }: { info: ProducerInfo }) {
                   <input type="tel" value={fields.phone} onChange={set('phone')} className={inputClass} />
                 </div>
               </div>
+            </div>
+
+            <div className="space-y-3 border-t border-black/10 pt-4">
+              <h4 className="text-xs font-bold uppercase tracking-[0.1em] text-black/50">VAT &amp; invoicing</h4>
+              <p className="text-xs text-black/50">
+                Prices include VAT. If you&apos;re VAT-registered outside Germany, adding your VAT number here lets
+                us apply the EU reverse charge automatically — no VAT charged, you account for it yourself.
+              </p>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label className={labelClass}>
+                    VAT number <span className="normal-case text-black/40">(optional)</span>
+                  </label>
+                  <input type="text" value={fields.vatNumber} onChange={set('vatNumber')} placeholder="e.g. FR12345678901" className={inputClass} />
+                </div>
+                <div>
+                  <label className={labelClass}>Invoice company name</label>
+                  <input type="text" value={fields.invoiceCompanyName} onChange={set('invoiceCompanyName')} placeholder="Same as brand name if left blank" className={inputClass} />
+                </div>
+              </div>
+
+              <label className="flex items-center gap-2.5 text-sm text-black">
+                <input
+                  type="checkbox"
+                  checked={fields.invoiceSameAsDelivery}
+                  onChange={(e) => setFields((prev) => ({ ...prev, invoiceSameAsDelivery: e.target.checked }))}
+                  className="h-4 w-4 flex-shrink-0 accent-black"
+                />
+                Billing address is the same as the delivery address above
+              </label>
+
+              {!fields.invoiceSameAsDelivery && (
+                <div className="space-y-4 border-l-2 border-black/10 pl-4">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                    <div className="sm:col-span-2">
+                      <label className={labelClass}>Street</label>
+                      <input type="text" value={fields.invoiceAddressStreet} onChange={set('invoiceAddressStreet')} className={inputClass} />
+                    </div>
+                    <div>
+                      <label className={labelClass}>House number</label>
+                      <input type="text" value={fields.invoiceAddressHouseNumber} onChange={set('invoiceAddressHouseNumber')} className={inputClass} />
+                    </div>
+                  </div>
+                  <div>
+                    <label className={labelClass}>Address line 2 <span className="normal-case text-black/40">(optional)</span></label>
+                    <input type="text" value={fields.invoiceAddressLine2} onChange={set('invoiceAddressLine2')} className={inputClass} />
+                  </div>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                    <div>
+                      <label className={labelClass}>City</label>
+                      <input type="text" value={fields.invoiceCity} onChange={set('invoiceCity')} className={inputClass} />
+                    </div>
+                    <div>
+                      <label className={labelClass}>State/province</label>
+                      <input type="text" value={fields.invoiceState} onChange={set('invoiceState')} className={inputClass} />
+                    </div>
+                    <div>
+                      <label className={labelClass}>Postal code</label>
+                      <input type="text" value={fields.invoicePostalCode} onChange={set('invoicePostalCode')} className={inputClass} />
+                    </div>
+                  </div>
+                  <div>
+                    <label className={labelClass}>Country</label>
+                    <input type="text" value={fields.invoiceCountry} onChange={set('invoiceCountry')} className={inputClass} />
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="space-y-3 border-t border-black/10 pt-4">

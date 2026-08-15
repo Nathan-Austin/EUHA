@@ -2870,7 +2870,7 @@ export async function sendVatEmail(supplierId: string) {
   // 2. Validate supplier exists
   const { data: supplier, error: supplierError } = await supabase
     .from('suppliers')
-    .select('id, brand_name, contact_name, email, address')
+    .select('id, brand_name, contact_name, email, address, vat_number, invoice_country')
     .eq('id', supplierId)
     .single();
 
@@ -2906,9 +2906,10 @@ export async function sendVatEmail(supplierId: string) {
   const totalGrossCents = payments.reduce((sum, p) => sum + p.amount_due_cents, 0);
 
   // Import helper functions from company lib
-  const { COMPANY_INFO, calculateVAT, formatEuro } = await import('@/lib/company');
+  const { COMPANY_INFO, calculateVAT, determineVatTreatment, formatEuro } = await import('@/lib/company');
 
-  const vatBreakdown = calculateVAT(totalGrossCents);
+  const vatTreatment = determineVatTreatment(supplier.invoice_country, supplier.vat_number);
+  const vatBreakdown = calculateVAT(totalGrossCents, vatTreatment);
 
   // 5. Generate receipt number using DB function
   const serviceSupabase = createServiceClient(
@@ -2938,11 +2939,13 @@ export async function sendVatEmail(supplierId: string) {
     supplierName: supplier.brand_name,
     supplierContactName: supplier.contact_name || '',
     supplierAddress: supplier.address || '',
+    supplierVatNumber: supplier.vat_number || null,
     entryCount: totalEntries,
     grossAmount: formatEuro(vatBreakdown.gross).replace('€', '').trim(),
     netAmount: formatEuro(vatBreakdown.net).replace('€', '').trim(),
     vatAmount: formatEuro(vatBreakdown.vat).replace('€', '').trim(),
     vatRate: (vatBreakdown.vatRate * 100).toFixed(0),
+    vatTreatment,
     companyName: COMPANY_INFO.name,
     companyAddress: COMPANY_INFO.address.full,
     companyVat: COMPANY_INFO.vat.number,
@@ -3021,6 +3024,7 @@ export interface VatInvoiceRecipient {
   email: string
   entry_count: number
   gross_amount: string
+  vat_treatment: 'standard' | 'reverse_charge' | 'outside_scope'
   status: 'pending' | 'sent' | 'failed'
   receipt_number?: string
 }
@@ -3071,7 +3075,7 @@ export async function getVatInvoiceRecipients(): Promise<
 
   const { data: suppliers } = await serviceClient
     .from('suppliers')
-    .select('id, brand_name, email, email_opted_out')
+    .select('id, brand_name, email, email_opted_out, vat_number, invoice_country')
     .in('id', supplierIds)
     .eq('email_opted_out', false)
 
@@ -3092,12 +3096,13 @@ export async function getVatInvoiceRecipients(): Promise<
     }
   }
 
-  const { calculateVAT, formatEuro } = await import('@/lib/company')
+  const { calculateVAT, determineVatTreatment, formatEuro } = await import('@/lib/company')
 
   const recipients: VatInvoiceRecipient[] = (suppliers ?? []).map((s) => {
     const pay = paymentsBySupplier.get(s.id)!
     const audit = auditBySupplierId.get(s.id)
-    const vatBreakdown = calculateVAT(pay.total_cents)
+    const treatment = determineVatTreatment(s.invoice_country, s.vat_number)
+    const vatBreakdown = calculateVAT(pay.total_cents, treatment)
     let status: VatInvoiceRecipient['status'] = 'pending'
     if (audit?.sent) status = 'sent'
     else if (audit?.failed) status = 'failed'
@@ -3107,6 +3112,7 @@ export async function getVatInvoiceRecipients(): Promise<
       email: s.email,
       entry_count: pay.entry_count,
       gross_amount: formatEuro(vatBreakdown.gross),
+      vat_treatment: treatment,
       status,
       receipt_number: audit?.receipt_number,
     }
@@ -3144,7 +3150,7 @@ export async function sendBulkVatInvoices(supplierIds: string[]): Promise<
   const cycleStart = `${COMPETITION_YEAR - 1}-05-01`
   const cycleEnd = `${COMPETITION_YEAR}-05-31`
 
-  const { COMPANY_INFO, calculateVAT, formatEuro } = await import('@/lib/company')
+  const { COMPANY_INFO, calculateVAT, determineVatTreatment, formatEuro } = await import('@/lib/company')
 
   let sent = 0
   let skipped = 0
@@ -3165,7 +3171,12 @@ export async function sendBulkVatInvoices(supplierIds: string[]): Promise<
 
     const { data: supplier } = await serviceClient
       .from('suppliers')
-      .select('id, brand_name, contact_name, email, address, email_opted_out')
+      .select(`
+        id, brand_name, contact_name, email, address, email_opted_out,
+        vat_number, invoice_company_name,
+        invoice_address_street, invoice_address_house_number, invoice_address_line2,
+        invoice_city, invoice_state, invoice_postal_code, invoice_country
+      `)
       .eq('id', supplierId)
       .single()
 
@@ -3183,7 +3194,8 @@ export async function sendBulkVatInvoices(supplierIds: string[]): Promise<
 
     const totalEntries = payments.reduce((sum, p) => sum + p.entry_count, 0)
     const totalGrossCents = payments.reduce((sum, p) => sum + p.amount_due_cents, 0)
-    const vatBreakdown = calculateVAT(totalGrossCents)
+    const vatTreatment = determineVatTreatment(supplier.invoice_country, supplier.vat_number)
+    const vatBreakdown = calculateVAT(totalGrossCents, vatTreatment)
 
     const { data: receiptNumberResult } = await serviceClient
       .rpc('generate_invoice_number', { p_year: COMPETITION_YEAR })
@@ -3198,18 +3210,31 @@ export async function sendBulkVatInvoices(supplierIds: string[]): Promise<
       day: '2-digit', month: 'long', year: 'numeric',
     })
 
+    const invoiceAddressLines = [
+      supplier.invoice_address_street && supplier.invoice_address_house_number
+        ? `${supplier.invoice_address_street} ${supplier.invoice_address_house_number}`
+        : null,
+      supplier.invoice_address_line2,
+      [supplier.invoice_postal_code, supplier.invoice_city].filter(Boolean).join(' ') || null,
+      supplier.invoice_state,
+      supplier.invoice_country,
+    ].filter(Boolean) as string[]
+    const supplierAddress = invoiceAddressLines.length > 0 ? invoiceAddressLines.join('\n') : (supplier.address || '')
+
     const emailTemplate = emailTemplates.paymentReceipt({
       receiptNumber,
       receiptDate,
       year: COMPETITION_YEAR,
-      supplierName: supplier.brand_name,
+      supplierName: supplier.invoice_company_name || supplier.brand_name,
       supplierContactName: supplier.contact_name || '',
-      supplierAddress: supplier.address || '',
+      supplierAddress,
+      supplierVatNumber: supplier.vat_number || null,
       entryCount: totalEntries,
       grossAmount: formatEuro(vatBreakdown.gross).replace('€', '').trim(),
       netAmount: formatEuro(vatBreakdown.net).replace('€', '').trim(),
       vatAmount: formatEuro(vatBreakdown.vat).replace('€', '').trim(),
       vatRate: (vatBreakdown.vatRate * 100).toFixed(0),
+      vatTreatment,
       companyName: COMPANY_INFO.name,
       companyAddress: COMPANY_INFO.address.full,
       companyVat: COMPANY_INFO.vat.number,
@@ -5449,6 +5474,16 @@ export interface SupplierProfileFields {
   website: string;
   instagram: string;
   ehcSyncConsent: boolean;
+  vatNumber: string;
+  invoiceCompanyName: string;
+  invoiceSameAsDelivery: boolean;
+  invoiceAddressStreet: string;
+  invoiceAddressHouseNumber: string;
+  invoiceAddressLine2: string;
+  invoiceCity: string;
+  invoiceState: string;
+  invoicePostalCode: string;
+  invoiceCountry: string;
 }
 
 /**
@@ -5512,6 +5547,30 @@ export async function updateSupplierProfile(
     logoPath = targetPath;
   }
 
+  // "Same as delivery" copies the delivery address in at save time rather
+  // than leaving invoice_* null with a runtime fallback — keeps every
+  // downstream reader (VAT treatment determination, invoice email) looking
+  // at one place instead of needing its own fallback chain.
+  const invoiceAddress = fields.invoiceSameAsDelivery
+    ? {
+        invoice_address_street: fields.addressStreet.trim(),
+        invoice_address_house_number: fields.addressHouseNumber.trim(),
+        invoice_address_line2: fields.addressLine2.trim() || null,
+        invoice_city: fields.city.trim(),
+        invoice_state: fields.state.trim() || null,
+        invoice_postal_code: fields.postalCode.trim(),
+        invoice_country: fields.country.trim(),
+      }
+    : {
+        invoice_address_street: fields.invoiceAddressStreet.trim() || null,
+        invoice_address_house_number: fields.invoiceAddressHouseNumber.trim() || null,
+        invoice_address_line2: fields.invoiceAddressLine2.trim() || null,
+        invoice_city: fields.invoiceCity.trim() || null,
+        invoice_state: fields.invoiceState.trim() || null,
+        invoice_postal_code: fields.invoicePostalCode.trim() || null,
+        invoice_country: fields.invoiceCountry.trim() || null,
+      };
+
   const { error: updateError } = await supabase
     .from('suppliers')
     .update({
@@ -5529,6 +5588,9 @@ export async function updateSupplierProfile(
       website: fields.website.trim() || null,
       instagram: fields.instagram.trim() || null,
       ehc_sync_consent: fields.ehcSyncConsent,
+      vat_number: fields.vatNumber.trim() || null,
+      invoice_company_name: fields.invoiceCompanyName.trim() || null,
+      ...invoiceAddress,
       ...(logoPath && { logo_path: logoPath }),
       ...(consentChanged && { ehc_sync_consent_at: new Date().toISOString() }),
     })

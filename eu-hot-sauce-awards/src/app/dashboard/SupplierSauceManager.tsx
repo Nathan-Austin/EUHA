@@ -6,6 +6,7 @@ import { createSauceEntry, deleteSauce, createPaymentBatch, enterCompetitionYear
 import { createClient } from '@/lib/supabase/client';
 import { COMPETITION_YEAR } from '@/lib/config';
 import type { EhcVerifyResult } from '@/lib/ehc/types';
+import { calculateVAT, type VatTreatment } from '@/lib/company';
 
 interface UnpaidSauce {
   id: string;
@@ -43,6 +44,7 @@ interface SupplierSauceManagerProps {
   confirmedEntryCount?: number | null;
   hasOptedIn: boolean;
   ehcData: EhcData;
+  vatTreatment: VatTreatment;
 }
 
 const CATEGORIES = [
@@ -182,7 +184,7 @@ function AllergenCheckboxes({
   );
 }
 
-export default function SupplierSauceManager({ initialSauces, hasExistingPayment = false, paymentStatus = null, confirmedEntryCount = null, hasOptedIn, ehcData }: SupplierSauceManagerProps) {
+export default function SupplierSauceManager({ initialSauces, hasExistingPayment = false, paymentStatus = null, confirmedEntryCount = null, hasOptedIn, ehcData, vatTreatment }: SupplierSauceManagerProps) {
   const [sauces, setSauces] = useState<UnpaidSauce[]>(initialSauces);
   const [showAddForm, setShowAddForm] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
@@ -469,6 +471,7 @@ export default function SupplierSauceManager({ initialSauces, hasExistingPayment
   };
 
   const payment = sauces.length > 0 ? calculatePayment(sauces.length, ehcQualifies) : null;
+  const vatBreakdown = payment ? calculateVAT(Math.round(payment.total * 100), vatTreatment) : null;
   const isConfirmed = hasExistingPayment && paymentStatus === 'deferred';
   const needsReconfirm = isConfirmed && confirmedEntryCount !== sauces.length;
 
@@ -1022,7 +1025,27 @@ export default function SupplierSauceManager({ initialSauces, hasExistingPayment
                   <span>Total due (January):</span>
                   <span>{formatCurrency(payment.total)}</span>
                 </div>
+                {vatBreakdown && (
+                  <div className="flex justify-between text-xs text-black/50">
+                    <span>
+                      {vatBreakdown.treatment === 'standard'
+                        ? `of which VAT (${(vatBreakdown.vatRate * 100).toFixed(0)}%):`
+                        : vatBreakdown.treatment === 'reverse_charge'
+                        ? 'VAT: reverse charge — 0% (EU, VAT-registered)'
+                        : 'VAT: outside scope — 0% (non-EU)'}
+                    </span>
+                    {vatBreakdown.treatment === 'standard' && <span>{formatCurrency(vatBreakdown.vat)}</span>}
+                  </div>
+                )}
               </div>
+
+              <p className="text-xs text-black/50">
+                {vatTreatment === 'standard'
+                  ? 'Prices include VAT. EU businesses outside Germany with a valid VAT number are eligible for the reverse charge (0% VAT) — add your VAT number under Producer Info.'
+                  : vatTreatment === 'reverse_charge'
+                  ? "Reverse charge applied — no VAT charged, you're responsible for accounting for VAT in your own country."
+                  : 'No VAT charged — this falls outside the scope of EU VAT.'}
+              </p>
 
               <button
                 onClick={handleCreatePayment}

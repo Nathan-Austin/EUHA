@@ -699,15 +699,23 @@ export const emailTemplates = {
     supplierName: string;
     supplierContactName: string;
     supplierAddress: string;
+    supplierVatNumber: string | null;
     entryCount: number;
     grossAmount: string;
     netAmount: string;
     vatAmount: string;
     vatRate: string;
+    vatTreatment: 'standard' | 'reverse_charge' | 'outside_scope';
     companyName: string;
     companyAddress: string;
     companyVat: string;
-  }) => ({
+  }) => {
+    const vatNote = params.vatTreatment === 'reverse_charge'
+      ? 'Reverse charge — VAT to be accounted for by the recipient (Art. 44/196 EU VAT Directive). No VAT charged.'
+      : params.vatTreatment === 'outside_scope'
+      ? 'Outside the scope of EU VAT (Art. 44 EU VAT Directive) — recipient established outside the EU. No VAT charged.'
+      : null;
+    return {
     subject: `Payment Receipt ${params.receiptNumber} - EU Hot Sauce Awards ${params.year}`,
     html: `
       ${emailBanner}
@@ -737,6 +745,7 @@ export const emailTemplates = {
             <p style="margin: 5px 0; font-weight: bold;">${params.supplierName}</p>
             ${params.supplierContactName ? `<p style="margin: 2px 0;">Attn: ${params.supplierContactName}</p>` : ''}
             <p style="margin: 2px 0; white-space: pre-line;">${params.supplierAddress}</p>
+            ${params.supplierVatNumber ? `<p style="margin: 10px 0 0 0;"><strong>VAT Number:</strong> ${params.supplierVatNumber}</p>` : ''}
           </div>
         </div>
 
@@ -775,6 +784,7 @@ export const emailTemplates = {
               <td style="padding: 12px 0; text-align: right;"><strong style="font-size: 18px; color: #ff4d00;">€${params.grossAmount}</strong></td>
             </tr>
           </table>
+          ${vatNote ? `<p style="margin: 16px 0 0 0; font-size: 13px; color: #555;">${vatNote}</p>` : ''}
         </div>
 
         <div style="background-color: #f8f9fa; padding: 15px; margin: 20px 0; border-radius: 5px;">
@@ -788,6 +798,7 @@ export const emailTemplates = {
         </div>
       </div>
     `,
-    text: `PAYMENT RECEIPT\n\nPlease note: An earlier email sent in error described this document as a VAT invoice. This is the corrected version — a payment receipt confirming the amount you paid. We apologise for any confusion.\n\nReceipt Number: ${params.receiptNumber}\nReceipt Date: ${params.receiptDate}\n\nFrom:\n${params.companyName}\n${params.companyAddress}\nVAT Number: ${params.companyVat}\n\nTo:\n${params.supplierName}\n${params.supplierContactName ? `Attn: ${params.supplierContactName}\n` : ''}${params.supplierAddress}\n\nDescription: EU Hot Sauce Awards ${params.year} - Competition Entry\nQuantity: ${params.entryCount}\n\nNet Amount: €${params.netAmount}\nVAT (${params.vatRate}%): €${params.vatAmount}\nTotal Paid: €${params.grossAmount}\n\nPayment Status: Paid via Stripe\n\nThank you for your participation in the EU Hot Sauce Awards ${params.year}!`,
-  }),
+    text: `PAYMENT RECEIPT\n\nPlease note: An earlier email sent in error described this document as a VAT invoice. This is the corrected version — a payment receipt confirming the amount you paid. We apologise for any confusion.\n\nReceipt Number: ${params.receiptNumber}\nReceipt Date: ${params.receiptDate}\n\nFrom:\n${params.companyName}\n${params.companyAddress}\nVAT Number: ${params.companyVat}\n\nTo:\n${params.supplierName}\n${params.supplierContactName ? `Attn: ${params.supplierContactName}\n` : ''}${params.supplierAddress}${params.supplierVatNumber ? `\nVAT Number: ${params.supplierVatNumber}` : ''}\n\nDescription: EU Hot Sauce Awards ${params.year} - Competition Entry\nQuantity: ${params.entryCount}\n\nNet Amount: €${params.netAmount}\nVAT (${params.vatRate}%): €${params.vatAmount}\nTotal Paid: €${params.grossAmount}${vatNote ? `\n\n${vatNote}` : ''}\n\nPayment Status: Paid via Stripe\n\nThank you for your participation in the EU Hot Sauce Awards ${params.year}!`,
+    };
+  },
 };

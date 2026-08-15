@@ -4,6 +4,7 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { COMPETITION_YEAR } from '@/lib/config'
+import { determineVatTreatment } from '@/lib/company'
 import LogoutButton from './LogoutButton'
 import AdminDashboard from './AdminDashboard'
 import CommunityJudgeDashboard from './CommunityJudgeDashboard'
@@ -104,7 +105,10 @@ export default async function DashboardPage() {
             id, brand_name, contact_name, package_status, package_received_at,
             ehc_id, ehc_status, ehc_verified_at,
             address_street, address_house_number, address_line2, city, state, postal_code, country, phone,
-            bio, website, instagram, logo_path, ehc_sync_consent
+            bio, website, instagram, logo_path, ehc_sync_consent,
+            vat_number, invoice_company_name,
+            invoice_address_street, invoice_address_house_number, invoice_address_line2,
+            invoice_city, invoice_state, invoice_postal_code, invoice_country
           `)
           .ilike('email', user.email!)
           .single();
@@ -152,6 +156,7 @@ export default async function DashboardPage() {
         }
 
         const shippingOpen = await getCompetitionSetting('shipping_open');
+        const vatTreatment = determineVatTreatment(supplier.invoice_country, supplier.vat_number);
 
         return <SupplierDashboard
           supplierData={{
@@ -180,6 +185,15 @@ export default async function DashboardPage() {
             instagram: supplier.instagram,
             logoPath: supplier.logo_path,
             ehcSyncConsent: supplier.ehc_sync_consent,
+            vatNumber: supplier.vat_number,
+            invoiceCompanyName: supplier.invoice_company_name,
+            invoiceAddressStreet: supplier.invoice_address_street,
+            invoiceAddressHouseNumber: supplier.invoice_address_house_number,
+            invoiceAddressLine2: supplier.invoice_address_line2,
+            invoiceCity: supplier.invoice_city,
+            invoiceState: supplier.invoice_state,
+            invoicePostalCode: supplier.invoice_postal_code,
+            invoiceCountry: supplier.invoice_country,
           }}
           enteredSauces={enteredSauces || []}
           hasOptedIn={hasOptedIn}
@@ -188,6 +202,7 @@ export default async function DashboardPage() {
           paymentStatus={pendingPayment?.stripe_payment_status ?? null}
           confirmedEntryCount={pendingPayment?.entry_count ?? null}
           shippingOpen={shippingOpen}
+          vatTreatment={vatTreatment}
         />;
       }
       case 'community':
