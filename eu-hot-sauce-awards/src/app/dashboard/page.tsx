@@ -63,11 +63,26 @@ export default async function DashboardPage() {
     )
   }
 
+  // Blocks judge-dashboard access uniformly for pro/community/event judges,
+  // checked before active/payment status — so an approved-but-unpaid (or even
+  // a paid) judge from a prior season can't get in while this is closed.
+  const judgesDashboardClosedMessage = (
+    <div className="space-y-4">
+      <h2 className="text-xl font-semibold">Not open yet</h2>
+      <p>The judges dashboard for {COMPETITION_YEAR} isn&apos;t open yet. We&apos;ll email you once it is.</p>
+    </div>
+  )
+
   const renderDashboard = async () => {
+    const judgesDashboardOpen = ['pro', 'community', 'event'].includes(judge.type)
+      ? await getCompetitionSetting('judges_dashboard_open')
+      : true
+
     switch (judge.type) {
       case 'admin':
         return <AdminDashboard />
       case 'pro':
+        if (!judgesDashboardOpen) return judgesDashboardClosedMessage
         return <CommunityJudgeDashboard
           openJudging={judge.open_judging ?? false}
           shippingAddress={{
@@ -176,6 +191,7 @@ export default async function DashboardPage() {
         />;
       }
       case 'community':
+        if (!judgesDashboardOpen) return judgesDashboardClosedMessage
         if (judge.stripe_payment_status === 'succeeded') {
           return <CommunityJudgeDashboard
             openJudging={judge.open_judging ?? false}
@@ -199,6 +215,7 @@ export default async function DashboardPage() {
           </div>
         )
       case 'event':
+        if (!judgesDashboardOpen) return judgesDashboardClosedMessage
         return <CommunityJudgeDashboard
           isEventJudge={true}
           openJudging={true}

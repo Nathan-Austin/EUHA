@@ -3,26 +3,29 @@
 import { useState, useTransition } from 'react'
 import { updateCompetitionSetting } from '@/app/actions'
 
-interface ShippingGateToggleProps {
+interface SettingToggleProps {
+  settingKey: string
+  title: string
+  description: string
   initialEnabled: boolean
   competitionYear: number
+  /** Shown in a confirm() prompt when turning the gate OFF (closing it). */
+  closeConfirmMessage: string
 }
 
-export default function ShippingGateToggle({ initialEnabled, competitionYear }: ShippingGateToggleProps) {
+export default function SettingToggle({ settingKey, title, description, initialEnabled, competitionYear, closeConfirmMessage }: SettingToggleProps) {
   const [enabled, setEnabled] = useState(initialEnabled)
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
 
   const handleToggle = () => {
     const next = !enabled
-    if (next === false && !confirm(
-      `Close the shipping window for ${competitionYear}? Suppliers will stop seeing shipping instructions on their dashboard.`
-    )) {
+    if (next === false && !confirm(closeConfirmMessage)) {
       return
     }
     setError(null)
     startTransition(async () => {
-      const result = await updateCompetitionSetting('shipping_open', next)
+      const result = await updateCompetitionSetting(settingKey, next)
       if ('error' in result) {
         setError(result.error)
       } else {
@@ -35,12 +38,8 @@ export default function ShippingGateToggle({ initialEnabled, competitionYear }: 
     <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h3 className="text-base font-semibold text-gray-900">Shipping window ({competitionYear})</h3>
-          <p className="mt-1 text-sm text-gray-600">
-            Controls whether the &quot;Ship your samples&quot; instructions show on the supplier dashboard. Keep this
-            closed until payment and shipping logistics are ready — suppliers see a &quot;more info coming&quot;
-            message instead.
-          </p>
+          <h3 className="text-base font-semibold text-gray-900">{title} ({competitionYear})</h3>
+          <p className="mt-1 text-sm text-gray-600">{description}</p>
           {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
         </div>
         <button

@@ -32,7 +32,7 @@ import JudgeShippingManager from './JudgeShippingManager'
 import RequestShippingAddressButton from './RequestShippingAddressButton'
 import DhlLabelScanner from './DhlLabelScanner'
 import PackageReceiveScanner from './PackageReceiveScanner'
-import ShippingGateToggle from './ShippingGateToggle'
+import SettingToggle from './SettingToggle'
 import { getCompetitionSetting } from '@/app/actions'
 
 const formatStatusLabel = (status: string) =>
@@ -129,6 +129,7 @@ export default async function AdminDashboard() {
 
   const resultsData = await getResultsData()
   const shippingOpen = await getCompetitionSetting('shipping_open')
+  const judgesDashboardOpen = await getCompetitionSetting('judges_dashboard_open')
   const resultsResults = 'results' in resultsData ? resultsData.results : []
   const resultsScoringCategories = 'scoringCategories' in resultsData ? resultsData.scoringCategories : []
 
@@ -349,7 +350,14 @@ export default async function AdminDashboard() {
             title="Logistics & Packing"
             description="Stay on top of supplier shipments and keep judging boxes moving."
           />
-          <ShippingGateToggle initialEnabled={shippingOpen} competitionYear={COMPETITION_YEAR} />
+          <SettingToggle
+            settingKey="shipping_open"
+            title="Shipping window"
+            description={'Controls whether the "Ship your samples" instructions show on the supplier dashboard. Keep this closed until payment and shipping logistics are ready — suppliers see a "more info coming" message instead.'}
+            initialEnabled={shippingOpen}
+            competitionYear={COMPETITION_YEAR}
+            closeConfirmMessage={`Close the shipping window for ${COMPETITION_YEAR}? Suppliers will stop seeing shipping instructions on their dashboard.`}
+          />
           <Card>
             <PackageReceiveScanner />
           </Card>
@@ -437,6 +445,14 @@ export default async function AdminDashboard() {
           <SectionHeading
             title="Administration"
             description="Manage access and website updates from a single place."
+          />
+          <SettingToggle
+            settingKey="judges_dashboard_open"
+            title="Judges dashboard"
+            description="Controls whether any judge (pro, community, or event) can access the judges dashboard at all — checked before payment/active status, so it blocks everyone uniformly. Keep this closed until the 2027 judging dashboard and approval/payment pipeline are ready; judges see a 'not open yet' message instead."
+            initialEnabled={judgesDashboardOpen}
+            competitionYear={COMPETITION_YEAR}
+            closeConfirmMessage={`Close the judges dashboard for ${COMPETITION_YEAR}? All judges (regardless of active/payment status) will be blocked and see a "not open yet" message instead.`}
           />
           <Card>
             <JudgeAnalysis />
