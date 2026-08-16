@@ -69,6 +69,7 @@ export default function LoginPage() {
   const [brandName, setBrandName] = useState('');
   const [contactName, setContactName] = useState('');
   const [country, setCountry] = useState('');
+  const [website, setWebsite] = useState(''); // honeypot — real users never see or fill this
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -126,6 +127,7 @@ export default function LoginPage() {
       formData.set('contactName', contactName);
       formData.set('email', email);
       formData.set('country', country);
+      formData.set('website', website);
 
       const result = await registerNewSupplier(formData);
       if (result.error) {
@@ -291,7 +293,7 @@ export default function LoginPage() {
                     required
                     value={country}
                     onChange={(e) => setCountry(e.target.value)}
-                    className={`${inputClass} ${country ? '' : 'text-black/40'}`}
+                    className={inputClass}
                   >
                     <option value="" disabled>
                       Country
@@ -306,6 +308,26 @@ export default function LoginPage() {
                       </optgroup>
                     ))}
                   </select>
+                  {/* Honeypot — visually hidden and out of tab order, real users never see
+                      or fill this. A non-empty value on submit means a bot filled every
+                      field it found. Clipped in place (not offset off-screen) so it can't
+                      introduce a horizontal scrollbar. */}
+                  <div
+                    className="absolute h-px w-px overflow-hidden whitespace-nowrap p-0"
+                    style={{ clip: 'rect(0,0,0,0)' }}
+                    aria-hidden="true"
+                  >
+                    <label htmlFor="website">Website</label>
+                    <input
+                      id="website"
+                      name="website"
+                      type="text"
+                      tabIndex={-1}
+                      autoComplete="off"
+                      value={website}
+                      onChange={(e) => setWebsite(e.target.value)}
+                    />
+                  </div>
                   <button
                     type="submit"
                     disabled={loading}

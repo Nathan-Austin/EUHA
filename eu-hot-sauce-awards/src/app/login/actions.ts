@@ -10,6 +10,14 @@ interface RegisterResult {
 }
 
 export async function registerNewSupplier(formData: FormData): Promise<RegisterResult> {
+  // Honeypot: a hidden "website" field real users never see or fill (see
+  // login/page.tsx). A non-empty value means a bot filled every field it
+  // found. Report success so it doesn't retry — just skip creating anything.
+  const honeypot = ((formData.get('website') as string) || '').trim();
+  if (honeypot) {
+    return { success: true };
+  }
+
   const brandName = ((formData.get('brandName') as string) || '').trim();
   const contactName = ((formData.get('contactName') as string) || '').trim();
   const email = ((formData.get('email') as string) || '').trim().toLowerCase();

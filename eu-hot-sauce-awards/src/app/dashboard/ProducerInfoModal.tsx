@@ -47,7 +47,7 @@ function CountrySelect({
   onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => void;
 }) {
   return (
-    <select value={value} onChange={onChange} className={`${inputClass} ${value ? '' : 'text-black/40'}`}>
+    <select value={value} onChange={onChange} className={inputClass}>
       <option value="" disabled>
         Select a country
       </option>
