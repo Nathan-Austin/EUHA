@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spicepunk — Mild Chili Sauce maker, Sursee, Switzerland — European Hot Sauce Awards</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --yellow: #F5C518;
+  --yellow-deep: #E0A800;
+  --ink: #111111;
+  --cream: #f3ead8;
+  --paper: #faf6ec;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { background: var(--paper); color: var(--ink); font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
+img { display: block; max-width: 100%; }
+a { color: inherit; text-decoration: none; }
+.display { font-family: 'Archivo Black', sans-serif; text-transform: uppercase; line-height: 0.95; letter-spacing: -0.02em; }
+.wrap { max-width: 1240px; margin: 0 auto; padding: 0 24px; }
+
+/* TOP BAR */
+.topbar { background: var(--yellow); border-bottom: 4px solid var(--ink); }
+.topbar .wrap { display: flex; align-items: center; justify-content: space-between; padding: 12px 24px; gap: 24px; }
+.brand { display: flex; align-items: center; gap: 14px; }
+.brand-mark { width: 44px; height: 44px; background: var(--ink); border-radius: 50%; display: grid; place-items: center; color: var(--yellow); font-family: 'Archivo Black'; font-size: 20px; }
+.brand-name { font-family: 'Archivo Black'; text-transform: uppercase; font-size: 18px; line-height: 1; }
+.brand-name small { display: block; font-family: 'Inter'; font-weight: 600; font-size: 11px; letter-spacing: 0.12em; margin-top: 4px; color: #333; }
+nav.primary { display: flex; gap: 28px; }
+nav.primary a { font-weight: 700; font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em; }
+nav.primary a.cta { background: var(--ink); color: var(--yellow); padding: 8px 14px; }
+
+/* BREADCRUMB */
+.crumbs { background: var(--ink); color: #aaa; padding: 14px 0; font-size: 13px; letter-spacing: 0.05em; }
+.crumbs .wrap { display: flex; gap: 10px; align-items: center; }
+.crumbs a { color: var(--yellow); font-weight: 600; }
+.crumbs .sep { color: #555; }
+.crumbs .here { color: #fff; font-weight: 700; }
+
+/* MAKER HERO */
+.maker-hero { background: var(--ink); color: #fff; position: relative; overflow: hidden; }
+.maker-hero-inner { display: grid; grid-template-columns: 1.05fr 1fr; min-height: 620px; }
+.maker-hero-text { padding: 80px 0; display: flex; flex-direction: column; justify-content: center; }
+.maker-hero-text .wrap-l { max-width: 620px; padding-left: 24px; margin-left: auto; padding-right: 56px; }
+.hero-eyebrow { color: var(--yellow); font-weight: 700; font-size: 13px; letter-spacing: 0.18em; text-transform: uppercase; margin-bottom: 22px; }
+.maker-hero-text h1 { font-family: 'Archivo Black'; text-transform: uppercase; font-size: clamp(48px, 6vw, 84px); line-height: 0.92; letter-spacing: -0.02em; overflow-wrap: break-word; }
+.maker-hero-text h1 .pop { color: var(--yellow); }
+.hero-tag { margin-top: 24px; font-size: 17px; color: #ddd; max-width: 480px; line-height: 1.45; }
+.hero-stats { display: flex; gap: 32px; margin-top: 32px; padding-top: 28px; border-top: 1px solid #333; }
+.hero-stats .s { display: flex; flex-direction: column; gap: 6px; }
+.hero-stats strong { font-family: 'Archivo Black'; font-size: 38px; color: var(--yellow); line-height: 1; }
+.hero-stats span { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: #ccc; }
+.hero-ctas { margin-top: 28px; display: flex; gap: 12px; flex-wrap: wrap; }
+.btn-primary { background: var(--yellow); color: var(--ink); padding: 16px 24px; font-family: 'Archivo Black'; text-transform: uppercase; font-size: 14px; letter-spacing: 0.06em; border: 3px solid var(--yellow); display: inline-block; }
+.btn-primary:hover { background: var(--yellow-deep); border-color: var(--yellow-deep); }
+.btn-ghost { background: transparent; color: #fff; padding: 16px 24px; font-family: 'Archivo Black'; text-transform: uppercase; font-size: 14px; letter-spacing: 0.06em; border: 3px solid #fff; display: inline-block; }
+.btn-ghost:hover { background: #fff; color: var(--ink); }
+.maker-hero-img { background-size: cover; background-position: center; min-height: 620px; border-left: 4px solid var(--yellow); position: relative; }
+.best-stamp { position: absolute; top: 32px; left: 32px; background: var(--yellow); border: 4px solid var(--ink); padding: 18px 24px; transform: rotate(-6deg); text-align: center; font-family: 'Archivo Black'; text-transform: uppercase; color: var(--ink); line-height: 0.92; box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
+.best-stamp .big { font-size: 28px; letter-spacing: 0.01em; }
+.best-stamp .small { font-size: 11px; letter-spacing: 0.16em; margin-top: 8px; padding-top: 8px; border-top: 2px solid var(--ink); }
+
+/* SECTION BAND */
+section.band { padding: 72px 0; }
+.band-head { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 32px; gap: 32px; flex-wrap: wrap; }
+.band-head h2 { font-family: 'Archivo Black'; text-transform: uppercase; font-size: clamp(32px, 4vw, 48px); line-height: 0.95; max-width: 760px; }
+.band-head h2 .pop { background: var(--yellow); padding: 0 8px; }
+.band-head .sub { font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase; color: #666; font-weight: 600; }
+
+/* AWARDS GRID — Spicepunk's 2 sauces */
+.awards-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: stretch; }
+.award-card { background: #fff; border: 3px solid var(--ink); display: flex; flex-direction: column; overflow: hidden; transition: transform .15s, box-shadow .15s; color: var(--ink); }
+.award-card:hover { transform: translateY(-3px); box-shadow: 0 10px 24px rgba(0,0,0,0.15); }
+.award-img { aspect-ratio: 4/3; background-size: cover; background-position: center; border-bottom: 3px solid var(--ink); position: relative; }
+.award-img.placeholder { background: var(--yellow); display: grid; place-items: center; padding: 16px; text-align: center; }
+.award-img.placeholder span { font-family: 'Archivo Black'; text-transform: uppercase; font-size: 28px; color: var(--ink); line-height: 0.95; }
+.award-rank-badge { position: absolute; top: 14px; left: 14px; background: var(--yellow); color: var(--ink); padding: 8px 14px; font-family: 'Archivo Black'; font-size: 13px; letter-spacing: 0.06em; border: 3px solid var(--ink); text-transform: uppercase; }
+.award-body { padding: 24px; flex: 1; display: flex; flex-direction: column; gap: 14px; }
+.award-medal-line { font-family: 'Archivo Black'; text-transform: uppercase; font-size: 12px; letter-spacing: 0.1em; color: #555; }
+.award-medal-line.featured { color: var(--ink); }
+.award-medal-line.featured .badge { background: var(--ink); color: var(--yellow); padding: 4px 10px; margin-right: 8px; font-size: 11px; }
+.award-sauce { font-family: 'Archivo Black'; text-transform: uppercase; font-size: 28px; line-height: 1; }
+.award-cat { font-size: 13px; letter-spacing: 0.1em; text-transform: uppercase; color: #777; }
+.award-cat a { border-bottom: 2px solid var(--ink); padding-bottom: 1px; color: var(--ink); font-weight: 700; }
+.award-foot { display: flex; justify-content: space-between; align-items: baseline; margin-top: auto; padding-top: 16px; border-top: 1px solid #eee; }
+.award-rank { font-size: 12px; color: #888; letter-spacing: 0.04em; }
+.award-score { font-family: 'Archivo Black'; font-size: 22px; color: var(--ink); }
+
+/* ABOUT */
+.about-band { background: var(--cream); }
+.about-grid { display: grid; grid-template-columns: 1.6fr 1fr; gap: 36px; align-items: start; }
+.about-text { font-size: 16px; line-height: 1.6; color: #333; }
+.about-text p { margin-bottom: 14px; }
+.about-text p:last-child { margin-bottom: 0; }
+.about-text p strong { color: var(--ink); }
+.about-facts { background: #fff; border: 2px solid var(--ink); padding: 24px 26px; }
+.about-facts h4 { font-family: 'Archivo Black'; text-transform: uppercase; font-size: 13px; letter-spacing: 0.1em; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid var(--ink); }
+.fact-row { display: flex; justify-content: space-between; gap: 16px; padding: 10px 0; border-bottom: 1px solid #eee; font-size: 14px; }
+.fact-row:last-child { border-bottom: 0; }
+.fact-row .k { color: #666; letter-spacing: 0.04em; text-transform: uppercase; font-size: 11px; font-weight: 600; }
+.fact-row .v { font-weight: 600; color: var(--ink); text-align: right; }
+
+/* RELATED MAKERS */
+.related-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; align-items: stretch; }
+.related-card { background: #fff; border: 2px solid var(--ink); padding: 20px 22px 16px; display: flex; flex-direction: column; gap: 10px; transition: transform .15s; color: var(--ink); min-height: 200px; }
+.related-card:hover { transform: translateY(-3px); }
+.related-relation { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: #888; font-weight: 600; }
+.related-name { font-family: 'Archivo Black'; text-transform: uppercase; font-size: 22px; line-height: 1; }
+.related-winner { font-size: 13px; color: #444; margin-top: 4px; line-height: 1.5; }
+.related-winner em { font-style: normal; font-weight: 700; color: var(--ink); }
+.related-arrow { font-family: 'Archivo Black'; font-size: 11px; letter-spacing: 0.1em; margin-top: auto; padding-top: 12px; border-top: 1px solid #eee; }
+
+/* PRESS STRIP */
+.press-strip-band { background: var(--ink); color: #fff; padding: 56px 0; }
+.press-strip-band .wrap { display: grid; grid-template-columns: 2fr 1fr; gap: 36px; align-items: center; }
+.press-strip-band h3 { font-family: 'Archivo Black'; text-transform: uppercase; font-size: 30px; line-height: 1; }
+.press-strip-band p { color: #ccc; margin-top: 12px; font-size: 15px; line-height: 1.5; max-width: 540px; }
+.press-strip-band .press-cta { display: flex; flex-direction: column; gap: 10px; }
+
+/* FOOTER */
+footer { background: var(--ink); color: #aaa; padding: 56px 0 32px; }
+.foot-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 36px; padding-bottom: 36px; border-bottom: 1px solid #333; }
+.foot-grid h4 { font-family: 'Archivo Black'; text-transform: uppercase; font-size: 13px; color: var(--yellow); letter-spacing: 0.1em; margin-bottom: 14px; }
+.foot-grid ul { list-style: none; }
+.foot-grid li { padding: 4px 0; font-size: 14px; }
+.foot-grid li a:hover { color: var(--yellow); }
+.foot-about p { font-size: 14px; line-height: 1.6; color: #ccc; max-width: 380px; }
+.foot-bottom { display: flex; justify-content: space-between; padding-top: 24px; font-size: 12px; color: #666; }
+
+@media (max-width: 960px) {
+  nav.primary { display: none; }
+  .maker-hero-inner { grid-template-columns: 1fr; }
+  .maker-hero-text { padding: 56px 0; }
+  .maker-hero-text .wrap-l { padding: 0 24px; }
+  .maker-hero-img { min-height: 360px; border-left: 0; border-top: 4px solid var(--yellow); }
+  .awards-grid { grid-template-columns: 1fr; }
+  .about-grid { grid-template-columns: 1fr; }
+  .related-grid { grid-template-columns: 1fr 1fr; }
+  .press-strip-band .wrap { grid-template-columns: 1fr; }
+  .foot-grid { grid-template-columns: 1fr 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<header class="topbar">
+  <div class="wrap">
+    <a class="brand" href="index.html">
+      <div class="brand-mark">E</div>
+      <div class="brand-name">European Hot Sauce Awards<small>Heatawards.eu &middot; the directory</small></div>
+    </a>
+    <nav class="primary">
+      <a href="index.html#directory">Makers</a>
+      <a href="index.html#countries">Countries</a>
+      <a href="index.html#directory">2026 Winners</a>
+      <a href="index.html#press">Press</a>
+      <a class="cta" href="index.html#enter">Enter 2027</a>
+    </nav>
+  </div>
+</header>
+
+<!-- BREADCRUMB -->
+<div class="crumbs">
+  <div class="wrap">
+    <a href="index.html">Home</a>
+    <span class="sep">/</span>
+    <a href="index.html#directory">Makers</a>
+    <span class="sep">/</span>
+    <span class="here">Spicepunk</span>
+  </div>
+</div>
+
+<!-- HERO -->
+<section class="maker-hero">
+  <div class="maker-hero-inner">
+    <div class="maker-hero-text">
+      <div class="wrap-l">
+        <div class="hero-eyebrow">Independent Mild Chili Sauce maker &middot; Sursee, Switzerland</div>
+        <h1 class="display">Spice<span class="pop">punk</span>.</h1>
+        <p class="hero-tag">EHSA 2026 Gold medalist. Best in Category, Mild Chili Sauce, with Peach Riot.</p>
+        <div class="hero-stats">
+          <div class="s"><strong>2</strong><span>EHSA 2026 medals</span></div>
+          <div class="s"><strong>1</strong><span>Gold (Best in Cat.)</span></div>
+          <div class="s"><strong>1</strong><span>Bronze</span></div>
+        </div>
+        <div class="hero-ctas">
+          <a class="btn-primary" href="https://spicepunk.ch">Visit spicepunk.ch &rarr;</a>
+          <a class="btn-ghost" href="#">Press kit &rarr;</a>
+        </div>
+      </div>
+    </div>
+    <div class="maker-hero-img" style="background-image:url('assets/maker-spicepunk-town.jpeg')">
+      <div class="best-stamp">
+        <div class="big">2026<br>Medalist</div>
+        <div class="small">Gold &middot; Best in Category</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- AWARDS -->
+<section class="band">
+  <div class="wrap">
+    <div class="band-head">
+      <h2>Spicepunk at <span class="pop">EHSA&nbsp;2026</span>.</h2>
+      <span class="sub">2 sauces entered, 2 medals returned</span>
+    </div>
+    <div class="awards-grid">
+
+      <a class="award-card featured-card" href="category-mild.html">
+        <div class="award-img" style="background-image:url('assets/cat-mild.jpeg')">
+          <div class="award-rank-badge">Best in Category</div>
+        </div>
+        <div class="award-body">
+          <div class="award-medal-line featured"><span class="badge">Gold &middot; 1st</span> Mild Chili Sauce</div>
+          <div class="award-sauce">Peach Riot</div>
+          <div class="award-cat">Category: <a href="category-mild.html">Mild Chili Sauce</a></div>
+          <div class="award-foot">
+            <span class="award-rank">Rank 1 of 12 in category</span>
+            <span class="award-score">7.53</span>
+          </div>
+        </div>
+      </a>
+
+      <a class="award-card" href="category-mild.html">
+        <div class="award-img placeholder"><span>Red Dynasty</span><div class="award-rank-badge">Bronze</div></div>
+        <div class="award-body">
+          <div class="award-medal-line">Bronze &middot; 12th &middot; Mild Chili Sauce</div>
+          <div class="award-sauce">Red Dynasty</div>
+          <div class="award-cat">Category: <a href="category-mild.html">Mild Chili Sauce</a></div>
+          <div class="award-foot">
+            <span class="award-rank">Rank 12 of 12 in category</span>
+            <span class="award-score">6.46</span>
+          </div>
+        </div>
+      </a>
+
+    </div>
+  </div>
+</section>
+
+<!-- ABOUT -->
+<section class="band about-band">
+  <div class="wrap">
+    <div class="band-head">
+      <h2>About <span class="pop">Spicepunk</span>.</h2>
+      <span class="sub">Factual snapshot</span>
+    </div>
+    <div class="about-grid">
+      <div class="about-text">
+        <p>Spicepunk is an independent chilli sauce maker based in <strong>Sursee, Switzerland</strong>.</p>
+        <p>The brand entered EHSA 2026 with two sauces. <strong>Peach Riot</strong> took Gold and Best in Category in Mild Chili Sauce with a judges' weighted score of 7.53. <strong>Red Dynasty</strong> took Bronze in the same category at 6.46.</p>
+        <p>For trade and press enquiries, contact Marcus Pitschke at heat@spicepunk.ch.</p>
+      </div>
+      <aside class="about-facts">
+        <h4>At a glance</h4>
+        <div class="fact-row"><span class="k">Based</span><span class="v">Sursee, Switzerland</span></div>
+        <div class="fact-row"><span class="k">Contact</span><span class="v">Marcus Pitschke</span></div>
+        <div class="fact-row"><span class="k">Email</span><span class="v">heat@spicepunk.ch</span></div>
+        <div class="fact-row"><span class="k">Web</span><span class="v">spicepunk.ch</span></div>
+        <div class="fact-row"><span class="k">EHSA categories</span><span class="v">Mild Chili Sauce</span></div>
+        <div class="fact-row"><span class="k">EHSA 2026 medals</span><span class="v">1 Gold (Best in Cat.), 1 Bronze</span></div>
+      </aside>
+    </div>
+  </div>
+</section>
+
+<!-- RELATED MAKERS -->
+<section class="band">
+  <div class="wrap">
+    <div class="band-head">
+      <h2>Related <span class="pop">makers</span>.</h2>
+      <span class="sub">Swiss neighbours, category neighbours</span>
+    </div>
+    <div class="related-grid">
+      <a class="related-card" href="#">
+        <span class="related-relation">Same country</span>
+        <span class="related-name">Yare Sauce</span>
+        <div class="related-winner">EHSA Gold, BBQ Chili Sauce<br>Z&uuml;rich, Switzerland</div>
+        <div class="related-arrow">View maker &rarr;</div>
+      </a>
+      <a class="related-card" href="#">
+        <span class="related-relation">Same country</span>
+        <span class="related-name">POT UNO'S</span>
+        <div class="related-winner">EHSA Silver, Salt &amp; Condiments<br>Grenchen, Switzerland</div>
+        <div class="related-arrow">View maker &rarr;</div>
+      </a>
+      <a class="related-card" href="#">
+        <span class="related-relation">Same category (Mild Gold 2nd)</span>
+        <span class="related-name">L&oslash;kken Hvaler</span>
+        <div class="related-winner">Peach Chili, 7.43<br>Vester&oslash;y, Norway</div>
+        <div class="related-arrow">View maker &rarr;</div>
+      </a>
+      <a class="related-card" href="#">
+        <span class="related-relation">Same category (Mild Gold 3rd)</span>
+        <span class="related-name">Piri-Piri &amp; Co</span>
+        <div class="related-winner">Manga e Mel, 7.17<br>Albufeira, Portugal</div>
+        <div class="related-arrow">View maker &rarr;</div>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- PRESS STRIP -->
+<section class="press-strip-band">
+  <div class="wrap">
+    <div>
+      <h3>Writing about Spicepunk?</h3>
+      <p>Press kit includes high-res photography, full EHSA scoring detail, embeddable reveal video and a named maker contact. No registration.</p>
+    </div>
+    <div class="press-cta">
+      <a class="btn-primary" href="#">Spicepunk press kit &rarr;</a>
+      <a class="btn-ghost" href="#">All EHSA press &rarr;</a>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div class="foot-about">
+        <h4>European Hot Sauce Awards</h4>
+        <p>Independent awards programme for European chilli sauce makers. Third edition judged April 2026 in Berlin. Run on behalf of the European craft chilli sauce industry.</p>
+      </div>
+      <div>
+        <h4>Directory</h4>
+        <ul>
+          <li><a href="index.html">All makers</a></li>
+          <li><a href="index.html#countries">By country</a></li>
+          <li><a href="index.html#directory">By category</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Competition</h4>
+        <ul>
+          <li><a href="#">Enter 2027</a></li>
+          <li><a href="#">Judges</a></li>
+          <li><a href="#">Methodology</a></li>
+          <li><a href="#">Past results</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Contact</h4>
+        <ul>
+          <li><a href="#">For press</a></li>
+          <li><a href="#">For sponsors</a></li>
+          <li><a href="#">Instagram</a></li>
+          <li><a href="#">Email</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="foot-bottom">
+      <span>&copy; 2026 European Hot Sauce Awards. Heatawards.eu.</span>
+      <span>Mock maker page v0.1 &middot; not production</span>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

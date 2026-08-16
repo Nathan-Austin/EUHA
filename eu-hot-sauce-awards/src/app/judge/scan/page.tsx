@@ -198,7 +198,7 @@ export default function ScanPage() {
           <p className="text-4xl">🌶️🏆</p>
           <h1 className="text-2xl font-bold text-gray-900">Judging is now closed</h1>
           <p className="text-gray-600">
-            Thank you for participating in the 2026 EU Hot Sauce Awards. Winners will be announced on Republic of Heat&apos;s social media channels.
+            Thank you for participating in the 2026 European Hot Sauce Awards. Winners will be announced on Republic of Heat&apos;s social media channels.
           </p>
           <a href="/dashboard" className="inline-block mt-2 px-6 py-3 bg-orange-600 text-white font-semibold rounded-lg hover:bg-orange-700">
             Back to Dashboard

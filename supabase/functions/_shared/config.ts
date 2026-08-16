@@ -8,4 +8,4 @@
  * - Year-specific participation tracking
  */
 
-export const COMPETITION_YEAR = 2026;
+export const COMPETITION_YEAR = 2027;

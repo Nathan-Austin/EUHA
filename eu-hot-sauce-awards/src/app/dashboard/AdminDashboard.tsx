@@ -15,7 +15,6 @@ import EventsManager from './EventsManager'
 import EventJudgingManager from './EventJudgingManager'
 import EmailCampaignManager from './EmailCampaignManager'
 import EmailTemplateEditor from './EmailTemplateEditor'
-import ShippingAddressRequestSender from './ShippingAddressRequestSender'
 import JudgingReminderSender from './JudgingReminderSender'
 import WinnersAnnouncementSender from './WinnersAnnouncementSender'
 import ResultsFeedbackSender from './ResultsFeedbackSender'
@@ -29,9 +28,10 @@ import { COMPETITION_YEAR } from '@/lib/config'
 import SendPaymentRemindersButton from './SendPaymentRemindersButton'
 import VatInvoiceSender from './VatInvoiceSender'
 import JudgeShippingManager from './JudgeShippingManager'
-import RequestShippingAddressButton from './RequestShippingAddressButton'
 import DhlLabelScanner from './DhlLabelScanner'
 import PackageReceiveScanner from './PackageReceiveScanner'
+import SettingToggle from './SettingToggle'
+import { getCompetitionSetting } from '@/app/actions'
 
 const formatStatusLabel = (status: string) =>
   status
@@ -68,21 +68,49 @@ export default async function AdminDashboard() {
         sauce_code,
         status,
         payment_status,
+        payment_id,
         category,
         suppliers ( brand_name )
       `
     )
+    .eq('competition_year', COMPETITION_YEAR)
     .order('created_at', { ascending: false }) as { data: any[] | null; error: any }
 
-  const cycleStart = `${COMPETITION_YEAR - 1}-09-01`
+  // Distinguish "confirmed, payment due January" from plain unconfirmed-unpaid —
+  // that state lives on the linked supplier_payments row, not on the sauce itself.
+  const paymentIds = Array.from(new Set((sauces || []).map((s) => s.payment_id).filter(Boolean)))
+  const { data: linkedPayments } = paymentIds.length > 0
+    ? await supabase
+        .from('supplier_payments')
+        .select('id, stripe_payment_status')
+        .in('id', paymentIds)
+    : { data: [] as { id: string; stripe_payment_status: string }[] }
+  const paymentStatusById = new Map((linkedPayments || []).map((p) => [p.id, p.stripe_payment_status]))
 
-  const { data: suppliers } = await supabase
-    .from('suppliers')
-    .select(
-      'id, brand_name, email, tracking_number, postal_service_name, package_status, package_received_at, country, region'
-    )
-    .gte('created_at', cycleStart)
-    .order('package_status', { ascending: true }) as { data: any[] | null; error: any }
+  // Suppliers active this season: since suppliers persist across years (an
+  // account created in a prior year is reused when they re-enter), filtering
+  // by suppliers.created_at would silently drop returning suppliers. Instead,
+  // scope to whoever has at least one sauce entered for the current year.
+  const { data: currentSeasonSupplierLinks } = await supabase
+    .from('sauces')
+    .select('supplier_id')
+    .eq('competition_year', COMPETITION_YEAR)
+
+  const currentSeasonSupplierIds = Array.from(
+    new Set((currentSeasonSupplierLinks || []).map((s) => s.supplier_id).filter(Boolean))
+  )
+
+  const { data: suppliers } = (
+    currentSeasonSupplierIds.length > 0
+      ? await supabase
+          .from('suppliers')
+          .select(
+            'id, brand_name, email, tracking_number, postal_service_name, package_status, package_received_at, country, region'
+          )
+          .in('id', currentSeasonSupplierIds)
+          .order('package_status', { ascending: true })
+      : { data: [], error: null }
+  ) as { data: any[] | null; error: any }
 
   const { data: shippingJudges } = await supabase
     .from('judges')
@@ -98,6 +126,8 @@ export default async function AdminDashboard() {
     .eq('event_open', true)
 
   const resultsData = await getResultsData()
+  const shippingOpen = await getCompetitionSetting('shipping_open')
+  const judgesDashboardOpen = await getCompetitionSetting('judges_dashboard_open')
   const resultsResults = 'results' in resultsData ? resultsData.results : []
   const resultsScoringCategories = 'scoringCategories' in resultsData ? resultsData.scoringCategories : []
 
@@ -111,7 +141,10 @@ export default async function AdminDashboard() {
 
   const totalSauces = sauces.length
   const paidSauces = sauces.filter((sauce) => sauce.payment_status === 'paid').length
-  const unpaidSauces = sauces.filter((sauce) => sauce.payment_status === 'pending_payment').length
+  const confirmedDeferredSauces = sauces.filter(
+    (sauce) => sauce.payment_status === 'pending_payment' && paymentStatusById.get(sauce.payment_id) === 'deferred'
+  ).length
+  const unpaidSauces = sauces.filter((sauce) => sauce.payment_status === 'pending_payment').length - confirmedDeferredSauces
   const statusCounts = sauces.reduce((acc, sauce) => {
     const statusKey = sauce.status || 'unknown'
     acc[statusKey] = (acc[statusKey] || 0) + 1
@@ -127,10 +160,6 @@ export default async function AdminDashboard() {
   const packagesReceived =
     suppliers?.filter((supplier) => supplier.package_status === 'received').length ?? 0
 
-  const suppliersMissingAddress = (shippingJudges || []).filter(
-    (j) => j.type === 'supplier' && (!j.address || !j.city || !j.postal_code || !j.country)
-  ).length
-
   const statusHighlights = (Object.entries(statusCounts) as Array<[string, number]>)
     .sort(([, countA], [, countB]) => countB - countA)
     .slice(0, 4)
@@ -138,7 +167,8 @@ export default async function AdminDashboard() {
   const overviewStats = [
     { label: 'Total Sauces', value: totalSauces },
     { label: 'Paid Sauces', value: paidSauces, highlight: true },
-    { label: 'Unpaid Sauces', value: unpaidSauces, warning: unpaidSauces > 0 },
+    { label: 'Confirmed (Due Jan)', value: confirmedDeferredSauces },
+    { label: 'Unconfirmed / Unpaid', value: unpaidSauces, warning: unpaidSauces > 0 },
     { label: 'Missing Codes', value: missingCodes },
     { label: 'Packages In Transit', value: packagesInTransit },
     { label: 'Awaiting Check-In', value: packagesAwaitingCheckIn },
@@ -242,17 +272,31 @@ export default async function AdminDashboard() {
                       <td className="px-4 py-3 text-gray-900">{sauce.name}</td>
                       <td className="px-4 py-3 text-gray-600">{sauce.category}</td>
                       <td className="px-4 py-3">
-                        <span
-                          className={`rounded-full px-2 py-1 text-xs font-semibold ${
-                            sauce.payment_status === 'paid'
-                              ? 'bg-green-100 text-green-800'
-                              : sauce.payment_status === 'pending_payment'
-                              ? 'bg-orange-100 text-orange-800'
-                              : 'bg-gray-100 text-gray-800'
-                          }`}
-                        >
-                          {sauce.payment_status === 'paid' ? '✓ Paid' : sauce.payment_status === 'pending_payment' ? '⚠ Unpaid' : 'Waived'}
-                        </span>
+                        {(() => {
+                          const isConfirmedDeferred =
+                            sauce.payment_status === 'pending_payment' && paymentStatusById.get(sauce.payment_id) === 'deferred'
+                          return (
+                            <span
+                              className={`rounded-full px-2 py-1 text-xs font-semibold ${
+                                sauce.payment_status === 'paid'
+                                  ? 'bg-green-100 text-green-800'
+                                  : isConfirmedDeferred
+                                  ? 'bg-blue-100 text-blue-800'
+                                  : sauce.payment_status === 'pending_payment'
+                                  ? 'bg-orange-100 text-orange-800'
+                                  : 'bg-gray-100 text-gray-800'
+                              }`}
+                            >
+                              {sauce.payment_status === 'paid'
+                                ? '✓ Paid'
+                                : isConfirmedDeferred
+                                ? '📅 Confirmed (Jan)'
+                                : sauce.payment_status === 'pending_payment'
+                                ? '⚠ Unconfirmed'
+                                : 'Waived'}
+                            </span>
+                          )
+                        })()}
                       </td>
                       <td className="px-4 py-3">
                         <span
@@ -299,6 +343,14 @@ export default async function AdminDashboard() {
           <SectionHeading
             title="Logistics & Packing"
             description="Stay on top of supplier shipments and keep judging boxes moving."
+          />
+          <SettingToggle
+            settingKey="shipping_open"
+            title="Shipping window"
+            description={'Controls whether the "Ship your samples" instructions show on the supplier dashboard. Keep this closed until payment and shipping logistics are ready — suppliers see a "more info coming" message instead.'}
+            initialEnabled={shippingOpen}
+            competitionYear={COMPETITION_YEAR}
+            closeConfirmMessage={`Close the shipping window for ${COMPETITION_YEAR}? Suppliers will stop seeing shipping instructions on their dashboard.`}
           />
           <Card>
             <PackageReceiveScanner />
@@ -388,6 +440,14 @@ export default async function AdminDashboard() {
             title="Administration"
             description="Manage access and website updates from a single place."
           />
+          <SettingToggle
+            settingKey="judges_dashboard_open"
+            title="Judges dashboard"
+            description="Controls whether any judge (pro, community, or event) can access the judges dashboard at all — checked before payment/active status, so it blocks everyone uniformly. Keep this closed until the 2027 judging dashboard and approval/payment pipeline are ready; judges see a 'not open yet' message instead."
+            initialEnabled={judgesDashboardOpen}
+            competitionYear={COMPETITION_YEAR}
+            closeConfirmMessage={`Close the judges dashboard for ${COMPETITION_YEAR}? All judges (regardless of active/payment status) will be blocked and see a "not open yet" message instead.`}
+          />
           <Card>
             <JudgeAnalysis />
           </Card>
@@ -429,9 +489,6 @@ export default async function AdminDashboard() {
             title="DHL Shipping — Judge Boxes"
             description="Generate DHL shipping labels for outgoing judging boxes. Labels print separately from judging labels."
           />
-          {suppliersMissingAddress > 0 && (
-            <RequestShippingAddressButton missingCount={suppliersMissingAddress} />
-          )}
           <Card>
             <DhlLabelScanner />
           </Card>
@@ -462,9 +519,6 @@ export default async function AdminDashboard() {
           </Card>
           <Card>
             <JudgingReminderSender />
-          </Card>
-          <Card>
-            <ShippingAddressRequestSender />
           </Card>
           <Card>
             <EmailTemplateEditor />

@@ -9,7 +9,7 @@ export default function SendPaymentRemindersButton() {
     success: boolean;
     remindersSent?: number;
     totalPending?: number;
-    details?: Array<{ email: string; brand: string; days_pending: number }>;
+    details?: Array<{ email: string; brand: string; entry_count: number; days_pending: number }>;
     errors?: Array<{ email?: string; error: string }>;
     message?: string;
   } | null>(null);
@@ -40,8 +40,8 @@ export default function SendPaymentRemindersButton() {
     <div className="space-y-4">
       <div className="flex items-start justify-between">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900">Payment Reminders</h3>
-          <p className="text-sm text-gray-600">Send reminder emails to suppliers with pending payments</p>
+          <h3 className="text-lg font-semibold text-gray-900">Confirm-Entries Reminders</h3>
+          <p className="text-sm text-gray-600">Send reminder emails to suppliers with unconfirmed sauce entries (registered but never confirmed, or added after confirming)</p>
         </div>
         <button
           onClick={handleSendReminders}
@@ -89,6 +89,7 @@ export default function SendPaymentRemindersButton() {
                     <div key={index} className="text-xs text-gray-600 flex items-center justify-between py-1 px-2 bg-white rounded border border-gray-200">
                       <span className="font-medium">{detail.brand}</span>
                       <span className="text-gray-500">{detail.email}</span>
+                      <span className="text-gray-500">{detail.entry_count} unconfirmed</span>
                       <span className="text-orange-600">{detail.days_pending} days pending</span>
                     </div>
                   ))}

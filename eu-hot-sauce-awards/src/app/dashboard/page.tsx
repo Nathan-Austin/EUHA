@@ -4,11 +4,13 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { COMPETITION_YEAR } from '@/lib/config'
+import { determineVatTreatment } from '@/lib/company'
 import LogoutButton from './LogoutButton'
 import AdminDashboard from './AdminDashboard'
 import CommunityJudgeDashboard from './CommunityJudgeDashboard'
 import SupplierDashboard from './SupplierDashboard'
 import StripeCheckoutButton from './StripeCheckoutButton'
+import { getSupplierUnpaidSauces, getCompetitionSetting } from '@/app/actions'
 
 export const dynamic = 'force-dynamic'
 
@@ -62,11 +64,26 @@ export default async function DashboardPage() {
     )
   }
 
+  // Blocks judge-dashboard access uniformly for pro/community/event judges,
+  // checked before active/payment status — so an approved-but-unpaid (or even
+  // a paid) judge from a prior season can't get in while this is closed.
+  const judgesDashboardClosedMessage = (
+    <div className="space-y-4">
+      <h2 className="text-xl font-semibold">Not open yet</h2>
+      <p>The judges dashboard for {COMPETITION_YEAR} isn&apos;t open yet. We&apos;ll email you once it is.</p>
+    </div>
+  )
+
   const renderDashboard = async () => {
+    const judgesDashboardOpen = ['pro', 'community', 'event'].includes(judge.type)
+      ? await getCompetitionSetting('judges_dashboard_open')
+      : true
+
     switch (judge.type) {
       case 'admin':
         return <AdminDashboard />
       case 'pro':
+        if (!judgesDashboardOpen) return judgesDashboardClosedMessage
         return <CommunityJudgeDashboard
           openJudging={judge.open_judging ?? false}
           shippingAddress={{
@@ -84,7 +101,15 @@ export default async function DashboardPage() {
         // Fetch supplier data for dashboard
         const { data: supplier } = await supabase
           .from('suppliers')
-          .select('id, brand_name, package_status, package_received_at')
+          .select(`
+            id, brand_name, contact_name, package_status, package_received_at,
+            ehc_id, ehc_status, ehc_verified_at,
+            address_street, address_house_number, address_line2, city, state, postal_code, country, phone,
+            bio, website, instagram, logo_path, ehc_sync_consent,
+            vat_number, invoice_company_name,
+            invoice_address_street, invoice_address_house_number, invoice_address_line2,
+            invoice_city, invoice_state, invoice_postal_code, invoice_country
+          `)
           .ilike('email', user.email!)
           .single();
 
@@ -98,9 +123,42 @@ export default async function DashboardPage() {
           .select('id, name, category, image_path, status')
           .eq('supplier_id', supplier.id)
           .in('payment_status', ['paid', 'payment_waived'])
-          .gte('created_at', `${COMPETITION_YEAR - 1}-09-01`)
-          .lt('created_at', `${COMPETITION_YEAR + 1}-01-01`)
+          .eq('competition_year', COMPETITION_YEAR)
           .order('created_at', { ascending: false });
+
+        // Has this supplier already opted in to the current competition year?
+        // Either they've explicitly entered via the dashboard gate, or they
+        // already have a sauce (paid or not) recorded for this year.
+        const { data: participation } = await supabase
+          .from('supplier_participations')
+          .select('participated')
+          .ilike('email', user.email!)
+          .eq('year', COMPETITION_YEAR)
+          .maybeSingle();
+
+        const unpaidSaucesResult = await getSupplierUnpaidSauces();
+        const unpaidSauces = 'data' in unpaidSaucesResult ? unpaidSaucesResult.data : [];
+
+        const hasOptedIn = Boolean(participation?.participated)
+          || (enteredSauces?.length ?? 0) > 0
+          || unpaidSauces.length > 0;
+
+        const { data: pendingPayment, error: pendingPaymentError } = await supabase
+          .from('supplier_payments')
+          .select('id, stripe_payment_status, entry_count')
+          .eq('supplier_id', supplier.id)
+          .eq('competition_year', COMPETITION_YEAR)
+          .neq('stripe_payment_status', 'succeeded')
+          .maybeSingle();
+
+        if (pendingPaymentError) {
+          console.error('Failed to look up pending payment:', pendingPaymentError);
+        }
+
+        const shippingOpen = await getCompetitionSetting('shipping_open');
+        // "Same as delivery" is stored as null invoice_* fields (see updateSupplierProfile),
+        // so falling back to the delivery country here is what implements that link.
+        const vatTreatment = determineVatTreatment(supplier.invoice_country || supplier.country, supplier.vat_number);
 
         return <SupplierDashboard
           supplierData={{
@@ -108,20 +166,49 @@ export default async function DashboardPage() {
             packageStatus: supplier.package_status || 'pending',
             packageReceivedAt: supplier.package_received_at,
           }}
-          judgeData={{
-            address: judge.address,
-            address_line2: judge.address_line2,
-            city: judge.city,
-            postal_code: judge.postal_code,
-            state: judge.state,
-            country: judge.country,
-            dhl_tracking_number: judge.dhl_tracking_number,
-            dhl_label_url: judge.dhl_label_url,
+          ehcData={{
+            ehcId: supplier.ehc_id,
+            ehcStatus: supplier.ehc_status,
+            ehcVerifiedAt: supplier.ehc_verified_at,
+          }}
+          producerInfo={{
+            brandName: supplier.brand_name,
+            contactName: supplier.contact_name,
+            addressStreet: supplier.address_street,
+            addressHouseNumber: supplier.address_house_number,
+            addressLine2: supplier.address_line2,
+            city: supplier.city,
+            state: supplier.state,
+            postalCode: supplier.postal_code,
+            country: supplier.country,
+            phone: supplier.phone,
+            bio: supplier.bio,
+            website: supplier.website,
+            instagram: supplier.instagram,
+            logoPath: supplier.logo_path,
+            ehcSyncConsent: supplier.ehc_sync_consent,
+            vatNumber: supplier.vat_number,
+            invoiceCompanyName: supplier.invoice_company_name,
+            invoiceAddressStreet: supplier.invoice_address_street,
+            invoiceAddressHouseNumber: supplier.invoice_address_house_number,
+            invoiceAddressLine2: supplier.invoice_address_line2,
+            invoiceCity: supplier.invoice_city,
+            invoiceState: supplier.invoice_state,
+            invoicePostalCode: supplier.invoice_postal_code,
+            invoiceCountry: supplier.invoice_country,
           }}
           enteredSauces={enteredSauces || []}
+          hasOptedIn={hasOptedIn}
+          unpaidSauces={unpaidSauces}
+          hasExistingPayment={Boolean(pendingPayment)}
+          paymentStatus={pendingPayment?.stripe_payment_status ?? null}
+          confirmedEntryCount={pendingPayment?.entry_count ?? null}
+          shippingOpen={shippingOpen}
+          vatTreatment={vatTreatment}
         />;
       }
       case 'community':
+        if (!judgesDashboardOpen) return judgesDashboardClosedMessage
         if (judge.stripe_payment_status === 'succeeded') {
           return <CommunityJudgeDashboard
             openJudging={judge.open_judging ?? false}
@@ -145,6 +232,7 @@ export default async function DashboardPage() {
           </div>
         )
       case 'event':
+        if (!judgesDashboardOpen) return judgesDashboardClosedMessage
         return <CommunityJudgeDashboard
           isEventJudge={true}
           openJudging={true}
@@ -176,6 +264,29 @@ export default async function DashboardPage() {
         <main className="w-full px-4 py-8 sm:px-6 lg:px-10">
           <div className="w-full">{dashboardContent}</div>
         </main>
+      </div>
+    )
+  }
+
+  if (judge.type === 'supplier') {
+    return (
+      <div className="min-h-screen bg-[#faf6ec] text-black">
+        <header className="border-b-4 border-black bg-[#F5C518]">
+          <div className="mx-auto flex max-w-[1240px] flex-wrap items-center justify-between gap-4 px-6 py-4">
+            <div className="flex items-center gap-3.5">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/ehsa-badge.png" alt="European Hot Sauce Awards" className="h-11 w-11 flex-shrink-0" />
+              <span className="font-[family-name:var(--font-archivo-black)] text-lg uppercase leading-none text-black">
+                Supplier dashboard
+                <small className="mt-1 block font-sans text-[11px] font-semibold tracking-[0.12em] text-black/70">
+                  Logged in as {user.email}
+                </small>
+              </span>
+            </div>
+            <LogoutButton />
+          </div>
+        </header>
+        <main className="mx-auto max-w-[1240px] px-6 py-10">{dashboardContent}</main>
       </div>
     )
   }

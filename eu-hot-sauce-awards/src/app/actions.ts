@@ -8,6 +8,7 @@ import { sendEmail, emailTemplates } from '@/lib/email'
 import * as fs from 'fs'
 import * as path from 'path'
 import { COMPETITION_YEAR } from '@/lib/config'
+import { isRecognizedCountry } from '@/lib/countries'
 
 type SauceStatus = 'registered' | 'arrived' | 'boxed' | 'judged';
 
@@ -2844,6 +2845,69 @@ export async function rejectProJudge(judgeId: string, reason?: string) {
   return { success: true, message: `Judge application rejected.` };
 }
 
+type InvoiceAddressFields = {
+  address: string | null;
+  address_street: string | null;
+  address_house_number: string | null;
+  address_line2: string | null;
+  city: string | null;
+  state: string | null;
+  postal_code: string | null;
+  country: string | null;
+  invoice_address_street: string | null;
+  invoice_address_house_number: string | null;
+  invoice_address_line2: string | null;
+  invoice_city: string | null;
+  invoice_state: string | null;
+  invoice_postal_code: string | null;
+  invoice_country: string | null;
+};
+
+/**
+ * Resolves the country to use for VAT-treatment determination: the billing
+ * address ("invoice_country") if set, else the delivery address's country —
+ * "same as delivery" is stored as null invoice_* fields (see
+ * updateSupplierProfile), not a point-in-time copy, so this fallback is what
+ * actually implements that link.
+ */
+function resolveInvoiceCountry(supplier: Pick<InvoiceAddressFields, 'invoice_country' | 'country'>): string | null {
+  return supplier.invoice_country || supplier.country || null;
+}
+
+/**
+ * Formats a supplier's billing address for invoice/receipt emails: prefers
+ * the split invoice_* fields (from the Producer Info "billing address"
+ * section) when set, then the delivery address fields ("same as delivery"),
+ * then the legacy combined `address` column for suppliers who've never set
+ * either of the newer field sets. Shared by sendVatEmail and
+ * sendBulkVatInvoices so the two send paths can't drift apart again.
+ */
+function formatInvoiceAddress(supplier: InvoiceAddressFields): string {
+  const invoiceLines = [
+    supplier.invoice_address_street && supplier.invoice_address_house_number
+      ? `${supplier.invoice_address_street} ${supplier.invoice_address_house_number}`
+      : null,
+    supplier.invoice_address_line2,
+    [supplier.invoice_postal_code, supplier.invoice_city].filter(Boolean).join(' ') || null,
+    supplier.invoice_state,
+    supplier.invoice_country,
+  ].filter(Boolean) as string[];
+
+  if (invoiceLines.length > 0) return invoiceLines.join('\n');
+
+  const deliveryLines = [
+    supplier.address_street && supplier.address_house_number
+      ? `${supplier.address_street} ${supplier.address_house_number}`
+      : null,
+    supplier.address_line2,
+    [supplier.postal_code, supplier.city].filter(Boolean).join(' ') || null,
+    supplier.state,
+    supplier.country,
+  ].filter(Boolean) as string[];
+
+  return deliveryLines.length > 0 ? deliveryLines.join('\n') : (supplier.address || '');
+}
+
 /**
  * Send VAT invoice email to a supplier for current year entries
  */
@@ -2870,7 +2934,12 @@ export async function sendVatEmail(supplierId: string) {
   // 2. Validate supplier exists
   const { data: supplier, error: supplierError } = await supabase
     .from('suppliers')
-    .select('id, brand_name, contact_name, email, address')
+    .select(`
+      id, brand_name, contact_name, email, address, vat_number, invoice_company_name,
+      address_street, address_house_number, address_line2, city, state, postal_code, country,
+      invoice_address_street, invoice_address_house_number, invoice_address_line2,
+      invoice_city, invoice_state, invoice_postal_code, invoice_country
+    `)
     .eq('id', supplierId)
     .single();
 
@@ -2906,9 +2975,10 @@ export async function sendVatEmail(supplierId: string) {
   const totalGrossCents = payments.reduce((sum, p) => sum + p.amount_due_cents, 0);
 
   // Import helper functions from company lib
-  const { COMPANY_INFO, calculateVAT, formatEuro } = await import('@/lib/company');
+  const { COMPANY_INFO, calculateVAT, determineVatTreatment, formatEuro } = await import('@/lib/company');
 
-  const vatBreakdown = calculateVAT(totalGrossCents);
+  const vatTreatment = determineVatTreatment(resolveInvoiceCountry(supplier), supplier.vat_number);
+  const vatBreakdown = calculateVAT(totalGrossCents, vatTreatment);
 
   // 5. Generate receipt number using DB function
   const serviceSupabase = createServiceClient(
@@ -2935,14 +3005,16 @@ export async function sendVatEmail(supplierId: string) {
     receiptNumber,
     receiptDate,
     year: currentYear,
-    supplierName: supplier.brand_name,
+    supplierName: supplier.invoice_company_name || supplier.brand_name,
     supplierContactName: supplier.contact_name || '',
-    supplierAddress: supplier.address || '',
+    supplierAddress: formatInvoiceAddress(supplier),
+    supplierVatNumber: supplier.vat_number || null,
     entryCount: totalEntries,
     grossAmount: formatEuro(vatBreakdown.gross).replace('€', '').trim(),
     netAmount: formatEuro(vatBreakdown.net).replace('€', '').trim(),
     vatAmount: formatEuro(vatBreakdown.vat).replace('€', '').trim(),
     vatRate: (vatBreakdown.vatRate * 100).toFixed(0),
+    vatTreatment,
     companyName: COMPANY_INFO.name,
     companyAddress: COMPANY_INFO.address.full,
     companyVat: COMPANY_INFO.vat.number,
@@ -3021,6 +3093,7 @@ export interface VatInvoiceRecipient {
   email: string
   entry_count: number
   gross_amount: string
+  vat_treatment: 'standard' | 'reverse_charge' | 'outside_scope'
   status: 'pending' | 'sent' | 'failed'
   receipt_number?: string
 }
@@ -3071,7 +3144,7 @@ export async function getVatInvoiceRecipients(): Promise<
 
   const { data: suppliers } = await serviceClient
     .from('suppliers')
-    .select('id, brand_name, email, email_opted_out')
+    .select('id, brand_name, email, email_opted_out, vat_number, country, invoice_country')
     .in('id', supplierIds)
     .eq('email_opted_out', false)
 
@@ -3092,12 +3165,13 @@ export async function getVatInvoiceRecipients(): Promise<
     }
   }
 
-  const { calculateVAT, formatEuro } = await import('@/lib/company')
+  const { calculateVAT, determineVatTreatment, formatEuro } = await import('@/lib/company')
 
   const recipients: VatInvoiceRecipient[] = (suppliers ?? []).map((s) => {
     const pay = paymentsBySupplier.get(s.id)!
     const audit = auditBySupplierId.get(s.id)
-    const vatBreakdown = calculateVAT(pay.total_cents)
+    const treatment = determineVatTreatment(resolveInvoiceCountry(s), s.vat_number)
+    const vatBreakdown = calculateVAT(pay.total_cents, treatment)
     let status: VatInvoiceRecipient['status'] = 'pending'
     if (audit?.sent) status = 'sent'
     else if (audit?.failed) status = 'failed'
@@ -3107,6 +3181,7 @@ export async function getVatInvoiceRecipients(): Promise<
       email: s.email,
       entry_count: pay.entry_count,
       gross_amount: formatEuro(vatBreakdown.gross),
+      vat_treatment: treatment,
       status,
       receipt_number: audit?.receipt_number,
     }
@@ -3144,7 +3219,7 @@ export async function sendBulkVatInvoices(supplierIds: string[]): Promise<
   const cycleStart = `${COMPETITION_YEAR - 1}-05-01`
   const cycleEnd = `${COMPETITION_YEAR}-05-31`
 
-  const { COMPANY_INFO, calculateVAT, formatEuro } = await import('@/lib/company')
+  const { COMPANY_INFO, calculateVAT, determineVatTreatment, formatEuro } = await import('@/lib/company')
 
   let sent = 0
   let skipped = 0
@@ -3165,7 +3240,13 @@ export async function sendBulkVatInvoices(supplierIds: string[]): Promise<
 
     const { data: supplier } = await serviceClient
       .from('suppliers')
-      .select('id, brand_name, contact_name, email, address, email_opted_out')
+      .select(`
+        id, brand_name, contact_name, email, address, email_opted_out,
+        vat_number, invoice_company_name,
+        address_street, address_house_number, address_line2, city, state, postal_code, country,
+        invoice_address_street, invoice_address_house_number, invoice_address_line2,
+        invoice_city, invoice_state, invoice_postal_code, invoice_country
+      `)
       .eq('id', supplierId)
       .single()
 
@@ -3183,7 +3264,8 @@ export async function sendBulkVatInvoices(supplierIds: string[]): Promise<
 
     const totalEntries = payments.reduce((sum, p) => sum + p.entry_count, 0)
     const totalGrossCents = payments.reduce((sum, p) => sum + p.amount_due_cents, 0)
-    const vatBreakdown = calculateVAT(totalGrossCents)
+    const vatTreatment = determineVatTreatment(resolveInvoiceCountry(supplier), supplier.vat_number)
+    const vatBreakdown = calculateVAT(totalGrossCents, vatTreatment)
 
     const { data: receiptNumberResult } = await serviceClient
       .rpc('generate_invoice_number', { p_year: COMPETITION_YEAR })
@@ -3198,18 +3280,22 @@ export async function sendBulkVatInvoices(supplierIds: string[]): Promise<
       day: '2-digit', month: 'long', year: 'numeric',
     })
 
+    const supplierAddress = formatInvoiceAddress(supplier)
+
     const emailTemplate = emailTemplates.paymentReceipt({
       receiptNumber,
       receiptDate,
       year: COMPETITION_YEAR,
-      supplierName: supplier.brand_name,
+      supplierName: supplier.invoice_company_name || supplier.brand_name,
       supplierContactName: supplier.contact_name || '',
-      supplierAddress: supplier.address || '',
+      supplierAddress,
+      supplierVatNumber: supplier.vat_number || null,
       entryCount: totalEntries,
       grossAmount: formatEuro(vatBreakdown.gross).replace('€', '').trim(),
       netAmount: formatEuro(vatBreakdown.net).replace('€', '').trim(),
       vatAmount: formatEuro(vatBreakdown.vat).replace('€', '').trim(),
       vatRate: (vatBreakdown.vatRate * 100).toFixed(0),
+      vatTreatment,
       companyName: COMPANY_INFO.name,
       companyAddress: COMPANY_INFO.address.full,
       companyVat: COMPANY_INFO.vat.number,
@@ -3295,10 +3381,49 @@ function resolveDiscount(entryCount: number) {
   return band ? band.discount : DISCOUNT_BANDS[DISCOUNT_BANDS.length - 1].discount;
 }
 
+// EHC membership statuses that qualify for the free-3rd-entry discount.
+// 'pending' (registered/committed, not yet paid) qualifies at entry time —
+// the January invoicing run re-checks and only honors it if 'member' by then.
+const EHC_QUALIFYING_STATUSES = new Set(['pending', 'member']);
+
+/**
+ * Single source of truth for entry pricing, shared by createPaymentBatch,
+ * insertSauceEntry's auto-link-to-existing-payment step, and deleteSauce's
+ * recompute-on-delete step, so the volume discount and EHC free-3rd-entry
+ * discount can never drift apart between call sites.
+ */
+function calculatePaymentTotals(entryCount: number, ehcQualifies: boolean) {
+  const subtotalCents = entryCount * BASE_PRICE_CENTS;
+  const volumeDiscountRate = resolveDiscount(entryCount);
+  const volumeDiscountCents = Math.round(subtotalCents * volumeDiscountRate);
+  // Flat-price entries mean "price of the qualifying 3rd entry" is simply one
+  // base-price entry, once at least 3 have been entered.
+  const ehcDiscountCents = ehcQualifies && entryCount >= 3 ? BASE_PRICE_CENTS : 0;
+  const discountCents = volumeDiscountCents + ehcDiscountCents;
+  const amountDueCents = subtotalCents - discountCents;
+  return { subtotalCents, volumeDiscountRate, volumeDiscountCents, ehcDiscountCents, discountCents, amountDueCents };
+}
+
 /**
  * Get all unpaid sauce entries for the logged-in supplier
  */
-export async function getSupplierUnpaidSauces() {
+export type UnpaidSauceRecord = {
+  id: string;
+  name: string;
+  category: string;
+  sauce_code: string;
+  ingredients: string;
+  allergens: string;
+  webshop_link: string | null;
+  tasting_notes: string | null;
+  product_description: string | null;
+  image_path: string | null;
+  created_at: string;
+};
+
+export async function getSupplierUnpaidSauces(): Promise<
+  { error: string } | { success: true; data: UnpaidSauceRecord[] }
+> {
   const cookieStore = cookies();
   const supabase = createClient(cookieStore);
 
@@ -3319,30 +3444,173 @@ export async function getSupplierUnpaidSauces() {
     return { error: 'Supplier account not found.' };
   }
 
-  // Fetch all unpaid sauces
+  // Fetch this season's unpaid sauces
   const { data: sauces, error: saucesError } = await supabase
     .from('sauces')
-    .select('id, name, category, sauce_code, ingredients, allergens, webshop_link, created_at')
+    .select('id, name, category, sauce_code, ingredients, allergens, webshop_link, tasting_notes, product_description, image_path, created_at')
     .eq('supplier_id', supplier.id)
     .eq('payment_status', 'pending_payment')
+    .eq('competition_year', COMPETITION_YEAR)
     .order('created_at', { ascending: false });
 
   if (saucesError) {
     return { error: saucesError.message };
   }
 
-  return { success: true, data: sauces || [] };
+  return { success: true, data: (sauces || []) as UnpaidSauceRecord[] };
+}
+
+type SauceEntryFields = {
+  name: string;
+  category: string;
+  ingredients: string;
+  allergens: string | null;
+  webshopLink: string | null;
+  tastingNotes?: string | null;
+  productDescription?: string | null;
+  reusedFromSauceId?: string | null;
+};
+
+/**
+ * Shared insert path for a new sauce row: generates the sauce code, creates the
+ * row, generates the QR code, and auto-attaches it to any pending payment.
+ * Used by both createSauceEntry (blank form) and reuseSauceEntry (cloned from a
+ * prior year's entry) so the code-generation/payment-attach logic can't drift
+ * between the two call sites.
+ */
+async function insertSauceEntry(
+  serviceSupabase: any,
+  supplierId: string,
+  fields: SauceEntryFields
+): Promise<{ error: string } | { success: true; sauceId: string; sauceCode: string }> {
+  const categoryCode = CATEGORY_CODES[fields.category];
+  if (!categoryCode) {
+    return { error: `Unknown category: ${fields.category}` };
+  }
+
+  // Generate sauce code from a persistent per-category counter (never rewinds,
+  // even if an earlier sauce holding a code gets deleted) via an atomic RPC.
+  const { data: nextNumber, error: counterError } = await serviceSupabase
+    .rpc('increment_sauce_code_counter', { p_category_code: categoryCode });
+
+  if (counterError) {
+    return { error: counterError.message };
+  }
+
+  const sauceCode = `${categoryCode}${String(nextNumber).padStart(3, '0')}`;
+
+  // Create sauce entry
+  const { data: newSauce, error: insertError } = await serviceSupabase
+    .from('sauces')
+    .insert({
+      supplier_id: supplierId,
+      name: fields.name,
+      category: fields.category,
+      ingredients: fields.ingredients,
+      allergens: fields.allergens || 'None',
+      webshop_link: fields.webshopLink || null,
+      tasting_notes: fields.tastingNotes || null,
+      product_description: fields.productDescription || null,
+      reused_from_sauce_id: fields.reusedFromSauceId || null,
+      sauce_code: sauceCode,
+      status: 'registered',
+      payment_status: 'pending_payment',
+      competition_year: COMPETITION_YEAR,
+    })
+    .select('id')
+    .single();
+
+  if (insertError) {
+    // Unique violation on (reused_from_sauce_id, category, competition_year) means a
+    // duplicate submission (double-click / two tabs) raced this one to the insert.
+    if (insertError.code === '23505' && fields.reusedFromSauceId) {
+      return { error: `This sauce has already been entered in the ${fields.category} category.` };
+    }
+    return { error: insertError.message };
+  }
+
+  // Generate QR code
+  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?data=${newSauce.id}&size=200x200`;
+  const { error: qrError } = await serviceSupabase
+    .from('sauces')
+    .update({ qr_code_url: qrCodeUrl })
+    .eq('id', newSauce.id);
+
+  if (qrError) {
+    console.error('Failed to generate QR code:', qrError);
+    // Don't fail the whole operation
+  }
+
+  // Check if there's a pending payment and auto-add this sauce to it.
+  // Deliberately matches 'pending' only, not 'deferred' (the status
+  // createPaymentBatch now uses for a confirmed-but-unpaid batch) — a sauce
+  // added after confirming should NOT silently re-inflate an already-locked
+  // batch. The dashboard instead shows "you've changed your entries since
+  // confirming" and requires an explicit re-confirm click. This block is
+  // effectively vestigial for suppliers now (nothing creates a 'pending'
+  // batch in the current flow) but left as-is for the old immediate-charge
+  // path it was built for.
+  const { data: pendingPayment } = await serviceSupabase
+    .from('supplier_payments')
+    .select('id, entry_count, stripe_session_id')
+    .eq('supplier_id', supplierId)
+    .eq('stripe_payment_status', 'pending')
+    .single();
+
+  if (pendingPayment) {
+    // Link this sauce to the existing payment
+    await serviceSupabase
+      .from('sauces')
+      .update({ payment_id: pendingPayment.id })
+      .eq('id', newSauce.id);
+
+    // Update payment amounts with new sauce count
+    const { data: supplierForDiscount } = await serviceSupabase
+      .from('suppliers')
+      .select('ehc_status')
+      .eq('id', supplierId)
+      .single();
+    const ehcQualifies = EHC_QUALIFYING_STATUSES.has(supplierForDiscount?.ehc_status ?? '');
+
+    const newEntryCount = pendingPayment.entry_count + 1;
+    const {
+      subtotalCents: newSubtotalCents,
+      discountCents: newDiscountCents,
+      ehcDiscountCents: newEhcDiscountCents,
+      amountDueCents: newAmountDueCents,
+    } = calculatePaymentTotals(newEntryCount, ehcQualifies);
+    const newDiscountRate = newSubtotalCents > 0 ? newDiscountCents / newSubtotalCents : 0;
+
+    await serviceSupabase
+      .from('supplier_payments')
+      .update({
+        entry_count: newEntryCount,
+        discount_percent: Number((newDiscountRate * 100).toFixed(2)),
+        subtotal_cents: newSubtotalCents,
+        discount_cents: newDiscountCents,
+        ehc_discount_cents: newEhcDiscountCents,
+        amount_due_cents: newAmountDueCents,
+        stripe_session_id: null, // Clear old Stripe session - it will be recreated with correct amounts
+      })
+      .eq('id', pendingPayment.id);
+  }
+
+  return { success: true as const, sauceId: newSauce.id as string, sauceCode };
 }
 
 /**
  * Create a new sauce entry for the logged-in supplier
  */
-export async function createSauceEntry(formData: FormData) {
+export async function createSauceEntry(formData: FormData): Promise<
+  { error: string } | { success: true; data: { id: string; sauce_code: string } }
+> {
   const name = formData.get('name') as string;
   const category = formData.get('category') as string;
   const ingredients = formData.get('ingredients') as string;
   const allergens = formData.get('allergens') as string;
   const webshopLink = formData.get('webshopLink') as string;
+  const tastingNotes = formData.get('tastingNotes') as string;
+  const productDescription = formData.get('productDescription') as string;
   const imagePath = formData.get('imagePath') as string | null;
 
   if (!name || !category || !ingredients) {
@@ -3369,111 +3637,30 @@ export async function createSauceEntry(formData: FormData) {
     return { error: 'Supplier account not found.' };
   }
 
-  // Get category code
-  const categoryCode = CATEGORY_CODES[category];
-  if (!categoryCode) {
-    return { error: `Unknown category: ${category}` };
-  }
-
   // Use service client to bypass RLS for sauce code generation
   const serviceSupabase = createServiceClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-  // Generate sauce code
-  const { data: existingSauces, error: countError } = await serviceSupabase
-    .from('sauces')
-    .select('sauce_code')
-    .like('sauce_code', `${categoryCode}%`)
-    .order('sauce_code', { ascending: false })
-    .limit(1);
+  const result = await insertSauceEntry(serviceSupabase, supplier.id, {
+    name,
+    category,
+    ingredients,
+    allergens,
+    webshopLink,
+    tastingNotes,
+    productDescription,
+  });
 
-  if (countError) {
-    return { error: countError.message };
-  }
-
-  let nextNumber = 1;
-  if (existingSauces && existingSauces.length > 0) {
-    const lastCode = existingSauces[0].sauce_code;
-    const lastNumber = parseInt(lastCode.substring(1), 10);
-    nextNumber = lastNumber + 1;
-  }
-
-  const sauceCode = `${categoryCode}${String(nextNumber).padStart(3, '0')}`;
-
-  // Create sauce entry
-  const { data: newSauce, error: insertError } = await serviceSupabase
-    .from('sauces')
-    .insert({
-      supplier_id: supplier.id,
-      name,
-      category,
-      ingredients,
-      allergens: allergens || 'None',
-      webshop_link: webshopLink || null,
-      sauce_code: sauceCode,
-      status: 'registered',
-      payment_status: 'pending_payment',
-    })
-    .select('id')
-    .single();
-
-  if (insertError) {
-    return { error: insertError.message };
-  }
-
-  // Generate QR code
-  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?data=${newSauce.id}&size=200x200`;
-  const { error: qrError } = await serviceSupabase
-    .from('sauces')
-    .update({ qr_code_url: qrCodeUrl })
-    .eq('id', newSauce.id);
-
-  if (qrError) {
-    console.error('Failed to generate QR code:', qrError);
-    // Don't fail the whole operation
-  }
-
-  // Check if there's a pending payment and auto-add this sauce to it
-  const { data: pendingPayment } = await serviceSupabase
-    .from('supplier_payments')
-    .select('id, entry_count, stripe_session_id')
-    .eq('supplier_id', supplier.id)
-    .eq('stripe_payment_status', 'pending')
-    .single();
-
-  if (pendingPayment) {
-    // Link this sauce to the existing payment
-    await serviceSupabase
-      .from('sauces')
-      .update({ payment_id: pendingPayment.id })
-      .eq('id', newSauce.id);
-
-    // Update payment amounts with new sauce count
-    const newEntryCount = pendingPayment.entry_count + 1;
-    const newDiscountRate = resolveDiscount(newEntryCount);
-    const newSubtotalCents = newEntryCount * BASE_PRICE_CENTS;
-    const newDiscountCents = Math.round(newSubtotalCents * newDiscountRate);
-    const newAmountDueCents = newSubtotalCents - newDiscountCents;
-
-    await serviceSupabase
-      .from('supplier_payments')
-      .update({
-        entry_count: newEntryCount,
-        discount_percent: Number((newDiscountRate * 100).toFixed(2)),
-        subtotal_cents: newSubtotalCents,
-        discount_cents: newDiscountCents,
-        amount_due_cents: newAmountDueCents,
-        stripe_session_id: null, // Clear old Stripe session - it will be recreated with correct amounts
-      })
-      .eq('id', pendingPayment.id);
+  if ('error' in result) {
+    return result;
   }
 
   // Handle image upload if provided
   if (imagePath) {
     const bucket = process.env.NEXT_PUBLIC_SAUCE_IMAGE_BUCKET || 'sauce-media';
-    const targetPath = `suppliers/${supplier.id}/${newSauce.id}.webp`;
+    const targetPath = `suppliers/${supplier.id}/${result.sauceId}.webp`;
 
     // Move image from pending to final location
     const { error: moveError } = await serviceSupabase.storage
@@ -3488,7 +3675,7 @@ export async function createSauceEntry(formData: FormData) {
       const { error: updateError } = await serviceSupabase
         .from('sauces')
         .update({ image_path: targetPath })
-        .eq('id', newSauce.id);
+        .eq('id', result.sauceId);
 
       if (updateError) {
         console.error('Failed to update sauce with image path:', updateError);
@@ -3497,7 +3684,239 @@ export async function createSauceEntry(formData: FormData) {
   }
 
   revalidatePath('/dashboard');
-  return { success: true, data: { id: newSauce.id, sauce_code: sauceCode } };
+  return { success: true, data: { id: result.sauceId, sauce_code: result.sauceCode } };
+}
+
+/**
+ * Re-enter a sauce the supplier previously submitted in an earlier competition
+ * year: clones its identity fields (and image, if any) into one fresh row per
+ * selected category for the current competition year, leaving the original
+ * row(s) untouched as history. A sauce can be entered into more than one
+ * category — each is a separate row (and a separate paid entry). Categories
+ * already re-entered from this source this year are skipped rather than
+ * erroring, so re-calling with an overlapping selection is safe.
+ */
+export async function reuseSauceEntry(sourceSauceId: string, categories: string[]): Promise<
+  { error: string } | { success: true; data: { id: string; sauce_code: string; category: string }[] }
+> {
+  const uniqueCategories = Array.from(new Set(categories));
+  if (uniqueCategories.length === 0) {
+    return { error: 'Select at least one category.' };
+  }
+
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user?.email) {
+    return { error: 'You must be logged in to reuse a sauce entry.' };
+  }
+
+  const { data: supplier, error: supplierError } = await supabase
+    .from('suppliers')
+    .select('id')
+    .ilike('email', user.email)
+    .single();
+
+  if (supplierError || !supplier) {
+    return { error: 'Supplier account not found.' };
+  }
+
+  const serviceSupabase = createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
+  // Fetch the source sauce, scoped to this supplier so one supplier can't clone another's entry
+  const { data: sourceSauce, error: sourceError } = await serviceSupabase
+    .from('sauces')
+    .select('name, ingredients, allergens, webshop_link, image_path, competition_year')
+    .eq('id', sourceSauceId)
+    .eq('supplier_id', supplier.id)
+    .single();
+
+  if (sourceError || !sourceSauce) {
+    return { error: 'Sauce not found.' };
+  }
+
+  if (sourceSauce.competition_year === COMPETITION_YEAR) {
+    return { error: 'This sauce has already been entered for this competition year.' };
+  }
+
+  // Skip categories already re-entered from this exact source this year
+  const { data: existingReentries } = await serviceSupabase
+    .from('sauces')
+    .select('category')
+    .eq('reused_from_sauce_id', sourceSauceId)
+    .eq('competition_year', COMPETITION_YEAR);
+
+  const alreadyEntered = new Set((existingReentries || []).map((r: { category: string }) => r.category));
+  const categoriesToCreate = uniqueCategories.filter((c) => !alreadyEntered.has(c));
+
+  if (categoriesToCreate.length === 0) {
+    return { error: 'This sauce has already been entered in the selected category(ies).' };
+  }
+
+  const created: { id: string; sauce_code: string; category: string }[] = [];
+  const bucket = process.env.NEXT_PUBLIC_SAUCE_IMAGE_BUCKET || 'sauce-media';
+
+  for (const category of categoriesToCreate) {
+    const result = await insertSauceEntry(serviceSupabase, supplier.id, {
+      name: sourceSauce.name,
+      category,
+      ingredients: sourceSauce.ingredients,
+      allergens: sourceSauce.allergens,
+      webshopLink: sourceSauce.webshop_link,
+      reusedFromSauceId: sourceSauceId,
+    });
+
+    if ('error' in result) {
+      // Surface the first failure; entries already created above remain (unpaid, editable/deletable).
+      return { error: `Failed to add ${category}: ${result.error}` };
+    }
+
+    if (sourceSauce.image_path) {
+      const targetPath = `suppliers/${supplier.id}/${result.sauceId}.webp`;
+      const { error: copyError } = await serviceSupabase.storage
+        .from(bucket)
+        .copy(sourceSauce.image_path, targetPath);
+
+      if (copyError) {
+        console.error('Failed to copy sauce image for reuse:', copyError);
+      } else {
+        const { error: updateError } = await serviceSupabase
+          .from('sauces')
+          .update({ image_path: targetPath })
+          .eq('id', result.sauceId);
+
+        if (updateError) {
+          console.error('Failed to update reused sauce with image path:', updateError);
+        }
+      }
+    }
+
+    created.push({ id: result.sauceId, sauce_code: result.sauceCode, category });
+  }
+
+  revalidatePath('/dashboard');
+  return { success: true, data: created };
+}
+
+export type PastSauceRecord = {
+  id: string;
+  name: string;
+  category: string;
+  image_path: string | null;
+  competition_year: number;
+  reenteredCategories: string[];
+};
+
+/**
+ * List the logged-in supplier's sauces from previous competition years, for
+ * the "reuse a previous sauce" picker.
+ */
+export async function getSupplierPastSauces(): Promise<
+  { error: string } | { success: true; data: PastSauceRecord[] }
+> {
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user?.email) {
+    return { error: 'You must be logged in to view your sauces.' };
+  }
+
+  const { data: supplier, error: supplierError } = await supabase
+    .from('suppliers')
+    .select('id')
+    .ilike('email', user.email)
+    .single();
+
+  if (supplierError || !supplier) {
+    return { error: 'Supplier account not found.' };
+  }
+
+  const { data: sauces, error: saucesError } = await supabase
+    .from('sauces')
+    .select('id, name, category, image_path, competition_year')
+    .eq('supplier_id', supplier.id)
+    .lt('competition_year', COMPETITION_YEAR)
+    .order('competition_year', { ascending: false })
+    .order('name', { ascending: true });
+
+  if (saucesError) {
+    return { error: saucesError.message };
+  }
+
+  // Which categories has each past sauce already been re-entered into this year?
+  const { data: reentries } = await supabase
+    .from('sauces')
+    .select('reused_from_sauce_id, category')
+    .eq('supplier_id', supplier.id)
+    .eq('competition_year', COMPETITION_YEAR)
+    .not('reused_from_sauce_id', 'is', null);
+
+  const reenteredByCategorySource = new Map<string, string[]>();
+  for (const row of (reentries || []) as { reused_from_sauce_id: string; category: string }[]) {
+    const list = reenteredByCategorySource.get(row.reused_from_sauce_id) || [];
+    list.push(row.category);
+    reenteredByCategorySource.set(row.reused_from_sauce_id, list);
+  }
+
+  const data = ((sauces || []) as Omit<PastSauceRecord, 'reenteredCategories'>[]).map((sauce) => ({
+    ...sauce,
+    reenteredCategories: reenteredByCategorySource.get(sauce.id) || [],
+  }));
+
+  return { success: true, data };
+}
+
+/**
+ * Record that the logged-in supplier has opted in to the current competition
+ * year. Backs the "Enter 2027 Competition" gate in the dashboard so returning
+ * suppliers land on a deliberate opt-in step rather than straight back into
+ * last season's sauce management UI.
+ */
+export async function enterCompetitionYear(): Promise<{ error: string } | { success: true }> {
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user?.email) {
+    return { error: 'You must be logged in.' };
+  }
+
+  const { data: supplier, error: supplierError } = await supabase
+    .from('suppliers')
+    .select('brand_name')
+    .ilike('email', user.email)
+    .single();
+
+  if (supplierError || !supplier) {
+    return { error: 'Supplier account not found.' };
+  }
+
+  const serviceSupabase = createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
+  const { error: upsertError } = await serviceSupabase
+    .from('supplier_participations')
+    .upsert({
+      email: user.email,
+      company_name: supplier.brand_name,
+      year: COMPETITION_YEAR,
+      participated: true,
+      source: 'dashboard_opt_in',
+    }, { onConflict: 'email,year' });
+
+  if (upsertError) {
+    return { error: upsertError.message };
+  }
+
+  revalidatePath('/dashboard');
+  return { success: true };
 }
 
 /**
@@ -3593,7 +4012,7 @@ export async function createPaymentBatch() {
   // Get supplier record
   const { data: supplier, error: supplierError } = await supabase
     .from('suppliers')
-    .select('id')
+    .select('id, ehc_status')
     .ilike('email', user.email)
     .single();
 
@@ -3601,26 +4020,31 @@ export async function createPaymentBatch() {
     return { error: 'Supplier account not found.' };
   }
 
+  const ehcQualifies = EHC_QUALIFYING_STATUSES.has(supplier.ehc_status ?? '');
+
   // Use service client to bypass RLS
   const serviceSupabase = createServiceClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-  // Check for existing pending payment and delete it (we'll create a new one with all sauces)
+  // Check for existing pending payment and delete it (we'll create a new one with all sauces).
+  // Scoped to this competition year so a prior season's abandoned payment is never touched.
   const { data: existingPayments } = await serviceSupabase
     .from('supplier_payments')
     .select('id')
     .eq('supplier_id', supplier.id)
+    .eq('competition_year', COMPETITION_YEAR)
     .neq('stripe_payment_status', 'succeeded');
 
   if (existingPayments && existingPayments.length > 0) {
-    // Unlink all sauces from the old payment
+    // Unlink this season's sauces from the old payment
     await serviceSupabase
       .from('sauces')
       .update({ payment_id: null })
       .eq('supplier_id', supplier.id)
-      .eq('payment_status', 'pending_payment');
+      .eq('payment_status', 'pending_payment')
+      .eq('competition_year', COMPETITION_YEAR);
 
     // Delete old pending payments
     for (const payment of existingPayments) {
@@ -3631,12 +4055,13 @@ export async function createPaymentBatch() {
     }
   }
 
-  // Get all unpaid sauces for this supplier (including those just unlinked)
+  // Get this season's unpaid sauces for this supplier (including those just unlinked)
   const { data: unpaidSauces, error: saucesError } = await serviceSupabase
     .from('sauces')
     .select('id')
     .eq('supplier_id', supplier.id)
-    .eq('payment_status', 'pending_payment');
+    .eq('payment_status', 'pending_payment')
+    .eq('competition_year', COMPETITION_YEAR);
 
   if (saucesError) {
     return { error: saucesError.message };
@@ -3647,23 +4072,26 @@ export async function createPaymentBatch() {
   }
 
   const entryCount = unpaidSauces.length;
-  const discountRate = resolveDiscount(entryCount);
-  const subtotalCents = entryCount * BASE_PRICE_CENTS;
-  const discountCents = Math.round(subtotalCents * discountRate);
-  const amountDueCents = subtotalCents - discountCents;
+  const { subtotalCents, ehcDiscountCents, discountCents, amountDueCents } =
+    calculatePaymentTotals(entryCount, ehcQualifies);
+  const effectiveDiscountPercent = subtotalCents > 0 ? (discountCents / subtotalCents) * 100 : 0;
 
-  // Create payment record
+  // Create payment record. stripe_payment_status starts 'deferred', not 'pending' —
+  // clicking "Confirm Entries" locks in the total but doesn't charge until January.
   const { data: payment, error: paymentError } = await serviceSupabase
     .from('supplier_payments')
     .insert({
       supplier_id: supplier.id,
+      competition_year: COMPETITION_YEAR,
       entry_count: entryCount,
-      discount_percent: Number((discountRate * 100).toFixed(2)),
+      discount_percent: Number(effectiveDiscountPercent.toFixed(2)),
       subtotal_cents: subtotalCents,
       discount_cents: discountCents,
+      ehc_discount_cents: ehcDiscountCents,
       amount_due_cents: amountDueCents,
+      stripe_payment_status: 'deferred',
     })
-    .select('id, entry_count, discount_percent, subtotal_cents, discount_cents, amount_due_cents')
+    .select('id, entry_count, discount_percent, subtotal_cents, discount_cents, ehc_discount_cents, amount_due_cents')
     .single();
 
   if (paymentError) {
@@ -3701,13 +4129,15 @@ export async function deleteSauce(sauceId: string) {
   // Get supplier record
   const { data: supplier, error: supplierError } = await supabase
     .from('suppliers')
-    .select('id')
+    .select('id, ehc_status')
     .ilike('email', user.email)
     .single();
 
   if (supplierError || !supplier) {
     return { error: 'Supplier account not found.' };
   }
+
+  const ehcQualifies = EHC_QUALIFYING_STATUSES.has(supplier.ehc_status ?? '');
 
   // Use service client to bypass RLS
   const serviceSupabase = createServiceClient(
@@ -3803,10 +4233,13 @@ export async function deleteSauce(sauceId: string) {
 
       if (payment) {
         const newEntryCount = payment.entry_count - 1;
-        const newDiscountRate = resolveDiscount(newEntryCount);
-        const newSubtotalCents = newEntryCount * BASE_PRICE_CENTS;
-        const newDiscountCents = Math.round(newSubtotalCents * newDiscountRate);
-        const newAmountDueCents = newSubtotalCents - newDiscountCents;
+        const {
+          subtotalCents: newSubtotalCents,
+          discountCents: newDiscountCents,
+          ehcDiscountCents: newEhcDiscountCents,
+          amountDueCents: newAmountDueCents,
+        } = calculatePaymentTotals(newEntryCount, ehcQualifies);
+        const newDiscountRate = newSubtotalCents > 0 ? newDiscountCents / newSubtotalCents : 0;
 
         await serviceSupabase
           .from('supplier_payments')
@@ -3815,6 +4248,7 @@ export async function deleteSauce(sauceId: string) {
             discount_percent: Number((newDiscountRate * 100).toFixed(2)),
             subtotal_cents: newSubtotalCents,
             discount_cents: newDiscountCents,
+            ehc_discount_cents: newEhcDiscountCents,
             amount_due_cents: newAmountDueCents,
             stripe_session_id: null, // Clear old Stripe session - it will be recreated with correct amounts
           })
@@ -3825,6 +4259,118 @@ export async function deleteSauce(sauceId: string) {
 
   revalidatePath('/dashboard');
   return { success: true };
+}
+
+/**
+ * Update category/allergens/tasting notes on an unpaid sauce entry. Scoped to
+ * the entry's own supplier and to pending_payment status, matching deleteSauce
+ * — once an entry is paid its details are locked (it may already be in the
+ * judging/print pipeline).
+ */
+export async function updateSauceInfo(
+  sauceId: string,
+  fields: { category: string; ingredients: string; allergens: string; tastingNotes: string; productDescription: string },
+  pendingImagePath?: string | null
+): Promise<{ error: string } | { success: true; imagePath?: string }> {
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user?.email) {
+    return { error: 'You must be logged in to edit a sauce.' };
+  }
+
+  if (!fields.ingredients.trim()) {
+    return { error: 'Ingredients are required.' };
+  }
+
+  const { data: supplier, error: supplierError } = await supabase
+    .from('suppliers')
+    .select('id')
+    .ilike('email', user.email)
+    .single();
+
+  if (supplierError || !supplier) {
+    return { error: 'Supplier account not found.' };
+  }
+
+  if (!CATEGORY_CODES[fields.category]) {
+    return { error: `Unknown category: ${fields.category}` };
+  }
+
+  const serviceSupabase = createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
+  const { data: sauce, error: sauceError } = await serviceSupabase
+    .from('sauces')
+    .select('id, supplier_id, payment_status, image_path')
+    .eq('id', sauceId)
+    .single();
+
+  if (sauceError || !sauce) {
+    return { error: 'Sauce not found.' };
+  }
+
+  if (sauce.supplier_id !== supplier.id) {
+    return { error: 'You are not authorized to edit this sauce.' };
+  }
+
+  if (sauce.payment_status !== 'pending_payment') {
+    return { error: 'Only unpaid sauces can be edited.' };
+  }
+
+  // A replacement photo lands in storage/pending/ first (the only path
+  // anon/authenticated clients can insert into directly), then gets moved to
+  // its permanent per-sauce path here via the service role. If a photo
+  // already exists at that path (re-uploading this season), remove it first —
+  // storage .move() doesn't overwrite an existing destination.
+  let imagePath: string | undefined;
+  if (pendingImagePath) {
+    const bucket = process.env.NEXT_PUBLIC_SAUCE_IMAGE_BUCKET || 'sauce-media';
+    const targetPath = `suppliers/${supplier.id}/${sauceId}.webp`;
+
+    // Try the move first — the common (new photo) case just works. Only if
+    // it fails (almost always because a photo already exists at this
+    // deterministic path from an earlier upload) do we remove the old one
+    // and retry, so a failed move never leaves the sauce with no photo at
+    // all — the old one stays in place until a replacement is confirmed.
+    let { error: moveError } = await serviceSupabase.storage
+      .from(bucket)
+      .move(pendingImagePath, targetPath);
+
+    if (moveError && sauce.image_path) {
+      await serviceSupabase.storage.from(bucket).remove([sauce.image_path]);
+      ({ error: moveError } = await serviceSupabase.storage
+        .from(bucket)
+        .move(pendingImagePath, targetPath));
+    }
+
+    if (moveError) {
+      return { error: `Failed to save photo: ${moveError.message}` };
+    }
+    imagePath = targetPath;
+  }
+
+  const { error: updateError } = await serviceSupabase
+    .from('sauces')
+    .update({
+      category: fields.category,
+      ingredients: fields.ingredients.trim(),
+      allergens: fields.allergens || 'None',
+      tasting_notes: fields.tastingNotes || null,
+      product_description: fields.productDescription || null,
+      ...(imagePath && { image_path: imagePath }),
+    })
+    .eq('id', sauceId);
+
+  if (updateError) {
+    return { error: updateError.message };
+  }
+
+  revalidatePath('/dashboard');
+  return { success: true, ...(imagePath && { imagePath }) };
 }
 
 // ==================== DHL SHIPPING ACTIONS ====================
@@ -4047,122 +4593,6 @@ export async function getSuppliersMissingAddressInfo(includeAll = false): Promis
   )
 
   return { suppliers: result }
-}
-
-export async function sendShippingAddressRequests(
-  customSubject?: string,
-  customBody?: string,
-  sendToAll = false
-): Promise<{ sent: number; failed: number; alreadyHave: number; errors: string[] }> {
-  const cookieStore = cookies()
-  const supabase = createClient(cookieStore)
-
-  // Admin-only
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user?.email) return { sent: 0, failed: 0, alreadyHave: 0, errors: ['Not authenticated'] }
-
-  const { data: adminJudge } = await supabase
-    .from('judges')
-    .select('type')
-    .ilike('email', user.email)
-    .single()
-
-  if (adminJudge?.type !== 'admin') return { sent: 0, failed: 0, alreadyHave: 0, errors: ['Admin access required'] }
-
-  let targets: { email: string; name: string; brandName?: string }[]
-  let alreadyHave = 0
-
-  if (sendToAll) {
-    const { data: allSuppliers, error: suppError } = await supabase
-      .from('suppliers')
-      .select('brand_name, email, shipping_address_email_sent_at')
-      .is('shipping_address_email_sent_at', null)
-
-    if (suppError || !allSuppliers) return { sent: 0, failed: 0, alreadyHave: 0, errors: [suppError?.message || 'Failed to fetch suppliers'] }
-
-    targets = allSuppliers.map((s) => ({ email: s.email, name: s.brand_name, brandName: s.brand_name }))
-  } else {
-    const { data: judgeSuppliers, error } = await supabase
-      .from('judges')
-      .select('id, name, email, address, city, postal_code, country')
-      .eq('type', 'supplier')
-
-    if (error || !judgeSuppliers) return { sent: 0, failed: 0, alreadyHave: 0, errors: [error?.message || 'Failed to fetch suppliers'] }
-
-    const missing = judgeSuppliers.filter(
-      (s) => !s.address || !s.city || !s.postal_code || !s.country
-    )
-    alreadyHave = judgeSuppliers.length - missing.length
-    targets = missing
-  }
-
-  const adminClient = createServiceClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
-
-  let sent = 0
-  let failed = 0
-  const errors: string[] = []
-
-  for (const supplier of targets) {
-    try {
-      // Generate magic link
-      const { data: linkData, error: linkError } = await adminClient.auth.admin.generateLink({
-        type: 'magiclink',
-        email: supplier.email,
-        options: {
-          redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'https://heatawards.eu'}/auth/callback`,
-          expiresIn: 86400,
-        } as any,
-      })
-
-      if (linkError || !linkData?.properties?.action_link) {
-        errors.push(`${supplier.email}: ${linkError?.message || 'Failed to generate link'}`)
-        failed++
-        continue
-      }
-
-      // Use pre-fetched brand name or look up from suppliers table
-      let brandName: string = supplier.brandName || ''
-      if (!brandName) {
-        const { data: supplierRecord } = await supabase
-          .from('suppliers')
-          .select('brand_name')
-          .ilike('email', supplier.email)
-          .single()
-        brandName = supplierRecord?.brand_name || supplier.name
-      }
-
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://heatawards.eu'
-      const actionLink = linkData.properties.action_link.replace(
-        /^https:\/\/[^/]+/,
-        appUrl
-      )
-
-      const interpolate = (str: string) =>
-        str.replace(/\{\{brandName\}\}/g, brandName).replace(/\{\{magicLink\}\}/g, actionLink)
-
-      const emailOptions = customSubject && customBody
-        ? { to: supplier.email, subject: interpolate(customSubject), html: interpolate(customBody) }
-        : { to: supplier.email, ...emailTemplates.shippingAddressRequest(brandName, actionLink) }
-
-      await sendEmail(emailOptions)
-      sent++
-
-      if (sendToAll) {
-        await supabase
-          .from('suppliers')
-          .update({ shipping_address_email_sent_at: new Date().toISOString() })
-          .ilike('email', supplier.email)
-      }
-    } catch (err) {
-      errors.push(`${supplier.email}: ${err instanceof Error ? err.message : 'Unknown error'}`)
-      failed++
-    }
-  }
-
-  return { sent, failed, alreadyHave, errors }
 }
 
 export async function getJudgeForShipping(judgeId: string): Promise<{
@@ -4913,4 +5343,334 @@ export async function sendAllResultsFeedbackEmails(adminEmail: string): Promise<
 
     await new Promise(r => setTimeout(r, 200))
   }
+}
+
+// ==================== EHC MEMBERSHIP VERIFICATION ====================
+
+/**
+ * Verifies the logged-in supplier's entered EHC membership number against
+ * EHC's read-only verify endpoint, and stores the result on their supplier
+ * row. Called on blur/submit of the "EHC Membership Number" dashboard field.
+ * The free-3rd-entry discount (see calculatePaymentTotals) reads ehc_status
+ * back off this row, so this is the only place that field gets set.
+ */
+export async function verifyEhcMembership(ehcId: string): Promise<
+  { error: string } | { success: true; result: import('@/lib/ehc/types').EhcVerifyResult }
+> {
+  const trimmedId = ehcId.trim();
+  if (!trimmedId) {
+    return { error: 'Enter your EHC membership number.' };
+  }
+
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user?.email) {
+    return { error: 'You must be logged in to verify membership.' };
+  }
+
+  const { data: supplier, error: supplierError } = await supabase
+    .from('suppliers')
+    .select('id, brand_name')
+    .ilike('email', user.email)
+    .single();
+
+  if (supplierError || !supplier) {
+    return { error: 'Supplier account not found.' };
+  }
+
+  const { verifyEhcMembership: callEhcVerify } = await import('@/lib/ehc/service');
+  const result = await callEhcVerify({
+    ehcId: trimmedId,
+    email: user.email,
+    companyName: supplier.brand_name,
+  });
+
+  // "unavailable" (EHC endpoint unreachable/unconfigured) is a transient
+  // failure, not a statement about this supplier's membership — don't
+  // overwrite whatever ehc_status they already had on file.
+  if (result.outcome === 'unavailable') {
+    return { success: true, result };
+  }
+
+  const status = 'status' in result ? result.status : null;
+
+  const serviceSupabase = createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
+  const { error: updateError } = await serviceSupabase
+    .from('suppliers')
+    .update({
+      ehc_id: trimmedId,
+      ehc_status: status,
+      ehc_verified_at: new Date().toISOString(),
+    })
+    .eq('id', supplier.id);
+
+  if (updateError) {
+    return { error: `Verified, but failed to save: ${updateError.message}` };
+  }
+
+  revalidatePath('/dashboard');
+  return { success: true, result };
+}
+
+// ==================== SUPPLIER PRODUCER INFO (address, profile, consent) ====================
+
+export interface SupplierProfileFields {
+  brandName: string;
+  contactName: string;
+  addressStreet: string;
+  addressHouseNumber: string;
+  addressLine2: string;
+  city: string;
+  state: string;
+  postalCode: string;
+  country: string;
+  phone: string;
+  bio: string;
+  website: string;
+  instagram: string;
+  ehcSyncConsent: boolean;
+  vatNumber: string;
+  invoiceCompanyName: string;
+  invoiceSameAsDelivery: boolean;
+  invoiceAddressStreet: string;
+  invoiceAddressHouseNumber: string;
+  invoiceAddressLine2: string;
+  invoiceCity: string;
+  invoiceState: string;
+  invoicePostalCode: string;
+  invoiceCountry: string;
+}
+
+/**
+ * Updates the logged-in supplier's producer info from the "Producer Info"
+ * dashboard modal: business details, delivery address (for DHL award-shipping
+ * labels later — deliberately split street/house-number, not the legacy
+ * combined `address` column, so it never needs fragile parsing), self-serve
+ * profile (for promo/press use), and EHC data-sharing consent.
+ */
+export async function updateSupplierProfile(
+  fields: SupplierProfileFields,
+  pendingLogoPath?: string | null
+): Promise<{ error: string } | { success: true; logoPath?: string }> {
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user?.email) {
+    return { error: 'You must be logged in to update your producer info.' };
+  }
+
+  if (!fields.brandName.trim() || !fields.contactName.trim()) {
+    return { error: 'Brand name and contact name are required.' };
+  }
+
+  if (!fields.addressStreet.trim() || !fields.addressHouseNumber.trim() || !fields.city.trim() || !fields.postalCode.trim() || !fields.country.trim()) {
+    return { error: 'Street, house number, city, postal code and country are required.' };
+  }
+
+  // Defense-in-depth: the client now offers country as a <select> sourced
+  // from lib/countries.ts, but this action can be called directly, so a
+  // country not on the canonical list must still be rejected here — an
+  // unrecognized value would otherwise silently default VAT treatment to
+  // 'standard' downstream (see determineVatTreatment) without anyone knowing
+  // the address itself never validated in the first place.
+  if (!isRecognizedCountry(fields.country)) {
+    return { error: 'Please select a valid country from the list.' };
+  }
+  if (!fields.invoiceSameAsDelivery && fields.invoiceCountry.trim() && !isRecognizedCountry(fields.invoiceCountry)) {
+    return { error: 'Please select a valid billing country from the list.' };
+  }
+
+  const { data: supplier, error: supplierError } = await supabase
+    .from('suppliers')
+    .select('id, ehc_sync_consent')
+    .ilike('email', user.email)
+    .single();
+
+  if (supplierError || !supplier) {
+    return { error: 'Supplier account not found.' };
+  }
+
+  const consentChanged = supplier.ehc_sync_consent !== fields.ehcSyncConsent;
+
+  // A logo lands in storage/pending/ first (the only path anon/authenticated
+  // clients can insert into directly — see 20251006141500_allow_anon_pending_uploads.sql),
+  // then gets moved to its permanent per-supplier path here via the service role,
+  // the same pattern reuseSauceEntry uses for cloned sauce images.
+  let logoPath: string | undefined;
+  if (pendingLogoPath) {
+    const serviceSupabase = createServiceClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+    const bucket = process.env.NEXT_PUBLIC_SAUCE_IMAGE_BUCKET || 'sauce-media';
+    const targetPath = `suppliers/${supplier.id}/logo.webp`;
+
+    // Try the copy first — .copy() won't overwrite an existing destination,
+    // which is the common case here (replacing a previously-uploaded logo).
+    // Only remove-and-retry on failure, so a failed copy never leaves the
+    // supplier with no logo at all.
+    let { error: copyError } = await serviceSupabase.storage
+      .from(bucket)
+      .copy(pendingLogoPath, targetPath);
+
+    if (copyError) {
+      await serviceSupabase.storage.from(bucket).remove([targetPath]);
+      ({ error: copyError } = await serviceSupabase.storage
+        .from(bucket)
+        .copy(pendingLogoPath, targetPath));
+    }
+
+    if (copyError) {
+      return { error: `Failed to save logo: ${copyError.message}` };
+    }
+    logoPath = targetPath;
+  }
+
+  // "Same as delivery" stores null for every invoice_* field rather than
+  // copying the delivery address in at save time — a point-in-time copy
+  // would go stale the next time the supplier updates only their delivery
+  // address (the "same as delivery" checkbox can't tell the two apart once
+  // both are populated). Every reader (VAT treatment determination, invoice
+  // email) falls back to the base address/country fields when invoice_* is
+  // null, so "same as delivery" stays a live link, not a snapshot.
+  const invoiceAddress = fields.invoiceSameAsDelivery
+    ? {
+        invoice_address_street: null,
+        invoice_address_house_number: null,
+        invoice_address_line2: null,
+        invoice_city: null,
+        invoice_state: null,
+        invoice_postal_code: null,
+        invoice_country: null,
+      }
+    : {
+        invoice_address_street: fields.invoiceAddressStreet.trim() || null,
+        invoice_address_house_number: fields.invoiceAddressHouseNumber.trim() || null,
+        invoice_address_line2: fields.invoiceAddressLine2.trim() || null,
+        invoice_city: fields.invoiceCity.trim() || null,
+        invoice_state: fields.invoiceState.trim() || null,
+        invoice_postal_code: fields.invoicePostalCode.trim() || null,
+        invoice_country: fields.invoiceCountry.trim() || null,
+      };
+
+  const { error: updateError } = await supabase
+    .from('suppliers')
+    .update({
+      brand_name: fields.brandName.trim(),
+      contact_name: fields.contactName.trim(),
+      address_street: fields.addressStreet.trim(),
+      address_house_number: fields.addressHouseNumber.trim(),
+      address_line2: fields.addressLine2.trim() || null,
+      city: fields.city.trim(),
+      state: fields.state.trim() || null,
+      postal_code: fields.postalCode.trim(),
+      country: fields.country.trim(),
+      phone: fields.phone.trim() || null,
+      bio: fields.bio.trim() || null,
+      website: fields.website.trim() || null,
+      instagram: fields.instagram.trim() || null,
+      ehc_sync_consent: fields.ehcSyncConsent,
+      vat_number: fields.vatNumber.trim() || null,
+      invoice_company_name: fields.invoiceCompanyName.trim() || null,
+      ...invoiceAddress,
+      ...(logoPath && { logo_path: logoPath }),
+      ...(consentChanged && { ehc_sync_consent_at: new Date().toISOString() }),
+    })
+    .eq('id', supplier.id);
+
+  if (updateError) {
+    return { error: updateError.message };
+  }
+
+  revalidatePath('/dashboard');
+  return { success: true, ...(logoPath && { logoPath }) };
+}
+
+// ==================== JANUARY DEFERRED-PAYMENT INVOICING (STUB) ====================
+
+/**
+ * TODO (January invoicing run, not built this round): for each supplier_payments
+ * row with stripe_payment_status = 'deferred', re-check ehc_status via
+ * verifyEhcMembership for that supplier, recompute the total (free-3rd-entry
+ * discount only if ehc_status is now 'member' — 'pending' at this point means
+ * full price), and trigger an actual Stripe charge for the recomputed amount.
+ * No sauce is removed or clawed back regardless of the recheck outcome.
+ */
+export async function reprocessDeferredPayments(): Promise<never> {
+  throw new Error('Not implemented — January deferred-payment invoicing is a future build.');
+}
+
+// ==================== COMPETITION SETTINGS (admin-togglable gates) ====================
+
+/**
+ * Reads an admin-togglable, per-competition-year feature gate (e.g.
+ * 'shipping_open'). Defaults to false — including when the row doesn't exist
+ * yet — so every gate starts closed each new season without a seed migration.
+ */
+export async function getCompetitionSetting(key: string, year: number = COMPETITION_YEAR): Promise<boolean> {
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+
+  const { data } = await supabase
+    .from('competition_settings')
+    .select('enabled')
+    .eq('competition_year', year)
+    .eq('key', key)
+    .maybeSingle();
+
+  return data?.enabled ?? false;
+}
+
+/**
+ * Admin-only: flips a competition_settings gate on/off.
+ */
+export async function updateCompetitionSetting(
+  key: string,
+  enabled: boolean,
+  year: number = COMPETITION_YEAR
+): Promise<{ error: string } | { success: true }> {
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user?.email) {
+    return { error: 'You must be logged in.' };
+  }
+
+  const { data: judge, error: judgeError } = await supabase
+    .from('judges')
+    .select('type')
+    .ilike('email', user.email)
+    .single();
+
+  if (judgeError || judge?.type !== 'admin') {
+    return { error: 'You are not authorized to perform this action.' };
+  }
+
+  const { error } = await supabase
+    .from('competition_settings')
+    .upsert(
+      {
+        competition_year: year,
+        key,
+        enabled,
+        updated_at: new Date().toISOString(),
+        updated_by_email: user.email,
+      },
+      { onConflict: 'competition_year,key' }
+    );
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidatePath('/dashboard');
+  return { success: true };
 }

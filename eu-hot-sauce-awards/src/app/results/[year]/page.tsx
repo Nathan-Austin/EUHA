@@ -1,104 +1,103 @@
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import type { Metadata } from "next";
+import HeatHeader from "@/components/HeatHeader";
+import HeatFooter from "@/components/HeatFooter";
+import Breadcrumbs from "@/components/Breadcrumbs";
+import ResultsExplorer from "@/components/ResultsExplorer";
+import { createClient } from "@/lib/supabase/server";
+import { PREVIOUS_COMPETITION_YEAR } from "@/lib/config";
 
-import Hero from '@/components/Hero';
-import SectionContainer from '@/components/SectionContainer';
-import ResultsFilter from '@/components/ResultsFilter';
-import type { Metadata } from 'next';
-import { createClient } from '@/lib/supabase/server';
-import Link from 'next/link';
-
-type Props = {
-    params: { year: string };
-};
-
-interface PastResult {
-  id: string;
+interface Row {
   code: string;
-  area: string;
-  category: string;
-  award: string | null;
-  position: number | null;
-  global_rank: number | null;
+  entry_name: string;
   company_name: string;
   country: string | null;
-  entry_name: string;
-  short_description: string | null;
-  flavor_profile: string | null;
-  product_image_url: string | null;
-  product_url: string | null;
-  website: string | null;
-}
-
-interface CategoryResults {
   category: string;
-  winners: PastResult[];
+  area: string | null;
+  award: string | null;
+  position: number | null;
+  score: string | number | null;
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-    const year = params.year;
-    return {
-        title: `${year} Winners | EU Hot Sauce Awards`,
-        description: `See the full list of award-winning hot sauces from the ${year} European Hot Sauce Awards competition.`,
-    };
-}
-
-async function getResultsByYear(year: string) {
-  const { cookies } = await import('next/headers');
+async function getResultsByYear(year: number) {
+  const { cookies } = await import("next/headers");
   const supabase = createClient(cookies());
-
-  console.log('🔍 Fetching results for year:', year);
-
   const { data, error } = await supabase
-    .from('past_results')
-    .select('*')
-    .eq('year', parseInt(year))
-    .order('category', { ascending: true })
-    .order('position', { ascending: true });
-
+    .from("past_results")
+    .select("code, entry_name, company_name, country, category, area, award, position, score")
+    .eq("year", year)
+    .order("category", { ascending: true })
+    .order("position", { ascending: true, nullsFirst: false });
   if (error) {
-    console.error('❌ Error fetching results:', error);
-    return [];
+    throw new Error(`Failed to load results for ${year}: ${error.message}`);
   }
-
-  console.log('✅ Fetched results count:', data?.length || 0);
-  if (data && data.length > 0) {
-    console.log('📊 Sample result:', data[0]);
-  }
-
-  return data as PastResult[];
+  return (data as Row[]) ?? [];
 }
 
-// The page component receives params from the dynamic route
-const YearResultsPage = async ({ params }: { params: { year: string } }) => {
-  const { year } = params;
-  const results = await getResultsByYear(year);
+export async function generateMetadata({ params }: { params: { year: string } }): Promise<Metadata> {
+  return {
+    title: `${params.year} Award-Winning Results — European Hot Sauce Awards`,
+    description: `Every award-winning entry from the ${params.year} European Hot Sauce Awards.`,
+  };
+}
 
-  if (results.length === 0) {
-    return (
-      <div className="bg-[#08040e] min-h-screen">
-        <Hero title={`${year} Winners`} />
-        <SectionContainer>
-          <div className="text-center py-20">
-            <p className="text-white/70 text-lg">No results found for {year}</p>
-            <Link href="/results" className="mt-4 inline-block text-amber-200 hover:text-amber-100">
-              ← Back to all results
-            </Link>
-          </div>
-        </SectionContainer>
-      </div>
-    );
-  }
+export default async function YearResultsPage({ params }: { params: { year: string } }) {
+  const year = parseInt(params.year, 10);
+  if (Number.isNaN(year)) notFound();
+
+  const rows = await getResultsByYear(year);
+  if (rows.length === 0) notFound();
+
+  const categories = new Set(rows.map((r) => r.category));
+  const countries = new Set(rows.map((r) => r.country).filter(Boolean));
+  const isCurrentYear = year === PREVIOUS_COMPETITION_YEAR;
 
   return (
-    <div className="bg-[#08040e] min-h-screen">
-      <Hero title={`${year} Winners`} subtitle={`${results.length} award-winning sauces`} />
+    <div className="bg-[#faf6ec] text-black">
+      <HeatHeader />
+      <Breadcrumbs
+        items={[
+          { label: "Home", href: "/" },
+          { label: "Results", href: "/results" },
+          { label: String(year) },
+        ]}
+      />
 
-      <div className="space-y-10 md:space-y-16 py-10 md:py-16">
-        <SectionContainer>
-          <ResultsFilter results={results} />
-        </SectionContainer>
-      </div>
+      <section className="bg-black py-16 text-white">
+        <div className="mx-auto max-w-[1240px] px-6">
+          <p className="mb-5 text-sm font-bold uppercase tracking-[0.18em] text-[#F5C518]">
+            EHSA {year} &middot; Award-winning results
+          </p>
+          <h1 className="font-[family-name:var(--font-archivo-black)] text-[clamp(36px,6vw,64px)] uppercase leading-[0.95] text-white">
+            {year} <span className="bg-[#F5C518] px-2 text-black">results</span>.
+          </h1>
+          <p className="mt-5 text-base uppercase tracking-[0.1em] text-gray-300">
+            {rows.length} award-winning entries &middot; {categories.size} categories &middot; {countries.size} countries
+          </p>
+          {!isCurrentYear && (
+            <p className="mt-4 max-w-xl text-sm text-gray-400">
+              This is an older archive year — maker and category links below only work for {PREVIOUS_COMPETITION_YEAR}.
+            </p>
+          )}
+          <div className="mt-8 flex flex-wrap gap-3.5">
+            <Link
+              href={`/rankings?year=${year}`}
+              className="border-[3px] border-[#F5C518] bg-[#F5C518] px-6 py-3.5 font-[family-name:var(--font-archivo-black)] text-sm uppercase tracking-[0.06em] text-black hover:bg-[#e0a800]"
+            >
+              {year} Global Top 20 &rarr;
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      <section className="py-16">
+        <div className="mx-auto max-w-[1240px] px-6">
+          <ResultsExplorer rows={rows} linkable={isCurrentYear} />
+        </div>
+      </section>
+
+      <HeatFooter />
     </div>
   );
-};
-
-export default YearResultsPage;
+}

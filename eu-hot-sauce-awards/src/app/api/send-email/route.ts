@@ -78,20 +78,11 @@ export async function POST(request: NextRequest) {
         break;
       }
 
-      case 'payment_reminder': {
-        const { email, brandName, entryCount, amount, daysSinceRegistration, magicLink } = data;
+      case 'confirm_entries_reminder': {
+        const { email, brandName, entryCount, daysSinceRegistration, magicLink } = data;
         await sendEmail({
           to: email,
-          ...emailTemplates.paymentReminder(brandName, entryCount, amount, daysSinceRegistration, magicLink)
-        });
-        break;
-      }
-
-      case 'shipping_address_request': {
-        const { email, brandName, magicLink } = data;
-        await sendEmail({
-          to: email,
-          ...emailTemplates.shippingAddressRequest(brandName, magicLink)
+          ...emailTemplates.confirmEntriesReminder(brandName, entryCount, daysSinceRegistration, magicLink)
         });
         break;
       }

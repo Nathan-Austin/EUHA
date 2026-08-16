@@ -58,7 +58,8 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
 
   // Protected routes that require authentication
-  const protectedPaths = ['/dashboard', '/judge']
+  // Trailing slash on '/judge/' keeps this from also matching the public /judges marketing page.
+  const protectedPaths = ['/dashboard', '/judge/']
   const isProtectedPath = protectedPaths.some(path => request.nextUrl.pathname.startsWith(path))
 
   // Redirect to login if accessing protected route without auth
@@ -85,10 +86,30 @@ export async function middleware(request: NextRequest) {
       // Admins bypass most checks (but still check on /judge routes below)
       const isAdmin = judge.type === 'admin'
 
+      // Judges dashboard gate: blocks pro/community/event judges from the
+      // actual judging routes uniformly, regardless of active/payment status.
+      // Mirrors the same check dashboard/page.tsx does for the dashboard's
+      // own render branch — without this, a judge with a direct/bookmarked
+      // link to /judge/scan or /judge/score/<id> could bypass that gate
+      // entirely, since it's only enforced in the dashboard UI, not here.
+      if (request.nextUrl.pathname.startsWith('/judge/') && !isAdmin) {
+        const { data: gateSetting } = await supabase
+          .from('competition_settings')
+          .select('enabled')
+          .eq('competition_year', COMPETITION_YEAR)
+          .eq('key', 'judges_dashboard_open')
+          .maybeSingle()
+
+        if (!gateSetting?.enabled) {
+          const redirectUrl = new URL('/dashboard', request.url)
+          return NextResponse.redirect(redirectUrl)
+        }
+      }
+
       // Community judges must have paid
       if (judge.type === 'community' && judge.stripe_payment_status !== 'succeeded') {
         // Only redirect if not already on dashboard (dashboard shows payment button)
-        if (request.nextUrl.pathname.startsWith('/judge')) {
+        if (request.nextUrl.pathname.startsWith('/judge/')) {
           const redirectUrl = new URL('/dashboard', request.url)
           return NextResponse.redirect(redirectUrl)
         }
@@ -97,7 +118,7 @@ export async function middleware(request: NextRequest) {
       // All judges except admin must be active
       if (!judge.active && !isAdmin) {
         // Allow dashboard access (shows appropriate message)
-        if (request.nextUrl.pathname.startsWith('/judge')) {
+        if (request.nextUrl.pathname.startsWith('/judge/')) {
           const redirectUrl = new URL('/dashboard', request.url)
           return NextResponse.redirect(redirectUrl)
         }
@@ -106,7 +127,7 @@ export async function middleware(request: NextRequest) {
       // CRITICAL: Check year-specific participation for /judge routes
       // This prevents judges from previous years accessing current year judging
       // Event judges bypass this check — they register on the day and have no participation record
-      if (request.nextUrl.pathname.startsWith('/judge') && !isAdmin && judge.type !== 'event') {
+      if (request.nextUrl.pathname.startsWith('/judge/') && !isAdmin && judge.type !== 'event') {
         const { data: participation } = await supabase
           .from('judge_participations')
           .select('accepted')

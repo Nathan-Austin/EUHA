@@ -1,95 +1,107 @@
-
-import Hero from '@/components/Hero';
-import SectionContainer from '@/components/SectionContainer';
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import HeatHeader from '@/components/HeatHeader';
+import HeatFooter from '@/components/HeatFooter';
+import Breadcrumbs from '@/components/Breadcrumbs';
 
 export const metadata: Metadata = {
   title: 'Prizes & Recognition',
-  description: 'Learn about the awards structure for the EU Hot Sauce Awards, including Gold, Silver, and Bronze medals, and the coveted Global Rankings.',
+  description: 'Learn about the awards structure for the European Hot Sauce Awards, including Gold, Silver, and Bronze medals, and the coveted Global Rankings.',
 };
+
+const AWARD_LEVELS = [
+  { medal: '🥇', title: 'Gold Medal — Best in Category', detail: '1st place winner' },
+  { medal: '🥇', title: 'Gold Medal', detail: '2 winners per category' },
+  { medal: '🥈', title: 'Silver Medal', detail: '3 winners per category' },
+  { medal: '🥉', title: 'Bronze Medal', detail: '6 winners per category' },
+];
+
+const WINNER_PACKAGE = [
+  { icon: '📜', title: 'Commemorative certificate', detail: 'Official recognition of your achievement' },
+  { icon: '🏷️', title: "Winner's merchandise", detail: 'Exclusive bottle stickers to showcase your award' },
+  { icon: '📢', title: 'Digital marketing kit', detail: 'Digital badges and press releases' },
+];
 
 const PrizesPage = () => {
   return (
-    <div className="bg-[#08040e] min-h-screen">
-      <Hero title="Prizes & Recognition" />
+    <div className="min-h-screen bg-[#faf6ec] text-black">
+      <HeatHeader />
+      <Breadcrumbs items={[{ label: 'Home', href: '/' }, { label: 'Prizes' }]} />
 
-      <div className="space-y-10 md:space-y-16 py-10 md:py-16">
-        <SectionContainer>
-          <div className="rounded-3xl border border-white/15 bg-white/[0.07] p-8 md:p-12 backdrop-blur">
-            <h2 className="text-center text-sm font-semibold uppercase tracking-[0.25em] text-amber-200/80 mb-8">Award Levels</h2>
-            <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
-              <div className="bg-black/30 p-6 rounded-lg text-center">
-                <div className="text-2xl mb-2">🥇</div>
-                <h3 className="font-bold text-lg text-amber-200 mb-2">Gold Medal Best in Category</h3>
-                <p className="text-white/70 text-sm mb-1">⭐⭐⭐⭐⭐</p>
-                <p className="text-white/80">1st place winner</p>
-              </div>
-              <div className="bg-black/30 p-6 rounded-lg text-center">
-                <div className="text-2xl mb-2">🥇</div>
-                <h3 className="font-bold text-lg text-amber-200 mb-2">Gold Medal</h3>
-                <p className="text-white/70 text-sm mb-1">⭐⭐⭐⭐</p>
-                <p className="text-white/80">2 winners per category</p>
-              </div>
-              <div className="bg-black/30 p-6 rounded-lg text-center">
-                <div className="text-2xl mb-2">🥈</div>
-                <h3 className="font-bold text-lg text-amber-200 mb-2">Silver Medal</h3>
-                <p className="text-white/70 text-sm mb-1">⭐⭐⭐</p>
-                <p className="text-white/80">3 winners per category</p>
-              </div>
-              <div className="bg-black/30 p-6 rounded-lg text-center">
-                <div className="text-2xl mb-2">🥉</div>
-                <h3 className="font-bold text-lg text-amber-200 mb-2">Bronze Medal</h3>
-                <p className="text-white/70 text-sm mb-1">⭐⭐</p>
-                <p className="text-white/80">6 winners per category</p>
-              </div>
-            </div>
-          </div>
-        </SectionContainer>
+      <section className="bg-black py-16 text-white">
+        <div className="mx-auto max-w-[1240px] px-6">
+          <h1 className="font-[family-name:var(--font-archivo-black)] text-[clamp(36px,6vw,56px)] uppercase leading-[0.95] text-white">
+            Prizes &amp; <span className="bg-[#F5C518] px-2 text-black">recognition</span>.
+          </h1>
+        </div>
+      </section>
 
-        <SectionContainer>
-          <div className="rounded-3xl border border-white/15 bg-white/[0.07] p-8 md:p-12 backdrop-blur">
-            <h2 className="text-center text-sm font-semibold uppercase tracking-[0.25em] text-amber-200/80 mb-6">Winner's Package</h2>
-            <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto text-center">
-              <div className="bg-black/30 p-6 rounded-lg">
-                <div className="text-3xl mb-3">📜</div>
-                <h3 className="font-semibold text-white mb-2">Commemorative Certificate</h3>
-                <p className="text-white/70 text-sm">Official recognition of your achievement</p>
+      <section className="py-16">
+        <div className="mx-auto max-w-[1240px] px-6">
+          <h2 className="mb-8 font-[family-name:var(--font-archivo-black)] text-2xl uppercase">
+            Award <span className="bg-[#F5C518] px-2">levels</span>.
+          </h2>
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {AWARD_LEVELS.map((level) => (
+              <div key={level.title} className="border-[3px] border-black bg-white p-6 text-center">
+                <div className="mb-3 text-3xl">{level.medal}</div>
+                <h3 className="mb-2 font-[family-name:var(--font-archivo-black)] text-base uppercase leading-tight">
+                  {level.title}
+                </h3>
+                <p className="text-sm text-black/60">{level.detail}</p>
               </div>
-              <div className="bg-black/30 p-6 rounded-lg">
-                <div className="text-3xl mb-3">🏷️</div>
-                <h3 className="font-semibold text-white mb-2">Winner's Merchandise</h3>
-                <p className="text-white/70 text-sm">Exclusive bottle stickers to showcase your award</p>
-              </div>
-              <div className="bg-black/30 p-6 rounded-lg">
-                <div className="text-3xl mb-3">📢</div>
-                <h3 className="font-semibold text-white mb-2">Digital Marketing Kit</h3>
-                <p className="text-white/70 text-sm">Digital badges and press releases</p>
-              </div>
-            </div>
+            ))}
           </div>
-        </SectionContainer>
+        </div>
+      </section>
 
-        <SectionContainer>
-          <div className="rounded-3xl border border-white/15 bg-white/[0.07] p-8 md:p-12 backdrop-blur text-center">
-            <h2 className="text-sm font-semibold uppercase tracking-[0.25em] text-amber-200/80 mb-6">Global Rankings</h2>
-            <p className="text-base text-white/75 sm:text-lg max-w-2xl mx-auto mb-8">
-              The top 20 sauces from the competition receive a special certificate and a prestigious placement in our international rankings, showcasing them to a global audience of hot sauce enthusiasts and industry professionals.
-            </p>
-            <Link href="/rankings" className="text-xs uppercase tracking-[0.2em] text-amber-200/70 transition hover:text-amber-200">
-              View Current Rankings &rarr;
-            </Link>
+      <section className="border-t border-black/10 py-16">
+        <div className="mx-auto max-w-[1240px] px-6">
+          <h2 className="mb-8 font-[family-name:var(--font-archivo-black)] text-2xl uppercase">
+            Winner’s <span className="bg-[#F5C518] px-2">package</span>.
+          </h2>
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
+            {WINNER_PACKAGE.map((item) => (
+              <div key={item.title} className="border-[3px] border-black bg-white p-6 text-center">
+                <div className="mb-3 text-3xl">{item.icon}</div>
+                <h3 className="mb-2 font-[family-name:var(--font-archivo-black)] text-base uppercase">
+                  {item.title}
+                </h3>
+                <p className="text-sm text-black/60">{item.detail}</p>
+              </div>
+            ))}
           </div>
-        </SectionContainer>
+        </div>
+      </section>
 
-        <SectionContainer>
-          <div className="text-center">
-            <Link href="/apply/supplier" className="rounded-full bg-gradient-to-r from-[#ff4d00] to-[#f1b12e] px-8 py-4 text-sm font-semibold uppercase tracking-[0.2em] text-white transition hover:from-[#ff7033] hover:to-[#ffd060]">
-              Enter Competition
-            </Link>
-          </div>
-        </SectionContainer>
-      </div>
+      <section className="border-t border-black/10 py-16">
+        <div className="mx-auto max-w-[1240px] px-6 text-center">
+          <h2 className="mb-4 font-[family-name:var(--font-archivo-black)] text-2xl uppercase">
+            Global <span className="bg-[#F5C518] px-2">rankings</span>.
+          </h2>
+          <p className="mx-auto mb-6 max-w-2xl text-base leading-relaxed text-black/70">
+            The top 20 sauces from the competition receive a special certificate and a prestigious placement in
+            our international rankings, showcasing them to a global audience of hot sauce enthusiasts and
+            industry professionals.
+          </p>
+          <Link href="/rankings" className="border-b-2 border-black text-sm font-semibold uppercase tracking-[0.06em] hover:opacity-70">
+            View current rankings &rarr;
+          </Link>
+        </div>
+      </section>
+
+      <section className="border-t border-black/10 bg-black py-16 text-center">
+        <div className="mx-auto max-w-[1240px] px-6">
+          <Link
+            href="/login"
+            className="inline-block bg-[#F5C518] px-8 py-4 font-[family-name:var(--font-archivo-black)] text-sm uppercase tracking-[0.06em] text-black hover:bg-white"
+          >
+            Log in to enter
+          </Link>
+        </div>
+      </section>
+
+      <HeatFooter />
     </div>
   );
 };

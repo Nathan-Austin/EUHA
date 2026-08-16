@@ -1,66 +1,97 @@
-
-import Hero from '@/components/Hero';
-import SectionContainer from '@/components/SectionContainer';
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import HeatHeader from '@/components/HeatHeader';
+import HeatFooter from '@/components/HeatFooter';
+import Breadcrumbs from '@/components/Breadcrumbs';
+import { getCompetitionSetting } from '@/app/actions';
+import { SHIPPING_ADDRESS } from '@/lib/shipping';
 
 export const metadata: Metadata = {
   title: 'Packing & Shipping',
-  description: 'Find instructions for packing and shipping your sauce entries for the EU Hot Sauce Awards, and download the official packing sheet.',
+  description: 'Find instructions for packing and shipping your sauce entries for the European Hot Sauce Awards, and download the official packing sheet.',
 };
 
-const PackingSheetPage = () => {
-  return (
-    <div className="bg-[#08040e] min-h-screen">
-      <Hero title="Packing & Shipping Guidelines" />
+export default async function PackingSheetPage() {
+  const shippingOpen = await getCompetitionSetting('shipping_open');
 
-      <div className="space-y-10 md:space-y-16 py-10 md:py-16">
-        <SectionContainer>
-          <div className="max-w-3xl mx-auto space-y-8">
-            <div className="rounded-3xl border border-white/15 bg-white/[0.07] p-8 md:p-12 backdrop-blur">
-              <h2 className="text-sm font-semibold uppercase tracking-[0.25em] text-amber-200/80 mb-6">Shipping Instructions</h2>
-              <div className="space-y-4 text-white/75 leading-relaxed">
-                <p>
-                  Please carefully pack your sauce samples to prevent breakage during transit. We recommend using bubble wrap or similar protective materials.
-                </p>
-                <p>
-                  Include a copy of your completed packing sheet inside the box to ensure proper identification of your entries.
-                </p>
-                <div className="bg-black/30 p-4 rounded-lg mt-6">
-                  <p className="text-xs uppercase tracking-wider text-white/60 mb-2">Important Deadline</p>
-                  <p className="font-bold text-lg text-amber-200">Samples must arrive by: 10 March 2026</p>
+  return (
+    <div className="min-h-screen bg-[#faf6ec] text-black">
+      <HeatHeader />
+      <Breadcrumbs items={[{ label: 'Home', href: '/' }, { label: 'Packing & Shipping' }]} />
+
+      <section className="bg-black py-16 text-white">
+        <div className="mx-auto max-w-[1240px] px-6">
+          <h1 className="font-[family-name:var(--font-archivo-black)] text-[clamp(32px,5vw,52px)] uppercase leading-[0.95] text-white">
+            Packing &amp; <span className="bg-[#F5C518] px-2 text-black">shipping</span>.
+          </h1>
+        </div>
+      </section>
+
+      <section className="py-16">
+        <div className="mx-auto max-w-3xl px-6">
+          {!shippingOpen ? (
+            <div className="border-[3px] border-black bg-white p-8 text-center space-y-4 md:p-12">
+              <p className="text-3xl">📦</p>
+              <h2 className="font-[family-name:var(--font-archivo-black)] text-xl uppercase">Not open yet</h2>
+              <p className="text-black/70">
+                Packing and shipping instructions aren&rsquo;t available yet. We&rsquo;ll email you once it&rsquo;s
+                time to ship your sauces.
+              </p>
+              <Link
+                href="/dashboard"
+                className="inline-block bg-black px-6 py-3 font-[family-name:var(--font-archivo-black)] text-sm uppercase tracking-[0.06em] text-[#F5C518] hover:bg-black/80"
+              >
+                Go to dashboard
+              </Link>
+            </div>
+          ) : (
+            <div className="space-y-8">
+              <div className="border-[3px] border-black bg-white p-8 md:p-12">
+                <h2 className="mb-6 text-xs font-bold uppercase tracking-[0.25em] text-black/50">
+                  Shipping instructions
+                </h2>
+                <div className="space-y-4 text-black/75 leading-relaxed">
+                  <p>
+                    Please carefully pack your sauce samples to prevent breakage during transit. We recommend
+                    using bubble wrap or similar protective materials.
+                  </p>
+                  <p>
+                    Include a copy of your completed packing sheet inside the box to ensure proper
+                    identification of your entries.
+                  </p>
+                </div>
+              </div>
+
+              <div className="text-center">
+                <Link
+                  href="/shipping-form.pdf"
+                  target="_blank"
+                  className="inline-block bg-black px-8 py-4 font-[family-name:var(--font-archivo-black)] text-sm uppercase tracking-[0.06em] text-[#F5C518] hover:bg-black/80"
+                >
+                  Download packing sheet (PDF)
+                </Link>
+              </div>
+
+              <div className="border-[3px] border-black bg-white p-8 md:p-12">
+                <h2 className="mb-6 text-xs font-bold uppercase tracking-[0.25em] text-black/50">
+                  Shipping address
+                </h2>
+                <div className="border-2 border-black bg-[#faf6ec] p-6">
+                  <address className="not-italic text-black/80 leading-relaxed">
+                    {SHIPPING_ADDRESS.lines.map((line, i) => (
+                      <span key={i} className={i === 0 ? 'mb-2 block font-semibold text-black' : 'block'}>
+                        {line}
+                      </span>
+                    ))}
+                  </address>
                 </div>
               </div>
             </div>
+          )}
+        </div>
+      </section>
 
-            <div className="text-center">
-              <Link
-                href="/shipping-form.pdf"
-                target="_blank"
-                download
-                className="inline-block rounded-full bg-gradient-to-r from-[#ff4d00] to-[#f1b12e] px-8 py-4 text-sm font-semibold uppercase tracking-[0.2em] text-white transition hover:from-[#ff7033] hover:to-[#ffd060]"
-              >
-                📄 Download Packing Sheet (PDF)
-              </Link>
-            </div>
-
-            <div className="rounded-3xl border border-white/15 bg-white/[0.07] p-8 md:p-12 backdrop-blur">
-              <h2 className="text-sm font-semibold uppercase tracking-[0.25em] text-amber-200/80 mb-6">Shipping Address</h2>
-              <div className="bg-black/30 p-6 rounded-lg">
-                <address className="not-italic text-white/80 leading-relaxed">
-                  <span className="block font-semibold text-white mb-2">EUROPEAN HOT SAUCE AWARDS</span>
-                  CBS Foods GmbH<br />
-                  Ossastr 21A<br />
-                  12045 Berlin, Neukölln<br />
-                  Germany
-                </address>
-              </div>
-            </div>
-          </div>
-        </SectionContainer>
-      </div>
+      <HeatFooter />
     </div>
   );
-};
-
-export default PackingSheetPage;
+}
