@@ -78,11 +78,11 @@ export async function POST(request: NextRequest) {
         break;
       }
 
-      case 'payment_reminder': {
-        const { email, brandName, entryCount, amount, daysSinceRegistration, magicLink } = data;
+      case 'confirm_entries_reminder': {
+        const { email, brandName, entryCount, daysSinceRegistration, magicLink } = data;
         await sendEmail({
           to: email,
-          ...emailTemplates.paymentReminder(brandName, entryCount, amount, daysSinceRegistration, magicLink)
+          ...emailTemplates.confirmEntriesReminder(brandName, entryCount, daysSinceRegistration, magicLink)
         });
         break;
       }

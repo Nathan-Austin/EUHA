@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
+import { COMPETITION_YEAR } from '../_shared/config.ts';
 
 const supabaseAdmin = createClient(
   Deno.env.get('PROJECT_URL') ?? '',
@@ -15,38 +16,50 @@ const supabaseAdmin = createClient(
 const emailApiUrl = Deno.env.get('EMAIL_API_URL') || 'https://heatawards.eu';
 const serviceRoleKey = Deno.env.get('SERVICE_ROLE_KEY') ?? '';
 
+interface SupplierRow {
+  email: string;
+  brand_name: string | null;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
   try {
-    // Get all pending payments with supplier details
-    const { data: pendingPayments, error: paymentsError } = await supabaseAdmin
-      .from('supplier_payments')
+    // Under the deferred-payment model, a sauce only gets `payment_id` set
+    // when the supplier explicitly clicks "Confirm Entries" (createPaymentBatch
+    // in actions.ts) — nothing else ever writes it, and this function never
+    // writes it either, it only reads. So `payment_id IS NULL` on an
+    // otherwise-unpaid sauce means exactly one thing: this supplier has
+    // entries that were never confirmed, whether because they registered and
+    // never confirmed at all, or because they confirmed once and then added
+    // more sauces afterward without re-confirming (insertSauceEntry
+    // deliberately never auto-links a new sauce to an already-confirmed
+    // 'deferred' batch — see the comment there). Suppliers who HAVE a
+    // confirmed batch (payment_id set, stripe_payment_status = 'deferred')
+    // are correctly not charged yet and get no reminder.
+    const { data: unconfirmedSauces, error: saucesError } = await supabaseAdmin
+      .from('sauces')
       .select(`
         id,
-        entry_count,
-        amount_due_cents,
         created_at,
-        stripe_session_id,
         supplier_id,
-        suppliers!inner (
-          email,
-          brand_name
-        )
+        suppliers!inner ( email, brand_name )
       `)
-      .eq('stripe_payment_status', 'pending')
+      .eq('competition_year', COMPETITION_YEAR)
+      .eq('payment_status', 'pending_payment')
+      .is('payment_id', null)
       .order('created_at', { ascending: true });
 
-    if (paymentsError) {
-      throw paymentsError;
+    if (saucesError) {
+      throw saucesError;
     }
 
-    if (!pendingPayments || pendingPayments.length === 0) {
+    if (!unconfirmedSauces || unconfirmedSauces.length === 0) {
       return new Response(JSON.stringify({
         success: true,
-        message: 'No pending payments found',
+        message: 'No unconfirmed entries found',
         remindersSent: 0
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -54,26 +67,35 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Group unconfirmed sauces by supplier — one reminder per supplier, not
+    // per sauce.
+    const bySupplier = new Map<string, { supplier: SupplierRow; entryCount: number; oldestCreatedAt: string }>();
+    for (const sauce of unconfirmedSauces) {
+      const supplier = (Array.isArray(sauce.suppliers) ? sauce.suppliers[0] : sauce.suppliers) as SupplierRow | null;
+      if (!supplier) continue;
+
+      const existing = bySupplier.get(sauce.supplier_id);
+      if (existing) {
+        existing.entryCount += 1;
+      } else {
+        bySupplier.set(sauce.supplier_id, {
+          supplier,
+          entryCount: 1,
+          oldestCreatedAt: sauce.created_at,
+        });
+      }
+    }
+
     const remindersSent = [];
     const errors = [];
 
-    for (const payment of pendingPayments) {
+    for (const [supplierId, { supplier, entryCount, oldestCreatedAt }] of bySupplier) {
       try {
-        const supplier = Array.isArray(payment.suppliers)
-          ? payment.suppliers[0]
-          : payment.suppliers;
-
-        if (!supplier) {
-          errors.push({ payment_id: payment.id, error: 'No supplier found' });
-          continue;
-        }
-
-        // Calculate days since registration
         const daysSince = Math.floor(
-          (new Date().getTime() - new Date(payment.created_at).getTime()) / (1000 * 60 * 60 * 24)
+          (new Date().getTime() - new Date(oldestCreatedAt).getTime()) / (1000 * 60 * 60 * 24)
         );
 
-        // Generate magic link so supplier can login to complete payment
+        // Generate magic link so supplier can login to confirm their entries
         let magicLink = 'https://heatawards.eu/login';
         try {
           const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
@@ -93,7 +115,6 @@ Deno.serve(async (req) => {
           console.error('Error generating magic link:', linkErr);
         }
 
-        // Send reminder email with magic link
         const emailResponse = await fetch(`${emailApiUrl}/api/send-email`, {
           method: 'POST',
           headers: {
@@ -101,15 +122,13 @@ Deno.serve(async (req) => {
             'Authorization': `Bearer ${serviceRoleKey}`,
           },
           body: JSON.stringify({
-            type: 'payment_reminder',
+            type: 'confirm_entries_reminder',
             data: {
               email: supplier.email,
               brandName: supplier.brand_name,
-              entryCount: payment.entry_count,
-              amount: (payment.amount_due_cents / 100).toFixed(2),
+              entryCount,
               daysSinceRegistration: daysSince,
-              paymentId: payment.id,
-              magicLink: magicLink,
+              magicLink,
             },
           }),
         });
@@ -117,21 +136,22 @@ Deno.serve(async (req) => {
         if (!emailResponse.ok) {
           const errorText = await emailResponse.text();
           errors.push({
-            payment_id: payment.id,
+            supplier_id: supplierId,
             email: supplier.email,
             error: `Email API error: ${errorText}`
           });
         } else {
           remindersSent.push({
-            payment_id: payment.id,
+            supplier_id: supplierId,
             email: supplier.email,
             brand: supplier.brand_name,
+            entry_count: entryCount,
             days_pending: daysSince,
           });
         }
       } catch (err) {
         errors.push({
-          payment_id: payment.id,
+          supplier_id: supplierId,
           error: err instanceof Error ? err.message : String(err)
         });
       }
@@ -140,7 +160,7 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({
       success: true,
       remindersSent: remindersSent.length,
-      totalPending: pendingPayments.length,
+      totalPending: bySupplier.size,
       details: remindersSent,
       errors: errors.length > 0 ? errors : undefined,
     }), {
@@ -149,7 +169,7 @@ Deno.serve(async (req) => {
     });
 
   } catch (error) {
-    console.error('Error sending payment reminders:', error);
+    console.error('Error sending confirm-entries reminders:', error);
     return new Response(JSON.stringify({
       error: error instanceof Error ? error.message : String(error)
     }), {
