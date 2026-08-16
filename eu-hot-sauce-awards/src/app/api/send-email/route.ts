@@ -87,15 +87,6 @@ export async function POST(request: NextRequest) {
         break;
       }
 
-      case 'shipping_address_request': {
-        const { email, brandName, magicLink } = data;
-        await sendEmail({
-          to: email,
-          ...emailTemplates.shippingAddressRequest(brandName, magicLink)
-        });
-        break;
-      }
-
       case 'custom': {
         const { email, subject, html } = data;
         await sendEmail({ to: email, subject, html });

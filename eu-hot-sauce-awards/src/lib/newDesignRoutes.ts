@@ -1,27 +1,19 @@
-// Routes that ship their own EHSA-2027-style HeatHeader/HeatFooter and should
-// not also get the old GlobalNav/Navigation/Footer. Add new redesigned routes
-// here as they're built, rather than hardcoding checks in multiple places.
+// Routes that still ship the OLD GlobalNav/Navigation/Footer, because their
+// own page content hasn't been redesigned to the EHSA-2027 style yet. Every
+// other route — including ones that don't exist, which is what makes 404s
+// render with the new chrome too — gets the new design by default. Add a
+// route here only when it genuinely still needs the old chrome; remove it
+// the moment its content is redesigned, rather than adding new entries to
+// a "new design" allow-list that's easy to forget.
+const OLD_DESIGN_PREFIXES = [
+  "/judge/ready",
+  "/judge/scan",
+  "/judge/start",
+  "/judge/score/",
+];
+
 export function usesNewDesign(pathname: string | null): boolean {
   if (!pathname) return false;
-  return (
-    pathname === "/" ||
-    pathname.startsWith("/category/") ||
-    pathname.startsWith("/maker/") ||
-    pathname.startsWith("/makers") ||
-    pathname.startsWith("/country/") ||
-    pathname.startsWith("/countries") ||
-    pathname.startsWith("/results") ||
-    pathname.startsWith("/rankings") ||
-    pathname.startsWith("/sponsors") ||
-    pathname === "/login" ||
-    pathname === "/contact" ||
-    pathname === "/cookies" ||
-    pathname === "/privacy" ||
-    pathname === "/terms" ||
-    pathname.startsWith("/events") ||
-    pathname === "/judges" ||
-    pathname === "/prizes" ||
-    pathname === "/apply/judge" ||
-    pathname === "/press"
-  );
+  if (pathname.startsWith("/dashboard")) return false;
+  return !OLD_DESIGN_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 }

@@ -1,4 +1,8 @@
 import Link from "next/link";
+import HeatHeader from "@/components/HeatHeader";
+import HeatFooter from "@/components/HeatFooter";
+import Breadcrumbs from "@/components/Breadcrumbs";
+import { COMPETITION_YEAR } from "@/lib/config";
 
 const routes = [
   {
@@ -8,49 +12,50 @@ const routes = [
       "Log in (or create an account) to enter your sauces for this year's European Hot Sauce Awards from your dashboard.",
     cta: "Log In to Enter",
   },
+  {
+    href: "/apply/judge",
+    title: "Judge Application",
+    description:
+      "Apply to join the judging panel at the EHSA congress in Berlin — open to chefs, critics, retailers, and other food-industry professionals.",
+    cta: "Apply to Judge",
+  },
 ];
 
 export default function ApplyLandingPage() {
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#08040e] text-white">
-      <div
-        className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(255,77,0,0.22),_transparent_55%),_radial-gradient(circle_at_bottom_left,_rgba(241,177,46,0.2),_transparent_50%)]"
-        aria-hidden
-      />
-      <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/60 to-transparent" aria-hidden />
+    <div className="min-h-screen bg-[#faf6ec] text-black">
+      <HeatHeader />
+      <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Applications" }]} />
 
-      <div className="relative z-10 mx-auto flex max-w-5xl flex-col gap-16 px-6 pb-20 pt-24 sm:px-10 lg:px-12">
-        <header className="space-y-6 text-center">
-          <span className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/5 px-4 py-1 text-xs uppercase tracking-[0.3em] text-amber-200/80">
-            Heat Awards • Applications
-          </span>
-          <h1 className="text-4xl font-semibold leading-tight sm:text-5xl">
-            Bring the Heat to the 2026 European Hot Sauce Awards
-          </h1>
-          <p className="mx-auto max-w-3xl text-base text-white/80 sm:text-lg">
-            Whether you craft exceptional sauces or you live to judge them, this portal is your gateway to the continent’s definitive celebration of flavour and fire.
+      <section className="bg-black py-16 text-white">
+        <div className="mx-auto max-w-[1240px] px-6">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-[#F5C518]">
+            EHSA {COMPETITION_YEAR}
           </p>
-        </header>
+          <h1 className="font-[family-name:var(--font-archivo-black)] text-[clamp(32px,5vw,52px)] uppercase leading-[0.95] text-white">
+            Bring the <span className="bg-[#F5C518] px-2 text-black">heat</span>.
+          </h1>
+          <p className="mt-6 max-w-2xl text-base text-white/75 sm:text-lg">
+            Whether you craft exceptional sauces or you live to judge them, this is your gateway to the
+            continent&rsquo;s definitive celebration of flavour and fire.
+          </p>
+        </div>
+      </section>
 
-        <section className="grid gap-8 sm:grid-cols-2">
+      <section className="py-16">
+        <div className="mx-auto grid max-w-4xl gap-8 px-6 sm:grid-cols-2">
           {routes.map(({ href, title, description, cta }) => (
             <Link
               key={href}
               href={href}
-              className="group relative overflow-hidden rounded-3xl border border-white/15 bg-white/[0.06] p-8 backdrop-blur transition hover:border-white/25 hover:bg-white/[0.1]"
+              className="group border-[3px] border-black bg-white p-8 transition hover:bg-black hover:text-white"
             >
-              <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-transparent opacity-0 transition group-hover:opacity-100" />
-              <div className="relative space-y-4">
-                <h2 className="text-2xl font-semibold text-white">{title}</h2>
-                <p className="text-sm text-white/70">{description}</p>
-                <span className="inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.2em] text-amber-200 transition group-hover:translate-x-1">
+              <div className="space-y-4">
+                <h2 className="font-[family-name:var(--font-archivo-black)] text-xl uppercase">{title}</h2>
+                <p className="text-sm text-black/70 group-hover:text-white/70">{description}</p>
+                <span className="inline-flex items-center gap-2 text-sm font-bold uppercase tracking-[0.06em] text-black group-hover:text-[#F5C518]">
                   {cta}
-                  <svg
-                    aria-hidden
-                    className="h-3 w-3"
-                    fill="none"
-                    viewBox="0 0 12 12"
-                  >
+                  <svg aria-hidden className="h-3 w-3" fill="none" viewBox="0 0 12 12">
                     <path
                       d="M3 9l4-4-4-4"
                       stroke="currentColor"
@@ -63,8 +68,10 @@ export default function ApplyLandingPage() {
               </div>
             </Link>
           ))}
-        </section>
-      </div>
-    </main>
+        </div>
+      </section>
+
+      <HeatFooter />
+    </div>
   );
 }

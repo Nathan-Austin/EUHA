@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import Image from 'next/image';
+import { PREVIOUS_COMPETITION_YEAR } from '@/lib/config';
 
 const FooterCol = ({
   title,
@@ -54,7 +55,7 @@ export default function HeatFooter() {
           <FooterCol
             title="Results"
             links={[
-              { href: '/results/2026', label: '2026 Results' },
+              { href: `/results/${PREVIOUS_COMPETITION_YEAR}`, label: `${PREVIOUS_COMPETITION_YEAR} Results` },
               { href: '/rankings', label: 'Global Rankings' },
               { href: '/results', label: 'Past Results' },
             ]}

@@ -15,7 +15,6 @@ import EventsManager from './EventsManager'
 import EventJudgingManager from './EventJudgingManager'
 import EmailCampaignManager from './EmailCampaignManager'
 import EmailTemplateEditor from './EmailTemplateEditor'
-import ShippingAddressRequestSender from './ShippingAddressRequestSender'
 import JudgingReminderSender from './JudgingReminderSender'
 import WinnersAnnouncementSender from './WinnersAnnouncementSender'
 import ResultsFeedbackSender from './ResultsFeedbackSender'
@@ -29,7 +28,6 @@ import { COMPETITION_YEAR } from '@/lib/config'
 import SendPaymentRemindersButton from './SendPaymentRemindersButton'
 import VatInvoiceSender from './VatInvoiceSender'
 import JudgeShippingManager from './JudgeShippingManager'
-import RequestShippingAddressButton from './RequestShippingAddressButton'
 import DhlLabelScanner from './DhlLabelScanner'
 import PackageReceiveScanner from './PackageReceiveScanner'
 import SettingToggle from './SettingToggle'
@@ -161,10 +159,6 @@ export default async function AdminDashboard() {
     suppliers?.filter((supplier) => supplier.package_status !== 'received').length ?? 0
   const packagesReceived =
     suppliers?.filter((supplier) => supplier.package_status === 'received').length ?? 0
-
-  const suppliersMissingAddress = (shippingJudges || []).filter(
-    (j) => j.type === 'supplier' && (!j.address || !j.city || !j.postal_code || !j.country)
-  ).length
 
   const statusHighlights = (Object.entries(statusCounts) as Array<[string, number]>)
     .sort(([, countA], [, countB]) => countB - countA)
@@ -495,9 +489,6 @@ export default async function AdminDashboard() {
             title="DHL Shipping — Judge Boxes"
             description="Generate DHL shipping labels for outgoing judging boxes. Labels print separately from judging labels."
           />
-          {suppliersMissingAddress > 0 && (
-            <RequestShippingAddressButton missingCount={suppliersMissingAddress} />
-          )}
           <Card>
             <DhlLabelScanner />
           </Card>
@@ -528,9 +519,6 @@ export default async function AdminDashboard() {
           </Card>
           <Card>
             <JudgingReminderSender />
-          </Card>
-          <Card>
-            <ShippingAddressRequestSender />
           </Card>
           <Card>
             <EmailTemplateEditor />

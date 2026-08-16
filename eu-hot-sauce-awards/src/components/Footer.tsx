@@ -14,6 +14,7 @@ const FooterLink = ({ href, children }: { href: string, children: React.ReactNod
 const Footer = () => {
   const pathname = usePathname();
 
+  if (pathname?.startsWith('/dashboard')) return null;
   // Redesigned routes ship their own EHSA-2027-style footer (see HeatFooter).
   if (usesNewDesign(pathname)) return null;
 
