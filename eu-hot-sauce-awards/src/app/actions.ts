@@ -8,6 +8,7 @@ import { sendEmail, emailTemplates } from '@/lib/email'
 import * as fs from 'fs'
 import * as path from 'path'
 import { COMPETITION_YEAR } from '@/lib/config'
+import { isRecognizedCountry } from '@/lib/countries'
 
 type SauceStatus = 'registered' | 'arrived' | 'boxed' | 'judged';
 
@@ -5587,6 +5588,19 @@ export async function updateSupplierProfile(
 
   if (!fields.addressStreet.trim() || !fields.addressHouseNumber.trim() || !fields.city.trim() || !fields.postalCode.trim() || !fields.country.trim()) {
     return { error: 'Street, house number, city, postal code and country are required.' };
+  }
+
+  // Defense-in-depth: the client now offers country as a <select> sourced
+  // from lib/countries.ts, but this action can be called directly, so a
+  // country not on the canonical list must still be rejected here — an
+  // unrecognized value would otherwise silently default VAT treatment to
+  // 'standard' downstream (see determineVatTreatment) without anyone knowing
+  // the address itself never validated in the first place.
+  if (!isRecognizedCountry(fields.country)) {
+    return { error: 'Please select a valid country from the list.' };
+  }
+  if (!fields.invoiceSameAsDelivery && fields.invoiceCountry.trim() && !isRecognizedCountry(fields.invoiceCountry)) {
+    return { error: 'Please select a valid billing country from the list.' };
   }
 
   const { data: supplier, error: supplierError } = await supabase

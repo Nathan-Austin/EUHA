@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { updateSupplierProfile, type SupplierProfileFields } from '@/app/actions';
 import { createClient } from '@/lib/supabase/client';
+import { COUNTRIES, COUNTRY_REGIONS } from '@/lib/countries';
 
 interface ProducerInfo {
   brandName: string;
@@ -37,6 +38,31 @@ const labelClass = 'mb-1 block text-xs font-semibold uppercase tracking-[0.08em]
 
 const isAddressComplete = (info: ProducerInfo) =>
   Boolean(info.addressStreet && info.addressHouseNumber && info.city && info.postalCode && info.country);
+
+function CountrySelect({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => void;
+}) {
+  return (
+    <select value={value} onChange={onChange} className={`${inputClass} ${value ? '' : 'text-black/40'}`}>
+      <option value="" disabled>
+        Select a country
+      </option>
+      {COUNTRY_REGIONS.map((region) => (
+        <optgroup key={region} label={region}>
+          {COUNTRIES.filter((c) => c.region === region).map((c) => (
+            <option key={c.name} value={c.name}>
+              {c.name}
+            </option>
+          ))}
+        </optgroup>
+      ))}
+    </select>
+  );
+}
 
 export default function ProducerInfoModal({ info }: { info: ProducerInfo }) {
   const [open, setOpen] = useState(false);
@@ -89,7 +115,7 @@ export default function ProducerInfoModal({ info }: { info: ProducerInfo }) {
   });
 
   const set = (field: keyof Omit<SupplierProfileFields, 'ehcSyncConsent' | 'invoiceSameAsDelivery'>) => (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => setFields((prev) => ({ ...prev, [field]: e.target.value }));
 
   const handleLogoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -298,7 +324,7 @@ export default function ProducerInfoModal({ info }: { info: ProducerInfo }) {
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <label className={labelClass}>Country <span className="text-red-600">*</span></label>
-                  <input type="text" value={fields.country} onChange={set('country')} className={inputClass} />
+                  <CountrySelect value={fields.country} onChange={set('country')} />
                 </div>
                 <div>
                   <label className={labelClass}>Phone <span className="normal-case text-black/40">(optional)</span></label>
@@ -368,7 +394,7 @@ export default function ProducerInfoModal({ info }: { info: ProducerInfo }) {
                   </div>
                   <div>
                     <label className={labelClass}>Country</label>
-                    <input type="text" value={fields.invoiceCountry} onChange={set('invoiceCountry')} className={inputClass} />
+                    <CountrySelect value={fields.invoiceCountry} onChange={set('invoiceCountry')} />
                   </div>
                 </div>
               )}

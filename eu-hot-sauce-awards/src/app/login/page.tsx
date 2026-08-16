@@ -8,6 +8,7 @@ import HeatHeader from '@/components/HeatHeader';
 import HeatFooter from '@/components/HeatFooter';
 import Breadcrumbs from '@/components/Breadcrumbs';
 import { COMPETITION_YEAR } from '@/lib/config';
+import { COUNTRIES, COUNTRY_REGIONS } from '@/lib/countries';
 
 async function requestOtpCode(email: string) {
   const trimmedEmail = email.trim();
@@ -286,14 +287,25 @@ export default function LoginPage() {
                     />
                     {emailError && <p className="mt-1.5 text-sm text-red-600">{emailError}</p>}
                   </div>
-                  <input
-                    type="text"
+                  <select
                     required
                     value={country}
                     onChange={(e) => setCountry(e.target.value)}
-                    className={inputClass}
-                    placeholder="Country"
-                  />
+                    className={`${inputClass} ${country ? '' : 'text-black/40'}`}
+                  >
+                    <option value="" disabled>
+                      Country
+                    </option>
+                    {COUNTRY_REGIONS.map((region) => (
+                      <optgroup key={region} label={region}>
+                        {COUNTRIES.filter((c) => c.region === region).map((c) => (
+                          <option key={c.name} value={c.name}>
+                            {c.name}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
                   <button
                     type="submit"
                     disabled={loading}

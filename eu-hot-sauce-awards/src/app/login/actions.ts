@@ -2,16 +2,7 @@
 
 import { createClient as createServiceClient } from '@supabase/supabase-js';
 import { validateEmail } from '@/lib/validation';
-
-// Broad but not exhaustive — good enough for a default; admins can correct via
-// updateSupplierCountryRegion (src/app/actions.ts) if a country lands wrong.
-const EUROPEAN_COUNTRIES = new Set([
-  'Austria', 'Belgium', 'Bulgaria', 'Croatia', 'Cyprus', 'Czech Republic', 'Czechia',
-  'Denmark', 'Estonia', 'Finland', 'France', 'Germany', 'Greece', 'Hungary', 'Iceland',
-  'Ireland', 'Italy', 'Latvia', 'Liechtenstein', 'Lithuania', 'Luxembourg', 'Malta',
-  'Netherlands', 'Norway', 'Poland', 'Portugal', 'Romania', 'Slovakia', 'Slovenia',
-  'Spain', 'Sweden', 'Switzerland', 'UK', 'United Kingdom',
-]);
+import { findCountry, isRecognizedCountry } from '@/lib/countries';
 
 interface RegisterResult {
   success?: true;
@@ -31,6 +22,10 @@ export async function registerNewSupplier(formData: FormData): Promise<RegisterR
   const emailValidation = validateEmail(email);
   if (!emailValidation.isValid) {
     return { error: emailValidation.error || 'Please enter a valid email address.' };
+  }
+
+  if (!isRecognizedCountry(country)) {
+    return { error: 'Please select a valid country.' };
   }
 
   const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -53,7 +48,7 @@ export async function registerNewSupplier(formData: FormData): Promise<RegisterR
     return { error: 'An account already exists for this email — use "Returning" and log in instead.' };
   }
 
-  const region = EUROPEAN_COUNTRIES.has(country) ? 'european' : 'international';
+  const region = findCountry(country)?.region === 'Europe' ? 'european' : 'international';
 
   const { error: insertError } = await supabase.from('suppliers').insert({
     brand_name: brandName,
