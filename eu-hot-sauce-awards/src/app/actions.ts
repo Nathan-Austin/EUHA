@@ -2844,6 +2844,69 @@ export async function rejectProJudge(judgeId: string, reason?: string) {
   return { success: true, message: `Judge application rejected.` };
 }
 
+type InvoiceAddressFields = {
+  address: string | null;
+  address_street: string | null;
+  address_house_number: string | null;
+  address_line2: string | null;
+  city: string | null;
+  state: string | null;
+  postal_code: string | null;
+  country: string | null;
+  invoice_address_street: string | null;
+  invoice_address_house_number: string | null;
+  invoice_address_line2: string | null;
+  invoice_city: string | null;
+  invoice_state: string | null;
+  invoice_postal_code: string | null;
+  invoice_country: string | null;
+};
+
+/**
+ * Resolves the country to use for VAT-treatment determination: the billing
+ * address ("invoice_country") if set, else the delivery address's country —
+ * "same as delivery" is stored as null invoice_* fields (see
+ * updateSupplierProfile), not a point-in-time copy, so this fallback is what
+ * actually implements that link.
+ */
+function resolveInvoiceCountry(supplier: Pick<InvoiceAddressFields, 'invoice_country' | 'country'>): string | null {
+  return supplier.invoice_country || supplier.country || null;
+}
+
+/**
+ * Formats a supplier's billing address for invoice/receipt emails: prefers
+ * the split invoice_* fields (from the Producer Info "billing address"
+ * section) when set, then the delivery address fields ("same as delivery"),
+ * then the legacy combined `address` column for suppliers who've never set
+ * either of the newer field sets. Shared by sendVatEmail and
+ * sendBulkVatInvoices so the two send paths can't drift apart again.
+ */
+function formatInvoiceAddress(supplier: InvoiceAddressFields): string {
+  const invoiceLines = [
+    supplier.invoice_address_street && supplier.invoice_address_house_number
+      ? `${supplier.invoice_address_street} ${supplier.invoice_address_house_number}`
+      : null,
+    supplier.invoice_address_line2,
+    [supplier.invoice_postal_code, supplier.invoice_city].filter(Boolean).join(' ') || null,
+    supplier.invoice_state,
+    supplier.invoice_country,
+  ].filter(Boolean) as string[];
+
+  if (invoiceLines.length > 0) return invoiceLines.join('\n');
+
+  const deliveryLines = [
+    supplier.address_street && supplier.address_house_number
+      ? `${supplier.address_street} ${supplier.address_house_number}`
+      : null,
+    supplier.address_line2,
+    [supplier.postal_code, supplier.city].filter(Boolean).join(' ') || null,
+    supplier.state,
+    supplier.country,
+  ].filter(Boolean) as string[];
+
+  return deliveryLines.length > 0 ? deliveryLines.join('\n') : (supplier.address || '');
+}
+
 /**
  * Send VAT invoice email to a supplier for current year entries
  */
@@ -2870,7 +2933,12 @@ export async function sendVatEmail(supplierId: string) {
   // 2. Validate supplier exists
   const { data: supplier, error: supplierError } = await supabase
     .from('suppliers')
-    .select('id, brand_name, contact_name, email, address, vat_number, invoice_country')
+    .select(`
+      id, brand_name, contact_name, email, address, vat_number, invoice_company_name,
+      address_street, address_house_number, address_line2, city, state, postal_code, country,
+      invoice_address_street, invoice_address_house_number, invoice_address_line2,
+      invoice_city, invoice_state, invoice_postal_code, invoice_country
+    `)
     .eq('id', supplierId)
     .single();
 
@@ -2908,7 +2976,7 @@ export async function sendVatEmail(supplierId: string) {
   // Import helper functions from company lib
   const { COMPANY_INFO, calculateVAT, determineVatTreatment, formatEuro } = await import('@/lib/company');
 
-  const vatTreatment = determineVatTreatment(supplier.invoice_country, supplier.vat_number);
+  const vatTreatment = determineVatTreatment(resolveInvoiceCountry(supplier), supplier.vat_number);
   const vatBreakdown = calculateVAT(totalGrossCents, vatTreatment);
 
   // 5. Generate receipt number using DB function
@@ -2936,9 +3004,9 @@ export async function sendVatEmail(supplierId: string) {
     receiptNumber,
     receiptDate,
     year: currentYear,
-    supplierName: supplier.brand_name,
+    supplierName: supplier.invoice_company_name || supplier.brand_name,
     supplierContactName: supplier.contact_name || '',
-    supplierAddress: supplier.address || '',
+    supplierAddress: formatInvoiceAddress(supplier),
     supplierVatNumber: supplier.vat_number || null,
     entryCount: totalEntries,
     grossAmount: formatEuro(vatBreakdown.gross).replace('€', '').trim(),
@@ -3075,7 +3143,7 @@ export async function getVatInvoiceRecipients(): Promise<
 
   const { data: suppliers } = await serviceClient
     .from('suppliers')
-    .select('id, brand_name, email, email_opted_out, vat_number, invoice_country')
+    .select('id, brand_name, email, email_opted_out, vat_number, country, invoice_country')
     .in('id', supplierIds)
     .eq('email_opted_out', false)
 
@@ -3101,7 +3169,7 @@ export async function getVatInvoiceRecipients(): Promise<
   const recipients: VatInvoiceRecipient[] = (suppliers ?? []).map((s) => {
     const pay = paymentsBySupplier.get(s.id)!
     const audit = auditBySupplierId.get(s.id)
-    const treatment = determineVatTreatment(s.invoice_country, s.vat_number)
+    const treatment = determineVatTreatment(resolveInvoiceCountry(s), s.vat_number)
     const vatBreakdown = calculateVAT(pay.total_cents, treatment)
     let status: VatInvoiceRecipient['status'] = 'pending'
     if (audit?.sent) status = 'sent'
@@ -3174,6 +3242,7 @@ export async function sendBulkVatInvoices(supplierIds: string[]): Promise<
       .select(`
         id, brand_name, contact_name, email, address, email_opted_out,
         vat_number, invoice_company_name,
+        address_street, address_house_number, address_line2, city, state, postal_code, country,
         invoice_address_street, invoice_address_house_number, invoice_address_line2,
         invoice_city, invoice_state, invoice_postal_code, invoice_country
       `)
@@ -3194,7 +3263,7 @@ export async function sendBulkVatInvoices(supplierIds: string[]): Promise<
 
     const totalEntries = payments.reduce((sum, p) => sum + p.entry_count, 0)
     const totalGrossCents = payments.reduce((sum, p) => sum + p.amount_due_cents, 0)
-    const vatTreatment = determineVatTreatment(supplier.invoice_country, supplier.vat_number)
+    const vatTreatment = determineVatTreatment(resolveInvoiceCountry(supplier), supplier.vat_number)
     const vatBreakdown = calculateVAT(totalGrossCents, vatTreatment)
 
     const { data: receiptNumberResult } = await serviceClient
@@ -3210,16 +3279,7 @@ export async function sendBulkVatInvoices(supplierIds: string[]): Promise<
       day: '2-digit', month: 'long', year: 'numeric',
     })
 
-    const invoiceAddressLines = [
-      supplier.invoice_address_street && supplier.invoice_address_house_number
-        ? `${supplier.invoice_address_street} ${supplier.invoice_address_house_number}`
-        : null,
-      supplier.invoice_address_line2,
-      [supplier.invoice_postal_code, supplier.invoice_city].filter(Boolean).join(' ') || null,
-      supplier.invoice_state,
-      supplier.invoice_country,
-    ].filter(Boolean) as string[]
-    const supplierAddress = invoiceAddressLines.length > 0 ? invoiceAddressLines.join('\n') : (supplier.address || '')
+    const supplierAddress = formatInvoiceAddress(supplier)
 
     const emailTemplate = emailTemplates.paymentReceipt({
       receiptNumber,
@@ -3480,7 +3540,15 @@ async function insertSauceEntry(
     // Don't fail the whole operation
   }
 
-  // Check if there's a pending payment and auto-add this sauce to it
+  // Check if there's a pending payment and auto-add this sauce to it.
+  // Deliberately matches 'pending' only, not 'deferred' (the status
+  // createPaymentBatch now uses for a confirmed-but-unpaid batch) — a sauce
+  // added after confirming should NOT silently re-inflate an already-locked
+  // batch. The dashboard instead shows "you've changed your entries since
+  // confirming" and requires an explicit re-confirm click. This block is
+  // effectively vestigial for suppliers now (nothing creates a 'pending'
+  // batch in the current flow) but left as-is for the old immediate-charge
+  // path it was built for.
   const { data: pendingPayment } = await serviceSupabase
     .from('supplier_payments')
     .select('id, entry_count, stripe_session_id')
@@ -4262,13 +4330,21 @@ export async function updateSauceInfo(
     const bucket = process.env.NEXT_PUBLIC_SAUCE_IMAGE_BUCKET || 'sauce-media';
     const targetPath = `suppliers/${supplier.id}/${sauceId}.webp`;
 
-    if (sauce.image_path) {
-      await serviceSupabase.storage.from(bucket).remove([sauce.image_path]);
-    }
-
-    const { error: moveError } = await serviceSupabase.storage
+    // Try the move first — the common (new photo) case just works. Only if
+    // it fails (almost always because a photo already exists at this
+    // deterministic path from an earlier upload) do we remove the old one
+    // and retry, so a failed move never leaves the sauce with no photo at
+    // all — the old one stays in place until a replacement is confirmed.
+    let { error: moveError } = await serviceSupabase.storage
       .from(bucket)
       .move(pendingImagePath, targetPath);
+
+    if (moveError && sauce.image_path) {
+      await serviceSupabase.storage.from(bucket).remove([sauce.image_path]);
+      ({ error: moveError } = await serviceSupabase.storage
+        .from(bucket)
+        .move(pendingImagePath, targetPath));
+    }
 
     if (moveError) {
       return { error: `Failed to save photo: ${moveError.message}` };
@@ -5537,9 +5613,21 @@ export async function updateSupplierProfile(
     );
     const bucket = process.env.NEXT_PUBLIC_SAUCE_IMAGE_BUCKET || 'sauce-media';
     const targetPath = `suppliers/${supplier.id}/logo.webp`;
-    const { error: copyError } = await serviceSupabase.storage
+
+    // Try the copy first — .copy() won't overwrite an existing destination,
+    // which is the common case here (replacing a previously-uploaded logo).
+    // Only remove-and-retry on failure, so a failed copy never leaves the
+    // supplier with no logo at all.
+    let { error: copyError } = await serviceSupabase.storage
       .from(bucket)
       .copy(pendingLogoPath, targetPath);
+
+    if (copyError) {
+      await serviceSupabase.storage.from(bucket).remove([targetPath]);
+      ({ error: copyError } = await serviceSupabase.storage
+        .from(bucket)
+        .copy(pendingLogoPath, targetPath));
+    }
 
     if (copyError) {
       return { error: `Failed to save logo: ${copyError.message}` };
@@ -5547,19 +5635,22 @@ export async function updateSupplierProfile(
     logoPath = targetPath;
   }
 
-  // "Same as delivery" copies the delivery address in at save time rather
-  // than leaving invoice_* null with a runtime fallback — keeps every
-  // downstream reader (VAT treatment determination, invoice email) looking
-  // at one place instead of needing its own fallback chain.
+  // "Same as delivery" stores null for every invoice_* field rather than
+  // copying the delivery address in at save time — a point-in-time copy
+  // would go stale the next time the supplier updates only their delivery
+  // address (the "same as delivery" checkbox can't tell the two apart once
+  // both are populated). Every reader (VAT treatment determination, invoice
+  // email) falls back to the base address/country fields when invoice_* is
+  // null, so "same as delivery" stays a live link, not a snapshot.
   const invoiceAddress = fields.invoiceSameAsDelivery
     ? {
-        invoice_address_street: fields.addressStreet.trim(),
-        invoice_address_house_number: fields.addressHouseNumber.trim(),
-        invoice_address_line2: fields.addressLine2.trim() || null,
-        invoice_city: fields.city.trim(),
-        invoice_state: fields.state.trim() || null,
-        invoice_postal_code: fields.postalCode.trim(),
-        invoice_country: fields.country.trim(),
+        invoice_address_street: null,
+        invoice_address_house_number: null,
+        invoice_address_line2: null,
+        invoice_city: null,
+        invoice_state: null,
+        invoice_postal_code: null,
+        invoice_country: null,
       }
     : {
         invoice_address_street: fields.invoiceAddressStreet.trim() || null,

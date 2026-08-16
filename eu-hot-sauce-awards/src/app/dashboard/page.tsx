@@ -156,7 +156,9 @@ export default async function DashboardPage() {
         }
 
         const shippingOpen = await getCompetitionSetting('shipping_open');
-        const vatTreatment = determineVatTreatment(supplier.invoice_country, supplier.vat_number);
+        // "Same as delivery" is stored as null invoice_* fields (see updateSupplierProfile),
+        // so falling back to the delivery country here is what implements that link.
+        const vatTreatment = determineVatTreatment(supplier.invoice_country || supplier.country, supplier.vat_number);
 
         return <SupplierDashboard
           supplierData={{
