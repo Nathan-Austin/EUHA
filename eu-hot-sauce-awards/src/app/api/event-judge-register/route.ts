@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient as createServiceClient } from '@supabase/supabase-js';
 import { sendEmail, emailTemplates } from '@/lib/email';
+import { getCompetitionSetting } from '@/app/actions';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -20,6 +21,18 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { error: 'Registration service is not configured.' },
       { status: 500 },
+    );
+  }
+
+  // Self-serve, unapproved registration — only open while an admin has
+  // explicitly flipped this on for a live event. Checked server-side (not
+  // just hidden client-side) since this endpoint creates a real, active
+  // judge account with no approval step.
+  const registrationOpen = await getCompetitionSetting('event_judge_registration_open');
+  if (!registrationOpen) {
+    return NextResponse.json(
+      { error: 'Event-judge registration is not open right now.' },
+      { status: 403 },
     );
   }
 

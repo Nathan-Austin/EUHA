@@ -128,6 +128,7 @@ export default async function AdminDashboard() {
   const resultsData = await getResultsData()
   const shippingOpen = await getCompetitionSetting('shipping_open')
   const judgesDashboardOpen = await getCompetitionSetting('judges_dashboard_open')
+  const eventJudgeRegistrationOpen = await getCompetitionSetting('event_judge_registration_open')
   const resultsResults = 'results' in resultsData ? resultsData.results : []
   const resultsScoringCategories = 'scoringCategories' in resultsData ? resultsData.scoringCategories : []
 
@@ -447,6 +448,14 @@ export default async function AdminDashboard() {
             initialEnabled={judgesDashboardOpen}
             competitionYear={COMPETITION_YEAR}
             closeConfirmMessage={`Close the judges dashboard for ${COMPETITION_YEAR}? All judges (regardless of active/payment status) will be blocked and see a "not open yet" message instead.`}
+          />
+          <SettingToggle
+            settingKey="event_judge_registration_open"
+            title="Event-judge self-registration"
+            description="Controls the /apply/event-judge walk-up form (self-serve, no approval — creates an active judge account immediately). Keep this closed except when actively running a live event; regular judges should go through the approval flow at /apply/judge instead."
+            initialEnabled={eventJudgeRegistrationOpen}
+            competitionYear={COMPETITION_YEAR}
+            closeConfirmMessage="Close event-judge self-registration? Anyone using the walk-up QR form will see a 'not open' message instead of being able to register."
           />
           <Card>
             <JudgeAnalysis />
