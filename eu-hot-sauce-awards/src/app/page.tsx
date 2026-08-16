@@ -237,14 +237,29 @@ export default async function Home() {
       <section className="border-b border-black/10 py-14">
         <div className="mx-auto max-w-3xl px-6 text-center">
           <h2 className="mb-5 text-sm font-semibold uppercase tracking-[0.25em] text-black/50">
-            Welcome to the Heat Awards
+            Welcome to the European Hot Sauce Awards
           </h2>
           <p className="text-base leading-relaxed text-black/75 sm:text-lg">
-            We champion craftsmanship, innovation and sustainability in the world of hot sauce.
-            For {COMPETITION_YEAR}, judging comes to life in person — a multi-day congress in
-            Berlin where press and invited industry professionals taste every entry together,
-            before results are revealed.
+            We champion craftsmanship, innovation and sustainability in the world of hot sauce,
+            developed in partnership with the European Heat Council. For {COMPETITION_YEAR}, judging
+            comes to life in person — a multi-day congress in Berlin where press and invited
+            industry professionals taste every entry together, before results are revealed.
           </p>
+          <a
+            href="https://europeanheatcouncil.eu"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-8 inline-flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.1em] text-black/50 hover:text-black/80"
+          >
+            In partnership with
+            <Image
+              src="/ehc-logo-transparent.png"
+              alt="European Heat Council"
+              width={104}
+              height={64}
+              className="h-8 w-auto object-contain"
+            />
+          </a>
         </div>
       </section>
 
