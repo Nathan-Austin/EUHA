@@ -2,6 +2,7 @@
 
 import SupplierSauceManager from './SupplierSauceManager';
 import ProducerInfoModal from './ProducerInfoModal';
+import SupplierResultsView from './SupplierResultsView';
 import RohFollowCTA from '@/components/RohFollowCTA';
 import { COMPETITION_YEAR } from '@/lib/config';
 import { COMPANY_INFO, type VatTreatment } from '@/lib/company';
@@ -61,6 +62,25 @@ interface ProducerInfo {
   invoiceCountry: string | null;
 }
 
+interface CategoryScore {
+  category: string;
+  avg_score: number;
+}
+
+interface PastResultSauce {
+  sauceId: string;
+  sauceCode: string;
+  sauceName: string;
+  category: string;
+  award: string | null;
+  globalRank: number | null;
+  categoryRank: number | null;
+  categoryTotal: number | null;
+  overallAvg: number;
+  scores: CategoryScore[];
+  comments: string[];
+}
+
 interface SupplierDashboardProps {
   supplierData: {
     brandName: string;
@@ -77,6 +97,8 @@ interface SupplierDashboardProps {
   confirmedEntryCount: number | null;
   shippingOpen: boolean;
   vatTreatment: VatTreatment;
+  pastResults: PastResultSauce[];
+  pastResultsYear: number | null;
 }
 
 const PACKAGE_STATUS: Record<string, { label: string; className: string }> = {
@@ -85,7 +107,7 @@ const PACKAGE_STATUS: Record<string, { label: string; className: string }> = {
   received: { label: 'Received', className: 'bg-green-600 text-white' },
 };
 
-export default function SupplierDashboard({ supplierData, ehcData, producerInfo, enteredSauces, hasOptedIn, unpaidSauces, hasExistingPayment, paymentStatus, confirmedEntryCount, shippingOpen, vatTreatment }: SupplierDashboardProps) {
+export default function SupplierDashboard({ supplierData, ehcData, producerInfo, enteredSauces, hasOptedIn, unpaidSauces, hasExistingPayment, paymentStatus, confirmedEntryCount, shippingOpen, vatTreatment, pastResults, pastResultsYear }: SupplierDashboardProps) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const imageBucket = process.env.NEXT_PUBLIC_SAUCE_IMAGE_BUCKET || 'sauce-media';
   const status = PACKAGE_STATUS[supplierData.packageStatus] ?? PACKAGE_STATUS.pending;
@@ -99,6 +121,8 @@ export default function SupplierDashboard({ supplierData, ehcData, producerInfo,
           Welcome, {supplierData.brandName}
         </h1>
       </div>
+
+      {pastResultsYear && <SupplierResultsView year={pastResultsYear} sauces={pastResults} />}
 
       <SupplierSauceManager
         initialSauces={unpaidSauces}

@@ -7,7 +7,7 @@ import { revalidatePath } from 'next/cache'
 import { sendEmail, emailTemplates } from '@/lib/email'
 import * as fs from 'fs'
 import * as path from 'path'
-import { COMPETITION_YEAR } from '@/lib/config'
+import { COMPETITION_YEAR, PREVIOUS_COMPETITION_YEAR } from '@/lib/config'
 import { isRecognizedCountry } from '@/lib/countries'
 
 type SauceStatus = 'registered' | 'arrived' | 'boxed' | 'judged';
@@ -5343,6 +5343,87 @@ export async function sendAllResultsFeedbackEmails(adminEmail: string): Promise<
 
     await new Promise(r => setTimeout(r, 200))
   }
+}
+
+// ==================== SUPPLIER PAST RESULTS ====================
+
+export interface SupplierResultSauce {
+  sauceId: string
+  sauceCode: string
+  sauceName: string
+  category: string
+  award: string | null
+  globalRank: number | null
+  categoryRank: number | null
+  categoryTotal: number | null
+  overallAvg: number
+  scores: CategoryScore[]
+  comments: string[]
+}
+
+/**
+ * Scores/comments come from the same aggregated, per-judge-anonymised RPC
+ * used for the admin results-feedback email (see loadResultsEmailData) —
+ * suppliers see the same averaged category scores and comment text, never
+ * individual judge identities or how many judges scored a given sauce.
+ */
+export async function getSupplierPastResults(): Promise<
+  { error: string } | { success: true; brandName: string; year: number; sauces: SupplierResultSauce[] }
+> {
+  const cookieStore = cookies()
+  const supabase = createClient(cookieStore)
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user?.email) return { error: 'You must be logged in.' }
+
+  const { data: supplier, error: supplierError } = await supabase
+    .from('suppliers')
+    .select('id, brand_name, contact_name')
+    .ilike('email', user.email)
+    .single()
+
+  if (supplierError || !supplier) return { error: 'Supplier account not found.' }
+
+  const serviceClientResult = getServiceSupabase()
+  if ('error' in serviceClientResult) {
+    return { error: (serviceClientResult as { error: string }).error }
+  }
+  const { client } = serviceClientResult as { client: any }
+
+  const { scoresByCode, rankByCode, resultByCode } = await loadResultsEmailData(client)
+
+  const { data: sauceRows, error: sauceError } = await client
+    .from('sauces')
+    .select('id, name, sauce_code, category')
+    .eq('supplier_id', supplier.id)
+    .eq('competition_year', PREVIOUS_COMPETITION_YEAR)
+    .not('sauce_code', 'is', null)
+
+  if (sauceError) return { error: sauceError.message }
+
+  const sauces: SupplierResultSauce[] = (sauceRows ?? [])
+    .map((s: { id: string; name: string; sauce_code: string; category: string | null }) => {
+      const built = buildSauceEmailData(s, scoresByCode, rankByCode, resultByCode)
+      if (!built) return null
+      return {
+        sauceId: s.id,
+        sauceCode: built.sauce_code,
+        sauceName: built.sauce_name,
+        category: built.sauce_category,
+        award: built.award,
+        globalRank: built.global_rank,
+        categoryRank: built.category_rank,
+        categoryTotal: built.category_total,
+        overallAvg: built.overall_avg,
+        scores: built.scores,
+        comments: built.comments,
+      }
+    })
+    .filter((s: SupplierResultSauce | null): s is SupplierResultSauce => s !== null)
+
+  const brandName = supplier.brand_name || supplier.contact_name || user.email.split('@')[0]
+
+  return { success: true, brandName, year: PREVIOUS_COMPETITION_YEAR, sauces }
 }
 
 // ==================== EHC MEMBERSHIP VERIFICATION ====================

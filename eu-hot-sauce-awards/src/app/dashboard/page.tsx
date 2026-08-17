@@ -10,7 +10,7 @@ import AdminDashboard from './AdminDashboard'
 import CommunityJudgeDashboard from './CommunityJudgeDashboard'
 import SupplierDashboard from './SupplierDashboard'
 import StripeCheckoutButton from './StripeCheckoutButton'
-import { getSupplierUnpaidSauces, getCompetitionSetting } from '@/app/actions'
+import { getSupplierUnpaidSauces, getCompetitionSetting, getSupplierPastResults } from '@/app/actions'
 
 export const dynamic = 'force-dynamic'
 
@@ -155,6 +155,10 @@ export default async function DashboardPage() {
           console.error('Failed to look up pending payment:', pendingPaymentError);
         }
 
+        const pastResultsResult = await getSupplierPastResults();
+        const pastResults = 'success' in pastResultsResult ? pastResultsResult.sauces : [];
+        const pastResultsYear = 'success' in pastResultsResult ? pastResultsResult.year : null;
+
         const shippingOpen = await getCompetitionSetting('shipping_open');
         // "Same as delivery" is stored as null invoice_* fields (see updateSupplierProfile),
         // so falling back to the delivery country here is what implements that link.
@@ -205,6 +209,8 @@ export default async function DashboardPage() {
           confirmedEntryCount={pendingPayment?.entry_count ?? null}
           shippingOpen={shippingOpen}
           vatTreatment={vatTreatment}
+          pastResults={pastResults}
+          pastResultsYear={pastResultsYear}
         />;
       }
       case 'community':
