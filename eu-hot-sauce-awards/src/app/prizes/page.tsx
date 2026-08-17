@@ -3,10 +3,21 @@ import type { Metadata } from 'next';
 import HeatHeader from '@/components/HeatHeader';
 import HeatFooter from '@/components/HeatFooter';
 import Breadcrumbs from '@/components/Breadcrumbs';
+import {
+  CATEGORY_GROUPS,
+  CATEGORY_SLUGS,
+  CATEGORY_DESCRIPTIONS,
+  HEAT_LEVEL,
+  HEAT_NOTES,
+  WILDCARD_CATEGORY,
+  ALL_CATEGORIES,
+} from '@/lib/categories';
+
+const NAMED_CATEGORY_COUNT = ALL_CATEGORIES.length - 1; // excludes the Freestyle wildcard
 
 export const metadata: Metadata = {
-  title: 'Prizes & Recognition',
-  description: 'Learn about the awards structure for the European Hot Sauce Awards, including Gold, Silver, and Bronze medals, and the coveted Global Rankings.',
+  title: 'Prizes, Categories & Judging',
+  description: 'Everything you need to know about the European Hot Sauce Awards — competition categories, how judging works, the awards structure, and the Global Rankings.',
 };
 
 const AWARD_LEVELS = [
@@ -37,6 +48,79 @@ const PrizesPage = () => {
       </section>
 
       <section className="py-16">
+        <div className="mx-auto max-w-[1240px] px-6">
+          <h2 className="mb-3 font-[family-name:var(--font-archivo-black)] text-2xl uppercase">
+            Competition <span className="bg-[#F5C518] px-2">categories</span>.
+          </h2>
+          <p className="mb-10 max-w-2xl text-sm leading-relaxed text-black/70">
+            {NAMED_CATEGORY_COUNT} categories across three groups, plus one wildcard. The <strong>Heat ladder</strong> is about how
+            spicy your sauce is — pick the rung that matches. <strong>Styles &amp; flavours</strong> and{' '}
+            <strong>Pantry &amp; condiments</strong> are about format and flavor, not heat — enter whichever best
+            describes what&apos;s in the bottle. Not sure where you fit? Enter <strong>Freestyle</strong> or{' '}
+            <Link href="/contact" className="underline hover:opacity-70">get in touch</Link> and we&apos;ll help.
+          </p>
+
+          {CATEGORY_GROUPS.map((group) => (
+            <div key={group.title} className="mb-12">
+              <div className="mb-5 flex items-baseline justify-between border-b-2 border-black pb-2">
+                <h3 className="font-[family-name:var(--font-archivo-black)] text-lg uppercase tracking-[0.02em]">
+                  {group.title}
+                </h3>
+                <span className="text-xs font-semibold uppercase tracking-[0.1em] text-black/50">{group.meta}</span>
+              </div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {group.categories.map((category) => {
+                  const heat = HEAT_LEVEL[category];
+                  return (
+                    <Link
+                      key={category}
+                      href={`/category/${CATEGORY_SLUGS[category]}`}
+                      className="flex flex-col gap-2 border-2 border-black bg-white p-5 transition hover:-translate-y-0.5 hover:shadow-lg"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <h4 className="font-[family-name:var(--font-archivo-black)] text-sm uppercase leading-tight">
+                          {category}
+                        </h4>
+                        {heat && (
+                          <span className="flex-shrink-0 text-sm" aria-label={`Heat level ${heat} of 5`}>
+                            {'🌶️'.repeat(heat)}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm leading-relaxed text-black/60">{CATEGORY_DESCRIPTIONS[category]}</p>
+                      {HEAT_NOTES[category] && (
+                        <p className="text-xs leading-relaxed text-black/45">{HEAT_NOTES[category]}</p>
+                      )}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+
+          <div>
+            <div className="mb-5 flex items-baseline justify-between border-b-2 border-black pb-2">
+              <h3 className="font-[family-name:var(--font-archivo-black)] text-lg uppercase tracking-[0.02em]">
+                Wildcard
+              </h3>
+              <span className="text-xs font-semibold uppercase tracking-[0.1em] text-black/50">
+                Anything goes, 1 category
+              </span>
+            </div>
+            <Link
+              href={`/category/${CATEGORY_SLUGS[WILDCARD_CATEGORY]}`}
+              className="flex flex-col gap-2 border-2 border-[#F5C518] bg-black p-5 text-white transition hover:-translate-y-0.5 sm:max-w-sm"
+            >
+              <h4 className="font-[family-name:var(--font-archivo-black)] text-sm uppercase leading-tight text-[#F5C518]">
+                {WILDCARD_CATEGORY}
+              </h4>
+              <p className="text-sm leading-relaxed text-white/70">{CATEGORY_DESCRIPTIONS[WILDCARD_CATEGORY]}</p>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      <section className="border-t border-black/10 py-16">
         <div className="mx-auto max-w-[1240px] px-6">
           <h2 className="mb-8 font-[family-name:var(--font-archivo-black)] text-2xl uppercase">
             Award <span className="bg-[#F5C518] px-2">levels</span>.

@@ -3352,16 +3352,17 @@ const CATEGORY_CODES: Record<string, string> = {
   'Extra Hot Chili Sauce': 'X',
   'Extract Based Chili Sauce': 'E',
   'BBQ Chili Sauce': 'B',
-  'Chili Ketchup': 'K',
+  'Condiments': 'K', // formerly 'Chili Ketchup' — same letter, same sauce_code_counters row
   'Sweet': 'W',
   'Chili Honey': 'R',
   'Garlic Chili Sauce': 'G',
   'Sambal, Chutney & Pickles': 'C',
   'Chili Oil': 'T',
+  'Chili Crisp': 'L',
   'Freestyle': 'F',
   'Asian Style Chili Sauce': 'S',
   'Chili Paste': 'P',
-  'Salt & Condiments': 'A',
+  'Salts & Seasonings': 'A', // formerly 'Salt & Condiments' — same letter, same sauce_code_counters row
 };
 
 const DISCOUNT_BANDS: { min: number; max: number; discount: number }[] = [

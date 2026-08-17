@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client';
 import { COMPETITION_YEAR } from '@/lib/config';
 import type { EhcVerifyResult } from '@/lib/ehc/types';
 import { calculateVAT, type VatTreatment } from '@/lib/company';
+import { ALL_CATEGORIES } from '@/lib/categories';
 
 interface UnpaidSauce {
   id: string;
@@ -47,24 +48,7 @@ interface SupplierSauceManagerProps {
   vatTreatment: VatTreatment;
 }
 
-const CATEGORIES = [
-  'Mild Chili Sauce',
-  'Medium Chili Sauce',
-  'Hot Chili Sauce',
-  'Extra Hot Chili Sauce',
-  'Extract Based Chili Sauce',
-  'BBQ Chili Sauce',
-  'Chili Ketchup',
-  'Sweet',
-  'Chili Honey',
-  'Garlic Chili Sauce',
-  'Sambal, Chutney & Pickles',
-  'Chili Oil',
-  'Freestyle',
-  'Asian Style Chili Sauce',
-  'Chili Paste',
-  'Salt & Condiments',
-];
+const CATEGORIES = ALL_CATEGORIES;
 
 // The EU's standard 14 allergens (Food Information to Consumers Regulation) —
 // this is a pan-European competition, so this list applies regardless of
