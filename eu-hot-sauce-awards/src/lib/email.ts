@@ -84,7 +84,17 @@ export async function sendEmail(options: EmailOptions): Promise<void> {
 }
 
 // Email templates
-const emailBanner = '<div style="background-color: #fabf14; padding: 20px 0; text-align: center;"><img src="https://heatawards.eu/cropped-banner-website.png" alt="European Hot Sauce Awards" style="max-width: 600px; width: 100%; height: auto;" /></div>';
+//
+// Header/footer mirror the live site's HeatHeader/HeatFooter: mustard bar
+// with the ehsa-badge mark + wordmark up top, "in partnership with the
+// European Heat Council" credit at the bottom of every template. Built from
+// small inline-styled elements (not a single wide banner image, and no
+// flex/table layout) since that's the only thing that reliably survives
+// Outlook's rendering engine alongside the plain-div body markup already
+// used throughout this file.
+export const emailBanner = '<div style="background-color: #F5C518; padding: 18px 24px; border-bottom: 4px solid #000;"><div style="max-width: 600px; margin: 0 auto;"><img src="https://heatawards.eu/ehsa-badge.png" alt="" width="40" height="40" style="width: 40px; height: 40px; vertical-align: middle; display: inline-block;" /><span style="display: inline-block; vertical-align: middle; margin-left: 12px; font-family: Arial, Helvetica, sans-serif; font-weight: bold; font-size: 18px; letter-spacing: 0.3px; color: #000; text-transform: uppercase;">European Hot Sauce Awards</span></div></div>';
+
+export const emailEhcFooter = '<div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; text-align: center;"><a href="https://europeanheatcouncil.eu" style="color: #666; font-size: 12px; text-decoration: none;"><img src="https://heatawards.eu/ehc-icon.png" alt="" width="16" height="16" style="width: 16px; height: 16px; vertical-align: middle; display: inline-block; margin-right: 6px;" />In partnership with the European Heat Council</a></div>';
 
 export const emailTemplates = {
   supplierPaymentConfirmation: (brandName: string, entryCount: number, amount: string) => ({
@@ -114,6 +124,7 @@ export const emailTemplates = {
         <p>You can log in anytime at: <a href="https://heatawards.eu/login" style="color: #ff4d00;">https://heatawards.eu/login</a></p>
 
         <p>Questions? Contact us at heataward@gmail.com</p>
+        ${emailEhcFooter}
       </div>
     `,
     text: `Payment Confirmed! Dear ${brandName}, thank you for your payment. Your ${entryCount} sauce ${entryCount > 1 ? 'entries have' : 'entry has'} been confirmed. Ship your sauces to: ${formatShippingAddressText().replace(/\n/g, ', ')}. See https://heatawards.eu/packing-sheet for full packing instructions.`,
@@ -135,6 +146,7 @@ export const emailTemplates = {
         <p>We'll send you a confirmation email once your package arrives.</p>
 
         <p>Track your shipment status anytime at: <a href="https://heatawards.eu/dashboard" style="color: #ff4d00;">https://heatawards.eu/dashboard</a></p>
+        ${emailEhcFooter}
       </div>
     `,
     text: `Tracking Information Received. Dear ${brandName}, we've received your tracking: ${trackingNumber} via ${postalService}.`,
@@ -159,6 +171,7 @@ export const emailTemplates = {
         <p>Your sauces will be included in the blind judging process. We'll announce the results after the competition concludes.</p>
 
         <p>Thank you for participating in the EU Hot Sauce Awards!</p>
+        ${emailEhcFooter}
       </div>
     `,
     text: `Package Received! Dear ${brandName}, your sauce package has been received and is being prepared for judging.`,
@@ -201,6 +214,7 @@ export const emailTemplates = {
         `}
 
         <p>Questions? Contact us at heataward@gmail.com</p>
+        ${emailEhcFooter}
       </div>
     `,
     text: `Welcome to the EU Hot Sauce Awards! Thank you for registering as a ${judgeType === 'pro' ? 'Professional' : 'Community'} Judge. ${judgeType === 'community' ? 'Log in at heatawards.eu/login to complete your €15 payment and confirm your spot.' : 'We will review your application and send you a login link once approved.'}`,
@@ -225,6 +239,7 @@ export const emailTemplates = {
         <p>You can log in anytime at: <a href="https://heatawards.eu/login" style="color: #ff4d00;">https://heatawards.eu/login</a></p>
 
         <p>Questions? Contact us at heataward@gmail.com</p>
+        ${emailEhcFooter}
       </div>
     `,
     text: `Payment Confirmed! Thank you for your payment. Your spot as a Community Judge has been confirmed.`,
@@ -260,6 +275,7 @@ export const emailTemplates = {
         <p><strong>Important:</strong> Don't forget to ship your sauces — see <a href="https://heatawards.eu/packing-sheet" style="color: #ff4d00;">heatawards.eu/packing-sheet</a> for the address and packing instructions.</p>
 
         <p>Questions? Contact us at heataward@gmail.com</p>
+        ${emailEhcFooter}
       </div>
     `,
     text: `Welcome to your dashboard! Click this link to access: ${magicLink}. This link expires in 1 hour. Don't forget to ship your sauces — see https://heatawards.eu/packing-sheet for the address and packing instructions.`,
@@ -295,6 +311,7 @@ export const emailTemplates = {
         <p><strong>Important:</strong> As a professional judge, your expertise will help shape the future of the European hot sauce industry. We appreciate your participation!</p>
 
         <p>Questions? Contact us at heataward@gmail.com</p>
+        ${emailEhcFooter}
       </div>
     `,
     text: `Congratulations! Your Pro Judge application has been approved for the EU Hot Sauce Awards ${COMPETITION_YEAR}. Access your dashboard: ${magicLink}. This link expires in 24 hours. Need another link later? Visit https://heatawards.eu/login.`,
@@ -329,6 +346,7 @@ export const emailTemplates = {
         <p><strong>Important:</strong> Keep an eye on your dashboard for exact dates and instructions.</p>
 
         <p>Questions? Contact us at heataward@gmail.com</p>
+        ${emailEhcFooter}
       </div>
     `,
     text: `Welcome to the judge panel! Click this link to access: ${magicLink}. This link expires in 24 hours. Need another link later? Visit https://heatawards.eu/login and enter your email for a fresh one.`,
@@ -353,6 +371,7 @@ export const emailTemplates = {
         </p>
 
         <p>Need help? Reach us at heataward@gmail.com.</p>
+        ${emailEhcFooter}
       </div>
     `,
     text: `Hi ${name}, your EU Hot Sauce Awards login code is: ${code}. Enter it on the login page. It expires in ${expiryHours} hours.`,
@@ -377,6 +396,7 @@ export const emailTemplates = {
         </p>
 
         <p>Need help? Reach us at heataward@gmail.com.</p>
+        ${emailEhcFooter}
       </div>
     `,
     text: `Hi ${name}, use this link to access your EU Hot Sauce Awards dashboard: ${magicLink}. It stays active for the next ${expiryHours} hours. Need another? Head to https://heatawards.eu/login.`,
@@ -447,6 +467,7 @@ export const emailTemplates = {
           You're receiving this because you participated in the EU Hot Sauce Awards 2026.
           If you'd prefer not to receive future updates, <a href="mailto:heataward@gmail.com?subject=Unsubscribe" style="color: #666;">let us know</a>.
         </p>
+        ${emailEhcFooter}
       </div>
     `,
     text: `Hi ${name}, the EU Hot Sauce Awards 2026 winners are announced! Watch the mild category winners video: https://www.youtube.com/watch?v=nQsGH0tPhZ8. Category winners will be revealed on the Republic of Heat YouTube channel (https://www.youtube.com/@RepublicofHeat), then on Instagram via @republicofheat over the next few days. Full results go live at https://heatawards.eu/results on 20 May 2026.`,
@@ -471,6 +492,7 @@ export const emailTemplates = {
         </p>
 
         <p>If you have any questions, contact us at heataward@gmail.com.</p>
+        ${emailEhcFooter}
       </div>
     `,
     text: `Hi ${name}, confirm your EU Hot Sauce Awards email with this link: ${magicLink}. It stays active for ${expiryHours} hours. Need another? Visit https://heatawards.eu/login.`,
@@ -511,6 +533,7 @@ export const emailTemplates = {
 
         <p>Best regards,<br>
         <strong>The EU Hot Sauce Awards Team</strong></p>
+        ${emailEhcFooter}
       </div>
     `,
     text: `Confirm Your Entries - Dear ${brandName}, your ${entryCount} sauce ${entryCount > 1 ? 'entries are' : 'entry is'} still unconfirmed. Access your dashboard to confirm: ${magicLink || 'https://heatawards.eu/login'}. You won't be charged now — payment is collected in January. Registered ${daysSinceRegistration} days ago.`,
@@ -620,6 +643,7 @@ export const emailTemplates = {
           <p style="margin: 5px 0;">This is an automatically generated payment receipt.</p>
           <p style="margin: 5px 0;">For questions, please contact: heataward@gmail.com</p>
         </div>
+        ${emailEhcFooter}
       </div>
     `,
     text: `PAYMENT RECEIPT\n\nPlease note: An earlier email sent in error described this document as a VAT invoice. This is the corrected version — a payment receipt confirming the amount you paid. We apologise for any confusion.\n\nReceipt Number: ${params.receiptNumber}\nReceipt Date: ${params.receiptDate}\n\nFrom:\n${params.companyName}\n${params.companyAddress}\nVAT Number: ${params.companyVat}\n\nTo:\n${params.supplierName}\n${params.supplierContactName ? `Attn: ${params.supplierContactName}\n` : ''}${params.supplierAddress}${params.supplierVatNumber ? `\nVAT Number: ${params.supplierVatNumber}` : ''}\n\nDescription: EU Hot Sauce Awards ${params.year} - Competition Entry\nQuantity: ${params.entryCount}\n\nNet Amount: €${params.netAmount}\nVAT (${params.vatRate}%): €${params.vatAmount}\nTotal Paid: €${params.grossAmount}${vatNote ? `\n\n${vatNote}` : ''}\n\nPayment Status: Paid via Stripe\n\nThank you for your participation in the EU Hot Sauce Awards ${params.year}!`,
