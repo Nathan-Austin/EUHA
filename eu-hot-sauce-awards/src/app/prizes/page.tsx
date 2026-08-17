@@ -33,6 +33,18 @@ const WINNER_PACKAGE = [
   { icon: '📢', title: 'Digital marketing kit', detail: 'Digital badges and press releases' },
 ];
 
+const HEAT_MAX = 5;
+
+function HeatMeter({ level }: { level: number }) {
+  return (
+    <span className="flex flex-shrink-0 items-center gap-[3px]" aria-label={`Heat level ${level} of ${HEAT_MAX}`}>
+      {Array.from({ length: HEAT_MAX }).map((_, i) => (
+        <span key={i} className={`h-3 w-[5px] ${i < level ? 'bg-red-600' : 'bg-black/15'}`} />
+      ))}
+    </span>
+  );
+}
+
 const PrizesPage = () => {
   return (
     <div className="min-h-screen bg-[#faf6ec] text-black">
@@ -81,11 +93,7 @@ const PrizesPage = () => {
                         <h4 className="font-[family-name:var(--font-archivo-black)] text-sm uppercase leading-tight">
                           {category}
                         </h4>
-                        {heat && (
-                          <span className="flex-shrink-0 text-sm" aria-label={`Heat level ${heat} of 5`}>
-                            {'🌶️'.repeat(heat)}
-                          </span>
-                        )}
+                        {heat && <HeatMeter level={heat} />}
                       </div>
                       <p className="text-sm leading-relaxed text-black/60">{CATEGORY_DESCRIPTIONS[category]}</p>
                       {HEAT_NOTES[category] && (
