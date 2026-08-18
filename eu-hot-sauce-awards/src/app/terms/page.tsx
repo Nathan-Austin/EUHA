@@ -98,7 +98,7 @@ const TermsPage = () => {
 
                 <h3 className="text-base font-bold text-black mb-2 mt-4">4.1 Sauce Submissions</h3>
                 <p className="text-black/75 leading-relaxed mb-2">
-                  By entering, participants grant the competition organizers:
+                  By entering, participants grant the competition organisers:
                 </p>
                 <ul className="list-disc list-inside text-black/75 leading-relaxed space-y-2">
                   <li>Right to feature sauce names in press releases</li>
@@ -118,7 +118,7 @@ const TermsPage = () => {
 
                 <h3 className="text-base font-bold text-black mb-2 mt-4">5.1 Disclaimer</h3>
                 <p className="text-black/75 leading-relaxed mb-2">
-                  Competition organizers are not responsible for:
+                  Competition organisers are not responsible for:
                 </p>
                 <ul className="list-disc list-inside text-black/75 leading-relaxed space-y-2">
                   <li>Lost or damaged entries during shipping</li>
@@ -144,7 +144,7 @@ const TermsPage = () => {
 
                 <h3 className="text-base font-bold text-black mb-2 mt-4">6.2 Modifications</h3>
                 <ul className="list-disc list-inside text-black/75 leading-relaxed space-y-2">
-                  <li>Competition organizers reserve the right to modify competition rules</li>
+                  <li>Competition organisers reserve the right to modify competition rules</li>
                   <li>Any changes will be communicated to registered participants</li>
                 </ul>
               </div>

@@ -100,7 +100,7 @@ export default function EmailTemplateEditor() {
         <p className="text-sm text-gray-600">
           Edit email templates for campaigns. Use variables like{' '}
           <code className="bg-gray-100 px-1 rounded">{`{{brandName}}`}</code> or{' '}
-          <code className="bg-gray-100 px-1 rounded">{`{{name}}`}</code> for personalization.
+          <code className="bg-gray-100 px-1 rounded">{`{{name}}`}</code> for personalisation.
         </p>
       </div>
 

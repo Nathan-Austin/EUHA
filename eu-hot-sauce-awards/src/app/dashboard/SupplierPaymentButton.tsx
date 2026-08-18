@@ -57,7 +57,7 @@ export default function SupplierPaymentButton({ paymentQuote, userEmail }: Suppl
       if (err instanceof Error) {
         setError(err.message);
       } else {
-        setError('Unable to initialize payment. Please try again.');
+        setError('Unable to initialise payment. Please try again.');
       }
     } finally {
       setIsLoading(false);

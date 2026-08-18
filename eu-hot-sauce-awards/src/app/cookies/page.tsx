@@ -52,7 +52,7 @@ const CookiesPage = () => {
               <div>
                 <h2 className="font-[family-name:var(--font-archivo-black)] text-xl uppercase tracking-[0.03em] border-b-2 border-black pb-2 mb-3">2. What are cookies?</h2>
                 <p className="text-black/75 leading-relaxed">
-                  A cookie is a small file placed on your device by your browser when you visit a website. Cookies let a site recognize your device on return visits, remember choices you&rsquo;ve made, and — depending on the type — help site owners understand how the site is used.
+                  A cookie is a small file placed on your device by your browser when you visit a website. Cookies let a site recognise your device on return visits, remember choices you&rsquo;ve made, and — depending on the type — help site owners understand how the site is used.
                 </p>
                 <p className="text-black/75 leading-relaxed mt-3">
                   We also use similar technologies such as local storage; this policy refers to all of these collectively as &ldquo;cookies.&rdquo;
