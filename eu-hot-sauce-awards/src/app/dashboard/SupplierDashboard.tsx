@@ -5,7 +5,22 @@ import ProducerInfoModal from './ProducerInfoModal';
 import SupplierResultsView from './SupplierResultsView';
 import RohFollowCTA from '@/components/RohFollowCTA';
 import { COMPETITION_YEAR } from '@/lib/config';
-import { COMPANY_INFO, type VatTreatment } from '@/lib/company';
+import { type VatTreatment } from '@/lib/company';
+
+// Deliberately NOT sourced from COMPANY_INFO: this is where suppliers
+// physically mail real sauce bottles, not a legal/registered address, so it
+// shouldn't silently move when the legal entity does. Kept at its previous
+// COMPANY_INFO value pending confirmation of where samples should actually
+// ship — see also lib/shipping.ts, which already has a THIRD, different,
+// unconfirmed address used on /packing-sheet. Flagged for Nathan to resolve.
+const SAMPLE_SHIPPING_ADDRESS = {
+  line1: 'Chili Punk Berlin',
+  line2: 'Co/ DUTTON',
+  street: 'Urbanstraße 96',
+  postalCode: '10967',
+  city: 'Berlin',
+  country: 'Germany',
+} as const;
 
 interface EnteredSauce {
   id: string;
@@ -176,11 +191,11 @@ export default function SupplierDashboard({ supplierData, ehcData, producerInfo,
               clears customs and delivers directly to us, rather than us having to track the parcel down.
             </p>
             <address className="not-italic border-l-4 border-[#F5C518] pl-4 text-sm leading-relaxed text-black">
-              {COMPANY_INFO.address.line1}<br />
-              {COMPANY_INFO.address.line2}<br />
-              {COMPANY_INFO.address.street}<br />
-              {COMPANY_INFO.address.postalCode} {COMPANY_INFO.address.city}<br />
-              {COMPANY_INFO.address.country}
+              {SAMPLE_SHIPPING_ADDRESS.line1}<br />
+              {SAMPLE_SHIPPING_ADDRESS.line2}<br />
+              {SAMPLE_SHIPPING_ADDRESS.street}<br />
+              {SAMPLE_SHIPPING_ADDRESS.postalCode} {SAMPLE_SHIPPING_ADDRESS.city}<br />
+              {SAMPLE_SHIPPING_ADDRESS.country}
             </address>
             <div className="flex items-center gap-2 border-t border-black/10 pt-4">
               <span className="text-xs font-semibold uppercase tracking-[0.08em] text-black/50">Status:</span>

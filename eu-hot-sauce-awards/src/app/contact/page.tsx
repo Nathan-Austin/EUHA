@@ -78,7 +78,6 @@ const ContactPage = () => {
                 <p className="mb-1 text-xs font-semibold uppercase tracking-[0.12em] text-black/50">Address</p>
                 <address className="not-italic text-base leading-relaxed">
                   {COMPANY_INFO.address.line1}<br />
-                  {COMPANY_INFO.address.line2}<br />
                   {COMPANY_INFO.address.street}<br />
                   {COMPANY_INFO.address.postalCode} {COMPANY_INFO.address.city}<br />
                   {COMPANY_INFO.address.country}

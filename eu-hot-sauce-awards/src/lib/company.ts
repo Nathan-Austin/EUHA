@@ -5,23 +5,32 @@
 
 import { findCountry } from './countries';
 
+// EHSA is formally structured under Austin & Gardner GbR (the same legal
+// entity behind Republic of Heat / republicofheat.com) as of Aug 2026.
+// Details sourced from ROH's own live Impressum (republicofheat.com/de-en/legal/impressum).
+//
+// Email is intentionally split: `email` stays the existing general/support
+// inbox used everywhere day-to-day (contact form, sponsorship, entrant/judge
+// support); `legalEmail` is only for GDPR-controller / Impressum contact
+// points. Don't collapse these into one.
 export const COMPANY_INFO = {
-  name: 'Chili Punk Berlin',
+  name: 'Austin & Gardner GbR',
+  partners: 'Simon Gardner & Nathan Austin',
   email: 'heataward@gmail.com',
+  legalEmail: 'contact@republicofheat.com',
   phone: '+4917682204595',
   whatsapp: '+4917682204595',
   address: {
-    line1: 'Chili Punk Berlin',
-    line2: 'Co/ DUTTON',
-    street: 'Urbanstraße 96',
-    postalCode: '10967',
+    line1: 'Austin & Gardner GbR',
+    street: 'Südostallee 124',
+    postalCode: '12487',
     city: 'Berlin',
     country: 'Germany',
     // Full formatted address
-    full: 'Chili Punk Berlin\nCo/ DUTTON\nUrbanstraße 96\n10967 Berlin\nGermany'
+    full: 'Austin & Gardner GbR\nSüdostallee 124\n12487 Berlin\nGermany'
   },
   vat: {
-    number: 'DE314890098',
+    number: 'DE457184736',
     rate: 0.19 // 19% Germany standard VAT rate
   }
 } as const;
