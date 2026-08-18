@@ -42,3 +42,7 @@ eu-hot-sauce-awards/scripts/import-historical-data-README.md
 
 # Claude
 .claude/
+.mcp.json
+
+# Local dev/scratch files (exports, one-off scripts, working data)
+/dev-files/
