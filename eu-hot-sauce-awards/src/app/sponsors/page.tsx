@@ -85,7 +85,7 @@ export default async function SponsorsPage() {
                 {countries}
               </strong>
               <span className="text-[11px] uppercase tracking-[0.12em] text-gray-300">
-                Countries ({PREVIOUS_COMPETITION_YEAR})
+                European countries ({PREVIOUS_COMPETITION_YEAR})
               </span>
             </div>
             <div>
@@ -93,7 +93,7 @@ export default async function SponsorsPage() {
                 {makers}
               </strong>
               <span className="text-[11px] uppercase tracking-[0.12em] text-gray-300">
-                Award-winning makers ({PREVIOUS_COMPETITION_YEAR})
+                European award-winning makers ({PREVIOUS_COMPETITION_YEAR})
               </span>
             </div>
             <div>

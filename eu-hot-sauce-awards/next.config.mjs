@@ -26,6 +26,13 @@ const nextConfig = {
         destination: 'https://heatawards.eu/:path*',
         permanent: true,
       },
+      {
+        // Leftover permalink shape from the old WordPress site — send any
+        // stray bookmarks/backlinks to the real archive route.
+        source: '/results-2024',
+        destination: '/results/2024',
+        permanent: true,
+      },
     ];
   },
 };
