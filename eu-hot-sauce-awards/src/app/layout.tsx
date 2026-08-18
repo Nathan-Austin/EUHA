@@ -3,7 +3,7 @@ import { Inter, Archivo_Black } from "next/font/google";
 import "./globals.css";
 import GlobalNav from "@/components/GlobalNav";
 import Footer from "@/components/Footer";
-import Script from "next/script";
+import CookieConsentBanner from "@/components/CookieConsentBanner";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -53,30 +53,11 @@ export default function RootLayout({
 
   return (
     <html lang="en">
-      <head>
-        {GA_MEASUREMENT_ID && (
-          <>
-            <Script
-              src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
-              strategy="afterInteractive"
-            />
-            <Script id="google-analytics" strategy="afterInteractive">
-              {`
-                window.dataLayer = window.dataLayer || [];
-                function gtag(){dataLayer.push(arguments);}
-                gtag('js', new Date());
-                gtag('config', '${GA_MEASUREMENT_ID}', {
-                  page_path: window.location.pathname,
-                });
-              `}
-            </Script>
-          </>
-        )}
-      </head>
       <body className={`${inter.variable} ${archivoBlack.variable} antialiased bg-[#08040e] text-white`}>
         <GlobalNav />
         <main>{children}</main>
         <Footer />
+        <CookieConsentBanner gaId={GA_MEASUREMENT_ID} />
       </body>
     </html>
   );

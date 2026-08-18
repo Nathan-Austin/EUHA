@@ -4,6 +4,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { usesNewDesign } from '@/lib/newDesignRoutes';
+import CookiePreferencesButton from '@/components/CookiePreferencesButton';
 
 const FooterLink = ({ href, children }: { href: string, children: React.ReactNode }) => (
   <Link href={href} className="text-base text-gray-400 hover:text-white">
@@ -67,6 +68,7 @@ const Footer = () => {
             <FooterLink href="/terms">Terms</FooterLink>
             <FooterLink href="/privacy">Privacy Policy</FooterLink>
             <FooterLink href="/cookies">Cookie Policy</FooterLink>
+            <CookiePreferencesButton className="text-base text-gray-400 hover:text-white" />
           </div>
         </div>
       </div>

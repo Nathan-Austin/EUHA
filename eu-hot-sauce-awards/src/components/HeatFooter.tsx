@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { PREVIOUS_COMPETITION_YEAR } from '@/lib/config';
+import CookiePreferencesButton from '@/components/CookiePreferencesButton';
 
 const FooterCol = ({
   title,
@@ -84,6 +85,7 @@ export default function HeatFooter() {
             <Link href="/terms" className="hover:text-[#F5C518]">Terms</Link>
             <Link href="/privacy" className="hover:text-[#F5C518]">Privacy</Link>
             <Link href="/cookies" className="hover:text-[#F5C518]">Cookies</Link>
+            <CookiePreferencesButton className="hover:text-[#F5C518]" />
           </div>
         </div>
       </div>
