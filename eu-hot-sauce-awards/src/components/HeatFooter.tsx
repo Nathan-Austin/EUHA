@@ -85,6 +85,7 @@ export default function HeatFooter() {
             <Link href="/terms" className="hover:text-[#F5C518]">Terms</Link>
             <Link href="/privacy" className="hover:text-[#F5C518]">Privacy</Link>
             <Link href="/cookies" className="hover:text-[#F5C518]">Cookies</Link>
+            <Link href="/impressum" className="hover:text-[#F5C518]">Impressum</Link>
             <CookiePreferencesButton className="hover:text-[#F5C518]" />
           </div>
         </div>
