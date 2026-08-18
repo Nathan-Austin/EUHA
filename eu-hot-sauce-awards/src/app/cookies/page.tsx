@@ -40,11 +40,12 @@ const CookiesPage = () => {
                   This website, <a href="https://heatawards.eu" className="text-black underline font-semibold hover:opacity-70">heatawards.eu</a> (the &ldquo;Site&rdquo;), is operated by:
                 </p>
                 <div className="text-black/75 leading-relaxed mt-3">
-                  <p>Chili Punk Berlin</p>
-                  <p>Urbanstraße 96</p>
-                  <p>10967 Berlin, Germany</p>
-                  <p>VAT: DE314890098</p>
-                  <p>Email: <a href="mailto:heataward@gmail.com" className="text-black underline font-semibold hover:opacity-70">heataward@gmail.com</a></p>
+                  <p>Austin &amp; Gardner GbR</p>
+                  <p>Südostallee 124</p>
+                  <p>12487 Berlin, Germany</p>
+                  <p>VAT: DE457184736</p>
+                  <p>General enquiries: <a href="mailto:heataward@gmail.com" className="text-black underline font-semibold hover:opacity-70">heataward@gmail.com</a></p>
+                  <p>Legal / data protection enquiries: <a href="mailto:contact@republicofheat.com" className="text-black underline font-semibold hover:opacity-70">contact@republicofheat.com</a></p>
                 </div>
               </div>
 
@@ -121,7 +122,7 @@ const CookiesPage = () => {
                   If you are located in the EEA, UK, or Switzerland, you have rights under GDPR (or equivalent) regarding your personal data, including the right to access, correct, or delete data we hold about you, and the right to withdraw consent for non-essential cookies at any time without affecting the lawfulness of processing before withdrawal.
                 </p>
                 <p className="text-black/75 leading-relaxed mb-3">
-                  To exercise these rights, or if you have questions about this policy, contact us at <a href="mailto:heataward@gmail.com" className="text-black underline font-semibold hover:opacity-70">heataward@gmail.com</a>.
+                  For general questions about this policy, contact <a href="mailto:heataward@gmail.com" className="text-black underline font-semibold hover:opacity-70">heataward@gmail.com</a>. To exercise your data protection rights specifically, contact <a href="mailto:contact@republicofheat.com" className="text-black underline font-semibold hover:opacity-70">contact@republicofheat.com</a>.
                 </p>
                 <p className="text-black/75 leading-relaxed">
                   If you believe we are processing your data unlawfully, you also have the right to lodge a complaint with your local data protection authority. For Germany, this is the Berliner Beauftragte für Datenschutz und Informationsfreiheit (or the relevant authority for your state), or the EU&rsquo;s directory of supervisory authorities: <a href="https://ec.europa.eu/justice/data-protection/bodies/authorities/index_en.htm" target="_blank" rel="noopener noreferrer" className="text-black underline font-semibold hover:opacity-70">ec.europa.eu</a>.
@@ -138,9 +139,10 @@ const CookiesPage = () => {
               <div>
                 <h2 className="font-[family-name:var(--font-archivo-black)] text-xl uppercase tracking-[0.03em] border-b-2 border-black pb-2 mb-3">8. Contact us</h2>
                 <div className="text-black/75 leading-relaxed">
-                  <p>Chili Punk Berlin</p>
-                  <p>Urbanstraße 96, 10967 Berlin, Germany</p>
-                  <p>Email: <a href="mailto:heataward@gmail.com" className="text-black underline font-semibold hover:opacity-70">heataward@gmail.com</a></p>
+                  <p>Austin &amp; Gardner GbR</p>
+                  <p>Südostallee 124, 12487 Berlin, Germany</p>
+                  <p>General enquiries: <a href="mailto:heataward@gmail.com" className="text-black underline font-semibold hover:opacity-70">heataward@gmail.com</a></p>
+                  <p>Legal / data protection enquiries: <a href="mailto:contact@republicofheat.com" className="text-black underline font-semibold hover:opacity-70">contact@republicofheat.com</a></p>
                 </div>
               </div>
             </div>
