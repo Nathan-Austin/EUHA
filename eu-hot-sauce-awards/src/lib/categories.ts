@@ -36,8 +36,8 @@ export const ALL_CATEGORIES = [...CATEGORY_GROUPS.flatMap((g) => g.categories), 
 // Draft copy — not official EHC heat criteria, just enough to point a producer
 // at the right category. Review/edit before treating as final.
 export const CATEGORY_DESCRIPTIONS: Record<string, string> = {
-  "Mild Chili Sauce": "Gentle heat, flavor first — approachable for any palate.",
-  "Medium Chili Sauce": "A noticeable kick that still lets the flavor lead.",
+  "Mild Chili Sauce": "Gentle heat, flavour first — approachable for any palate.",
+  "Medium Chili Sauce": "A noticeable kick that still lets the flavour lead.",
   "Hot Chili Sauce": "Serious heat, built for people who like to feel it.",
   "Extra Hot Chili Sauce": "Intense heat for dedicated spice lovers.",
   "Extract Based Chili Sauce": "Built around capsaicin extract for maximum, no-compromise heat.",

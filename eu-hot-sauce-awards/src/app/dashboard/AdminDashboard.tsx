@@ -515,7 +515,7 @@ export default async function AdminDashboard() {
         <div className="space-y-6">
           <SectionHeading
             title="Marketing & Outreach"
-            description="Manage email campaigns and customize email templates."
+            description="Manage email campaigns and customise email templates."
           />
           <Card>
             <VatInvoiceSender />

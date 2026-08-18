@@ -125,7 +125,7 @@ export default function ScanPage() {
         setIsCheckingSession(false);
       } catch (err) {
         console.error('Session initialization error:', err);
-        setError(err instanceof Error ? err.message : 'Failed to initialize session');
+        setError(err instanceof Error ? err.message : 'Failed to initialise session');
         setIsCheckingSession(false);
       }
     };

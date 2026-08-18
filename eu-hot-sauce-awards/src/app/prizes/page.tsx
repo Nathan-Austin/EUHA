@@ -67,7 +67,7 @@ const PrizesPage = () => {
           <p className="mb-10 max-w-2xl text-sm leading-relaxed text-black/70">
             {NAMED_CATEGORY_COUNT} categories across three groups, plus one wildcard. The <strong>Heat ladder</strong> is about how
             spicy your sauce is — pick the rung that matches. <strong>Styles &amp; flavours</strong> and{' '}
-            <strong>Pantry &amp; condiments</strong> are about format and flavor, not heat — enter whichever best
+            <strong>Pantry &amp; condiments</strong> are about format and flavour, not heat — enter whichever best
             describes what&apos;s in the bottle. Not sure where you fit? Enter <strong>Freestyle</strong> or{' '}
             <Link href="/contact" className="underline hover:opacity-70">get in touch</Link> and we&apos;ll help.
           </p>
