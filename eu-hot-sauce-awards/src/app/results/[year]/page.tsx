@@ -27,6 +27,11 @@ async function getResultsByYear(year: number) {
     .from("past_results")
     .select("code, entry_name, company_name, country, category, area, award, position, score")
     .eq("year", year)
+    // The 2024 legacy import carried every entrant, not just medalists (unlike
+    // 2025/2026, which only ever had award rows inserted) — filter to award
+    // rows here so "award-winning entries" is accurate for every year.
+    .not("award", "is", null)
+    .neq("award", "")
     .order("category", { ascending: true })
     .order("position", { ascending: true, nullsFirst: false });
   if (error) {
