@@ -172,14 +172,15 @@ export default async function Home() {
 
           {podium.length > 0 && (
             <div className="mt-11 grid max-w-[1000px] grid-cols-1 items-end gap-[18px] sm:grid-cols-[1fr_1.15fr_1fr]">
-              {[2, 1, 3].map((rank) => {
+              {[1, 2, 3].map((rank) => {
                 const entry = podium.find((p) => p.global_rank === rank);
                 if (!entry) return null;
                 const isGold = rank === 1;
+                const smOrder = rank === 1 ? "sm:order-2" : rank === 2 ? "sm:order-1" : "sm:order-3";
                 return (
                   <div
                     key={rank}
-                    className={`flex min-h-[220px] min-w-0 flex-col justify-between p-[32px_24px_28px] shadow-[0_8px_24px_rgba(0,0,0,0.35)] ${isGold ? "min-h-[280px] bg-[#F5C518]" : rank === 2 ? "bg-[#DCDCDC]" : "bg-[#DDA15E]"}`}
+                    className={`flex min-h-[220px] min-w-0 flex-col justify-between p-[32px_24px_28px] shadow-[0_8px_24px_rgba(0,0,0,0.35)] ${smOrder} ${isGold ? "min-h-[280px] bg-[#F5C518]" : rank === 2 ? "bg-[#DCDCDC]" : "bg-[#DDA15E]"}`}
                   >
                     <div>
                       <span className="mb-[14px] inline-block bg-black px-[11px] py-[5px] font-[family-name:var(--font-archivo-black)] text-[11px] uppercase tracking-[0.08em] text-white">
